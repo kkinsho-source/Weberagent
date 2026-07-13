@@ -11,12 +11,16 @@
 - [x] Dockerfile + docker-compose + .dockerignore（DevOps）
 - [x] README.md
 
-## 下一步（Phase 1）
-- [ ] Supabase 建表 + 環境變數接入（替換 mock）
-- [ ] 證交所/櫃買 ETL：即時報價、日線、法人
+## 下一步（Phase 2 → 待辦）
+- [x] 單一資料縫合層 `lib/data/source.ts`（mock / snapshot / supabase 三模式）
+- [x] 真實 ETL `scripts/etl/twse_daily.py`（證交所 STOCK_DAY_ALL，實跑抓 1369 檔）
+- [x] `twse_snapshot.json` 真實報價（asOf 2026-07-09）
+- [x] BFF 路由 `app/api/v1/stocks`（全部/單檔/題材）
+- [x] Supabase `schema.sql`（14 表 + RLS + 從 mock 種子）
+- [ ] 接上 Supabase 憑證後：ETL 改 upsert 進 DB、source.ts 切 supabase 模式
 - [ ] MOPS 財報 + 重大公告爬蟲
 - [ ] 集保大戶 + 主動式 ETF 持股
-- [ ] 個股頁接 React Flow 上下游子圖（目前用 placeholder）
+- [ ] 個股即時輪詢（TanStack Query）→ 報價 15s TTL 快取
 
 ## 環境約束
 - 所有檔案存於 D:\weberanent\（C 槽不放專案檔）

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { stocks } from '@/lib/data/mock';
+import { getStock } from '@/lib/data/source';
 import { subgraphFor } from '@/lib/data/graph';
 import { MapView } from '@/components/map/MapView';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ export default async function StockPage({
   params: Promise<{ symbol: string }>;
 }) {
   const { symbol } = await params;
-  const stock = stocks.find((s) => s.symbol === symbol);
+  const stock = getStock(symbol);
   if (!stock) notFound();
 
   const up = stock.changePct >= 0;

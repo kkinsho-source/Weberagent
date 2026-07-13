@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getTheme, getStocksByTheme } from '@/lib/data/mock';
+import { getTheme, getStocksByTheme } from '@/lib/data/source';
 import { subgraphFor } from '@/lib/data/graph';
 import { StockCard } from '@/components/ui/StockCard';
 import { MapView } from '@/components/map/MapView';

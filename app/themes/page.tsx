@@ -1,4 +1,4 @@
-import { themes } from '@/lib/data/mock';
+import { themes } from '@/lib/data/source';
 import { ThemeCard } from '@/components/ui/ThemeCard';
 import { MarketTabs } from '@/components/ui/MarketTabs';
 

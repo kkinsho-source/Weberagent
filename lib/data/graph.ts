@@ -1,7 +1,7 @@
 import * as dagre from 'dagre';
 import type { Edge, Node } from '@xyflow/react';
 import type { Stock } from '../types';
-import { stocks, supplyEdges } from './mock';
+import { stocks, supplyEdges } from './source';
 
 // 產業 → 垂直分層（0=最上游設計, 4=最下游板卡）
 const LAYER: Record<string, number> = {
