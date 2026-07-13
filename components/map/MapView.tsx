@@ -20,8 +20,9 @@ const SupplyChainGraph = dynamic(
 interface Props {
   nodes: Node<StockNodeData>[];
   edges: Edge[];
+  title?: string;
 }
 
-export function MapView({ nodes, edges }: Props) {
-  return <SupplyChainGraph nodes={nodes} edges={edges} />;
+export function MapView({ nodes, edges, title }: Props) {
+  return <SupplyChainGraph nodes={nodes} edges={edges} title={title} />;
 }

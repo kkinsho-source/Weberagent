@@ -1,6 +1,9 @@
 import { notFound } from 'next/navigation';
 import { stocks } from '@/lib/data/mock';
-import { MapPlaceholder } from '@/components/ui/MapPlaceholder';
+import { subgraphFor } from '@/lib/data/graph';
+import { MapView } from '@/components/map/MapView';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default async function StockPage({
   params,
@@ -12,9 +15,7 @@ export default async function StockPage({
   if (!stock) notFound();
 
   const up = stock.changePct >= 0;
-
-  const tabs = ['概覽', '供應鏈', '財務分析', 'AI 分析'];
-  const active = '供應鏈';
+  const subgraph = subgraphFor([stock.symbol]);
 
   return (
     <div className="space-y-6">
@@ -33,36 +34,72 @@ export default async function StockPage({
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-slate-200">
-        {tabs.map((t) => (
-          <div
-            key={t}
-            className={`px-4 py-2 text-sm font-medium ${
-              t === active
-                ? 'border-b-2 border-brand-600 text-brand-600'
-                : 'text-slate-400'
-            }`}
-          >
-            {t}
-          </div>
-        ))}
-      </div>
+      <Tabs defaultValue="supply">
+        <TabsList>
+          <TabsTrigger value="supply">供應鏈</TabsTrigger>
+          <TabsTrigger value="overview">概覽</TabsTrigger>
+          <TabsTrigger value="financials">財務分析</TabsTrigger>
+          <TabsTrigger value="ai">AI 分析</TabsTrigger>
+        </TabsList>
 
-      <MapPlaceholder title={`${stock.name} 上下游供應鏈（示意）`} />
+        <TabsContent value="supply" className="mt-4">
+          <MapView
+            nodes={subgraph.nodes}
+            edges={subgraph.edges}
+            title={`${stock.name} 上下游供應鏈`}
+          />
+          <p className="mt-2 text-xs text-slate-400">
+            點擊節點可高亮其直接上下游連線；拖動可重新排版，滾輪/雙指縮放。
+          </p>
+        </TabsContent>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
-        <div className="font-semibold text-slate-800">公司資訊（示意）</div>
-        <dl className="mt-3 grid grid-cols-2 gap-3">
-          <div>
-            <dt className="text-slate-400">市值</dt>
-            <dd>{stock.marketCap.toLocaleString()} 億</dd>
-          </div>
-          <div>
-            <dt className="text-slate-400">產業</dt>
-            <dd>{stock.industry}</dd>
-          </div>
-        </dl>
-      </div>
+        <TabsContent value="overview" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>公司資訊</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <dt className="text-slate-400">市值</dt>
+                  <dd className="font-medium text-slate-800">{stock.marketCap.toLocaleString()} 億</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400">產業</dt>
+                  <dd className="font-medium text-slate-800">{stock.industry}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400">今日漲跌</dt>
+                  <dd className={`font-medium ${up ? 'text-up' : 'text-down'}`}>
+                    {up ? '+' : ''}
+                    {stock.changePct.toFixed(2)}%
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400">股價</dt>
+                  <dd className="font-medium text-slate-800">{stock.price.toLocaleString()}</dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="financials" className="mt-4">
+          <Card>
+            <CardContent className="pt-6 text-sm text-slate-500">
+              財務分析（本益比河流圖、損益表）— Phase 3 接入。
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ai" className="mt-4">
+          <Card>
+            <CardContent className="pt-6 text-sm text-slate-500">
+              AI 分析報告（多空論點 + 風險 + 引用來源）— Phase 4 接入。
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

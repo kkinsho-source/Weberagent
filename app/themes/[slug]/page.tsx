@@ -32,7 +32,7 @@ export default async function ThemeDetailPage({
         </div>
       </div>
 
-      <MapView nodes={subgraph.nodes} edges={subgraph.edges} />
+      <MapView nodes={subgraph.nodes} edges={subgraph.edges} title={theme.title} />
 
       <div>
         <h2 className="mb-3 text-lg font-semibold text-slate-800">相關公司</h2>
