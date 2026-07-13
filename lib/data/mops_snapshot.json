@@ -1,11 +1,10 @@
 {
   "asOf": "2026-07-14",
-  "fetchedAt": "2026-07-13T18:16:17.593092+00:00",
+  "fetchedAt": "2026-07-13T19:19:03.862162+00:00",
   "count": 357,
   "meta": {
-    "mode": "company",
-    "symbol": "2454",
-    "count": 72
+    "mode": "daily",
+    "count": 5
   },
   "items": [
     {

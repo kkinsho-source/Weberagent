@@ -1,0 +1,43 @@
+# TWSE 每日 ETL 排程說明
+#
+# 預設方案：Vercel Cron → /api/cron/twse-daily
+# 備選方案：GitHub Actions（.github/workflows/twse-daily.yml）
+
+name: twse-daily-etl
+
+on:
+  schedule:
+    # 週一～五 09:30 UTC = 台灣 17:30
+    - cron: '30 9 * * 1-5'
+  workflow_dispatch: # 允許手動觸發測試
+
+jobs:
+  etl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install httpx
+
+      - name: Fetch TWSE + push Supabase
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python3 scripts/etl/twse_daily.py
+          python3 scripts/etl/push_to_supabase.py --core-only
+
+      # 若已部署 Vercel，也可改打 API（二選一即可）
+      # - name: Trigger Vercel cron endpoint
+      #   env:
+      #     CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      #     APP_URL: ${{ secrets.APP_URL }}
+      #   run: |
+      #     curl -fsS -X POST "$APP_URL/api/cron/twse-daily" \
+      #       -H "Authorization: Bearer $CRON_SECRET"
