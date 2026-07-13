@@ -1,18 +1,7 @@
 import * as dagre from 'dagre';
 import type { Edge, Node } from '@xyflow/react';
-import type { Stock } from '../types';
-import { stocks, supplyEdges } from './source';
-
-// 產業 → 垂直分層（0=最上游設計, 4=最下游板卡）
-const LAYER: Record<string, number> = {
-  IP: 0,
-  'IC 設計': 0,
-  晶圓代工: 1,
-  封測: 2,
-  組裝: 3,
-  PCB: 4,
-  CCL: 4,
-};
+import type { Stock, SupplyEdge } from '../types';
+import { stocks as defaultStocks, supplyEdges as defaultEdges } from './source';
 
 export interface StockNodeData extends Record<string, unknown> {
   stock: Stock;
@@ -21,36 +10,40 @@ export interface StockNodeData extends Record<string, unknown> {
 const NODE_W = 150;
 const NODE_H = 64;
 
-// 用 dagre 自動分層佈局，避免手動算 x/y 造成的節點過密
-export function toFlowNodes(): Node<StockNodeData>[] {
+/** 用 dagre 自動分層佈局 */
+export function toFlowNodes(stockList: Stock[] = defaultStocks): Node<StockNodeData>[] {
   const g = new dagre.graphlib.Graph();
   g.setGraph({ rankdir: 'LR', nodesep: 40, ranksep: 120, marginx: 20, marginy: 20 });
   g.setDefaultEdgeLabel(() => ({}));
 
-  const baseNodes = stocks.map((s) => ({
+  const baseNodes = stockList.map((s) => ({
     id: s.symbol,
     data: { stock: s },
     type: 'stock' as const,
   }));
 
   baseNodes.forEach((n) => g.setNode(n.id, { width: NODE_W, height: NODE_H }));
-  supplyEdges.forEach((e) => g.setEdge(e.from, e.to));
+  // edges 僅連接 stockList 內的節點
+  const ids = new Set(stockList.map((s) => s.symbol));
+  defaultEdges
+    .filter((e) => ids.has(e.from) && ids.has(e.to))
+    .forEach((e) => g.setEdge(e.from, e.to));
 
   dagre.layout(g);
 
   return baseNodes.map((n) => {
-    const { x, y } = g.node(n.id);
+    const pos = g.node(n.id);
     return {
       ...n,
-      position: { x: x - NODE_W / 2, y: y - NODE_H / 2 },
+      position: { x: (pos?.x ?? 0) - NODE_W / 2, y: (pos?.y ?? 0) - NODE_H / 2 },
       data: n.data,
       type: n.type,
     } as Node<StockNodeData>;
   });
 }
 
-export function toFlowEdges(): Edge[] {
-  return supplyEdges.map((e, i) => ({
+export function toFlowEdges(edgeList: SupplyEdge[] = defaultEdges): Edge[] {
+  return edgeList.map((e, i) => ({
     id: `e${i}`,
     source: e.from,
     target: e.to,
@@ -62,17 +55,22 @@ export function toFlowEdges(): Edge[] {
   }));
 }
 
-// 取某檔個股 / 某題材的上下游相門子圖（鑽取用）
-// 個股：種子 + 直接上下游鄰居；題材：該題材全部公司 + 其互連邊
-export function subgraphFor(symbols: string[], expandNeighbors = true): {
-  nodes: Node<StockNodeData>[];
-  edges: Edge[];
-} {
+/**
+ * 取某檔個股 / 某題材的上下游子圖
+ * @param symbols 種子代號
+ * @param stockList 可選：完整股票列表（預設 snapshot/mock）
+ * @param edgeList 可選：供應鏈邊
+ */
+export function subgraphFor(
+  symbols: string[],
+  expandNeighbors = true,
+  stockList: Stock[] = defaultStocks,
+  edgeList: SupplyEdge[] = defaultEdges
+): { nodes: Node<StockNodeData>[]; edges: Edge[] } {
   const seed = new Set(symbols);
-  // 計算保留的節點集合（個股模式要包含直接鄰居）
   const keepNodes = new Set<string>(seed);
-  const keptEdges = supplyEdges.filter((e) => {
-    if (seed.has(e.from) && seed.has(e.to)) return true; // 題材內互連
+  const keptEdges = edgeList.filter((e) => {
+    if (seed.has(e.from) && seed.has(e.to)) return true;
     if (expandNeighbors && (seed.has(e.from) || seed.has(e.to))) {
       keepNodes.add(e.from);
       keepNodes.add(e.to);
@@ -81,8 +79,11 @@ export function subgraphFor(symbols: string[], expandNeighbors = true): {
     return false;
   });
 
-  const nodes = toFlowNodes().filter((n) => keepNodes.has(n.id));
+  const subStocks = stockList.filter((s) => keepNodes.has(s.symbol));
+  const nodes = toFlowNodes(subStocks);
   const edgeIdSet = new Set(keptEdges.map((e) => `${e.from}->${e.to}`));
-  const edges = toFlowEdges().filter((e) => edgeIdSet.has(`${e.source}->${e.target}`));
+  const edges = toFlowEdges(keptEdges).filter((e) =>
+    edgeIdSet.has(`${e.source}->${e.target}`)
+  );
   return { nodes, edges };
 }

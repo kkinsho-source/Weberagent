@@ -1,32 +1,49 @@
 import { NextResponse } from 'next/server';
-import { stocks, getStock, getStocksByTheme, getSnapshotMeta } from '@/lib/data/source';
+import { getDataBundle } from '@/lib/data/source';
+import { canUseSupabase, fetchRecentEtlLogs } from '@/lib/data/supabase-repo';
 
-// 行情類 API 不預渲染，永遠即時
 export const dynamic = 'force-dynamic';
 
 /**
- * BFF 路由 — 個股 / 題材資料縫合出口
- * GET /api/v1/stocks              -> 全部個股（真實報價已覆蓋）
- * GET /api/v1/stocks?symbol=2330  -> 單檔個股
- * GET /api/v1/stocks?theme=foundry-> 某題材下全部個股
+ * BFF — 個股資料
+ * GET /api/v1/stocks
+ * GET /api/v1/stocks?symbol=2330
+ * GET /api/v1/stocks?theme=foundry
  *
- * 前端未來用 TanStack Query 輪詢此路由即可拿到即時報價；
- * 上 Supabase 後，source.ts 改從 DB 讀，本路由免改。
+ * 回傳 dataSource: 'supabase' | 'snapshot' | 'mock'
  */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const symbol = searchParams.get('symbol');
-  const theme = searchParams.get('theme');
+  const symbol = searchParams.get('symbol') ?? undefined;
+  const theme = searchParams.get('theme') ?? undefined;
+
+  const bundle = await getDataBundle({ symbol, theme });
+
+  let etl: unknown[] = [];
+  if (canUseSupabase()) {
+    etl = await fetchRecentEtlLogs(3);
+  }
 
   if (symbol) {
-    const s = getStock(symbol);
-    if (!s) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-    return NextResponse.json({ stock: s, meta: getSnapshotMeta() });
+    const stock = bundle.stocks[0];
+    if (!stock) {
+      return NextResponse.json(
+        { error: 'not_found', dataSource: bundle.dataSource },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json({
+      stock,
+      meta: bundle.meta,
+      dataSource: bundle.dataSource,
+      recentEtl: etl,
+    });
   }
 
-  if (theme) {
-    return NextResponse.json({ theme, stocks: getStocksByTheme(theme), meta: getSnapshotMeta() });
-  }
-
-  return NextResponse.json({ stocks, meta: getSnapshotMeta() });
+  return NextResponse.json({
+    stocks: bundle.stocks,
+    meta: bundle.meta,
+    dataSource: bundle.dataSource,
+    recentEtl: etl,
+  });
 }

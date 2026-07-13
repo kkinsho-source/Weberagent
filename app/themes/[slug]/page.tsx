@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getTheme, getStocksByTheme } from '@/lib/data/source';
+import { getDataBundle } from '@/lib/data/source';
 import { subgraphFor } from '@/lib/data/graph';
 import { StockCard } from '@/components/ui/StockCard';
 import { MapView } from '@/components/map/MapView';
@@ -11,11 +11,17 @@ export default async function ThemeDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const theme = getTheme(slug);
+  const bundle = await getDataBundle();
+  const theme = bundle.themes.find((t) => t.slug === slug);
   if (!theme) notFound();
 
-  const stocks = getStocksByTheme(theme.slug);
-  const subgraph = subgraphFor(stocks.map((s) => s.symbol));
+  const stocks = bundle.stocks.filter((s) => s.themeSlug === theme.slug);
+  const subgraph = subgraphFor(
+    stocks.map((s) => s.symbol),
+    true,
+    bundle.stocks,
+    bundle.supplyEdges
+  );
 
   return (
     <div className="space-y-6">
@@ -28,7 +34,7 @@ export default async function ThemeDetailPage({
           {theme.description}
         </p>
         <div className="mt-2 text-xs text-slate-400">
-          共 {theme.companyCount} 家 · 核實於 {theme.verifiedAt}
+          共 {theme.companyCount} 家 · 核實於 {theme.verifiedAt} · 資料源 {bundle.dataSource}
         </div>
       </div>
 

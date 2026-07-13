@@ -1,36 +1,112 @@
-# Supabase 接入說明（Phase 2）
+# Supabase 接入完整說明（Phase 2）
 
-## 1. 建立專案
-1. 前往 https://supabase.com → New Project
-2. 記下 Project URL 與 anon key（Project Settings → API）
+## 一、建立 Supabase 專案（約 5 分鐘）
 
-## 2. 執行 Schema
-- Supabase Studio → SQL Editor → 貼上 `supabase/schema.sql` → Run
-- 此檔會建立 14 張表 + RLS 策略 + 從 `lib/data/mock.ts` 灌入 6 題材 / 20 個股 / 17 條供應鏈邊
-- （可選）啟用 pgvector 擴充（schema 內已 `create extension if not exists vector`）
+1. 前往 https://supabase.com → **New Project**
+2. 選組織、專案名稱（例：`aistockmap`）、資料庫密碼、區域（建議 `Northeast Asia (Tokyo)` 或新加坡）
+3. 建立完成後進入 **Project Settings → API**，複製：
+   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
+   - **anon public** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - **service_role** key → `SUPABASE_SERVICE_ROLE_KEY`（⚠️ 機密，只放 server）
 
-## 3. 設定環境變數
-複製 `.env.example` → `.env.local` 並填入：
-```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-```
-啟用 Supabase 資料模式：在 `lib/data/source.ts` 把 `MODE` 來源改為 `'supabase'`（或在 runtime 設 `DATA_MODE=supabase`）。
-> 目前 `source.ts` 預設走 `snapshot`（本地真實行情 JSON），未設環境變數時不會連 Supabase，避免 SSR 報錯。
+## 二、執行 Schema
 
-## 4. 灌真實報價（ETL）
+1. 開啟 **SQL Editor**
+2. 貼上並執行專案內的 `supabase/schema.sql`
+3. 成功後 Table Editor 應看到：
+   - `profiles`（對應 Auth users）
+   - `stocks` / `stock_daily`
+   - `watchlists` / `favorites`
+   - `etl_logs`
+   - `themes` / `supply_edges`
+4. Seed 已內建 20 檔個股 + 6 題材 + 17 條供應鏈邊（價格待 ETL 覆寫）
+
+## 三、本機環境變數
+
 ```bash
-python3 scripts/etl/twse_daily.py
-# 輸出 lib/data/twse_snapshot.json（asOf + 1369 檔收盤/漲跌）
+cp .env.example .env.local
+# 編輯 .env.local 填入三個 key
 ```
-上 Supabase 後，把 ETL 改為 upsert 進 `stock.price` / `stock.change_pct` / `stock_daily`：
-```sql
-update stock s set price = q.price, change_pct = q.change_pct, updated_at = now()
-from jsonb_each_text(...) ...
-```
-（具體 upsert 腳本為 Phase 2 後半，待 Supabase 憑證確認後補齊。）
 
-## 5. RLS 與付費（Phase 4 才啟用）
-- `financials` / `major_holder` / `ai_analysis` 細節欄位：計畫以 `plan='premium'` 遮罩（API 層雙保險）。
-- `profiles` 表由 Supabase Auth 註冊觸發器建立（見 PROJECT_PLAN §10）。
-- 前端讀取一律走 anon key；寫入只走 service_role（ETL 後端，勿暴露到前端）。
+| 變數 | 用途 | 可否公開 |
+|------|------|----------|
+| `NEXT_PUBLIC_SUPABASE_URL` | 專案 URL | 可（前端） |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | RLS 下的公開讀/登入 | 可（前端） |
+| `SUPABASE_SERVICE_ROLE_KEY` | ETL 寫入、繞過 RLS | **否** |
+| `DATA_MODE` | `auto` / `snapshot` / `supabase` / `mock` | 可 |
+
+`.env.local` 已被 `.gitignore` 排除，**不要 commit**。
+
+## 四、寫入真實行情
+
+```bash
+# 1) 抓證交所
+python3 scripts/etl/twse_daily.py
+
+# 2) dry-run 驗證 payload
+python3 scripts/etl/push_to_supabase.py --dry-run
+
+# 3) 推核心 20 檔到 Supabase
+python3 scripts/etl/push_to_supabase.py --core-only
+
+# 或全市場
+python3 scripts/etl/push_to_supabase.py --all
+```
+
+成功後：
+- `stocks.price` / `change_pct` / `as_of` 更新
+- `etl_logs` 新增一筆 `status=success`
+
+## 五、驗證
+
+```bash
+npm run dev   # 建議 PORT=3100
+curl http://localhost:3100/api/v1/health/supabase
+curl http://localhost:3100/api/v1/stocks?symbol=2330
+curl http://localhost:3100/api/v1/etl-logs
+```
+
+健康檢查 `ok:true` 且 `dataSource:"supabase"` 即成功。
+
+## 六、Vercel 部署設定
+
+1. 推上 GitHub 後，Import 到 Vercel
+2. **Project → Settings → Environment Variables** 新增（Production / Preview）：
+
+| Name | Value | Environments |
+|------|-------|--------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | 你的 URL | Production, Preview, Development |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key | 同上 |
+| `SUPABASE_SERVICE_ROLE_KEY` | service_role | **僅 Production（與 Preview 若需跑 ETL）** |
+| `DATA_MODE` | `auto` | 同上 |
+
+3. Redeploy 後訪問 `/api/v1/health/supabase` 確認
+
+> 注意：`SUPABASE_SERVICE_ROLE_KEY` 若設了會進 server runtime，**不要**加 `NEXT_PUBLIC_`。
+> 前端 ETL 推送請用本機 / CI / cron worker，不要做公開 API 暴露 service role。
+
+## 七、程式架構
+
+```
+lib/supabase/
+  client.ts   # 瀏覽器（Auth 用）
+  server.ts   # Route Handler / RSC（anon + RLS）
+  admin.ts    # service role（僅 server）
+  types.ts    # 表型別
+
+lib/data/
+  source.ts          # auto: supabase → snapshot → mock
+  supabase-repo.ts   # 讀 stocks/themes/edges/etl_logs
+  twse_snapshot.json  # 本地真實行情 fallback
+
+app/api/v1/
+  stocks/route.ts
+  etl-logs/route.ts
+  health/supabase/route.ts
+```
+
+## 八、Auth / 收藏（下一階段）
+
+- `profiles` 已用 trigger 對 `auth.users` 自動建檔
+- `favorites` / `watchlists` RLS 限本人
+- 接 Supabase Auth UI 後即可做自選股

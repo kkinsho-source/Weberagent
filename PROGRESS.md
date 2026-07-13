@@ -1,26 +1,28 @@
-# 階段性進度總結 (2026-07-13)
+# 階段性進度總結
 
 ## 已完成
-- [x] 技術架構計劃書 PLAN.md（對標 aistockmap 14 章）
 - [x] Next.js 15 + TS + Tailwind 專案骨架，production build 通過
 - [x] 頁面：首頁 / 題材列表 / 題材詳情 / 個股頁 / 登入 / 定價
-- [x] UI 元件：StockCard / ThemeCard / MapPlaceholder / MarketTabs
-- [x] 真實台股 mock 資料（20 檔 + 6 題材 + 供應鏈）
-- [x] **React Flow 互動式供應鏈地圖**（首頁全圖 + 題材頁子圖），點擊高亮上下游
-- [x] 測試：graph.test.ts（20 nodes / 17 edges 驗證）
-- [x] Dockerfile + docker-compose + .dockerignore（DevOps）
-- [x] README.md
+- [x] React Flow 互動式供應鏈地圖 + dagre
+- [x] 真實 TWSE ETL + snapshot
+- [x] **Supabase 整合骨架**
+  - schema.sql：profiles / stocks / watchlists / favorites / etl_logs / themes / supply_edges
+  - client / server / admin 三層 client
+  - source.ts auto：supabase → snapshot → mock
+  - API：`/api/v1/stocks`、`/etl-logs`、`/health/supabase`
+  - ETL push：`scripts/etl/push_to_supabase.py`（dry-run 已驗證 payload）
+  - 首頁示範元件 `SupabaseDataDemo`
 
-## 下一步（Phase 2 → 待辦）
-- [x] 單一資料縫合層 `lib/data/source.ts`（mock / snapshot / supabase 三模式）
-- [x] 真實 ETL `scripts/etl/twse_daily.py`（證交所 STOCK_DAY_ALL，實跑抓 1369 檔）
-- [x] `twse_snapshot.json` 真實報價（asOf 2026-07-09）
-- [x] BFF 路由 `app/api/v1/stocks`（全部/單檔/題材）
-- [x] Supabase `schema.sql`（14 表 + RLS + 從 mock 種子）
-- [ ] 接上 Supabase 憑證後：ETL 改 upsert 進 DB、source.ts 切 supabase 模式
-- [ ] MOPS 財報 + 重大公告爬蟲
-- [ ] 集保大戶 + 主動式 ETF 持股
-- [ ] 個股即時輪詢（TanStack Query）→ 報價 15s TTL 快取
+## 待你操作（需憑證）
+- [ ] 建立 Supabase 專案 + 執行 schema.sql
+- [ ] 填 `.env.local` 三個 key
+- [ ] `npm run etl:all` 寫入真實行情
+- [ ] 設定 GitHub remote 後 push
+- [ ] Vercel 環境變數
+
+## 建議下一階段
+1. **你填憑證後**：我幫你驗證 health + push + dataSource=supabase
+2. 或 **MOPS 爬蟲**（財報/重大公告）並行推進內容
 
 ## 環境約束
-- 所有檔案存於 D:\weberanent\（C 槽不放專案檔）
+- 所有檔案存於 D:\weberanent\

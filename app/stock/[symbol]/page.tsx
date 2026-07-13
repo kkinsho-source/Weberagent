@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation';
-import { getStock } from '@/lib/data/source';
+import { getDataBundle } from '@/lib/data/source';
 import { subgraphFor } from '@/lib/data/graph';
 import { MapView } from '@/components/map/MapView';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+export const revalidate = 60;
 
 export default async function StockPage({
   params,
@@ -11,11 +13,17 @@ export default async function StockPage({
   params: Promise<{ symbol: string }>;
 }) {
   const { symbol } = await params;
-  const stock = getStock(symbol);
+  const bundle = await getDataBundle();
+  const stock = bundle.stocks.find((s) => s.symbol === symbol);
   if (!stock) notFound();
 
   const up = stock.changePct >= 0;
-  const subgraph = subgraphFor([stock.symbol]);
+  const subgraph = subgraphFor(
+    [stock.symbol],
+    true,
+    bundle.stocks,
+    bundle.supplyEdges
+  );
 
   return (
     <div className="space-y-6">
@@ -24,6 +32,10 @@ export default async function StockPage({
           <div className="text-sm text-slate-400">{stock.symbol}</div>
           <h1 className="text-2xl font-bold text-slate-800">{stock.name}</h1>
           <div className="text-sm text-slate-500">{stock.industry}</div>
+          <div className="mt-1 text-[11px] text-slate-400">
+            資料源：{bundle.dataSource}
+            {bundle.meta?.asOf ? ` · ${bundle.meta.asOf}` : ''}
+          </div>
         </div>
         <div className={`text-right text-2xl font-bold ${up ? 'text-up' : 'text-down'}`}>
           {stock.price.toLocaleString()}
@@ -62,7 +74,9 @@ export default async function StockPage({
               <dl className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <dt className="text-slate-400">市值</dt>
-                  <dd className="font-medium text-slate-800">{stock.marketCap.toLocaleString()} 億</dd>
+                  <dd className="font-medium text-slate-800">
+                    {stock.marketCap.toLocaleString()} 億
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-slate-400">產業</dt>
