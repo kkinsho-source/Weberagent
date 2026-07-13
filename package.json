@@ -10,7 +10,10 @@
     "etl:twse": "python3 scripts/etl/twse_daily.py",
     "etl:push": "python3 scripts/etl/push_to_supabase.py",
     "etl:push:dry": "python3 scripts/etl/push_to_supabase.py --dry-run",
-    "etl:all": "python3 scripts/etl/twse_daily.py && python3 scripts/etl/push_to_supabase.py --core-only"
+    "etl:mops": "python3 scripts/etl/mops_announcements.py --mode daily",
+    "etl:mops:core": "python3 scripts/etl/mops_announcements.py --mode core",
+    "etl:mops:push": "python3 scripts/etl/mops_announcements.py --mode core --push",
+    "etl:all": "python3 scripts/etl/twse_daily.py && python3 scripts/etl/push_to_supabase.py --core-only && python3 scripts/etl/mops_announcements.py --mode core"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.3.0",

@@ -16,6 +16,9 @@ export function Header() {
           <Link href="/themes" className="hover:text-brand-600">
             題材
           </Link>
+          <Link href="/announcements" className="hover:text-brand-600">
+            重大訊息
+          </Link>
           <Link href="/favorites" className="hover:text-brand-600">
             自選
           </Link>

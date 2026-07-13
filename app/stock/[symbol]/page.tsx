@@ -5,6 +5,7 @@ import { MapView } from '@/components/map/MapView';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FavoriteButton } from '@/components/stock/FavoriteButton';
+import { MopsAnnouncementsPanel } from '@/components/mops/MopsAnnouncementsPanel';
 
 export const revalidate = 60;
 
@@ -54,6 +55,7 @@ export default async function StockPage({
         <TabsList>
           <TabsTrigger value="supply">供應鏈</TabsTrigger>
           <TabsTrigger value="overview">概覽</TabsTrigger>
+          <TabsTrigger value="mops">重大訊息</TabsTrigger>
           <TabsTrigger value="financials">財務分析</TabsTrigger>
           <TabsTrigger value="ai">AI 分析</TabsTrigger>
         </TabsList>
@@ -98,6 +100,17 @@ export default async function StockPage({
                   <dd className="font-medium text-slate-800">{stock.price.toLocaleString()}</dd>
                 </div>
               </dl>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="mops" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{stock.name} 重大訊息</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MopsAnnouncementsPanel initialSymbol={stock.symbol} />
             </CardContent>
           </Card>
         </TabsContent>

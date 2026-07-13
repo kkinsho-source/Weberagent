@@ -1,26 +1,21 @@
 # 階段性進度總結
 
 ## 已完成
-- [x] Next.js 15 + TS + Tailwind + React Flow 地圖
-- [x] TWSE ETL + snapshot 真實行情
-- [x] Supabase schema / clients / BFF / push 腳本
-- [x] **Auth 登入/註冊 + favorites 自選股**
-  - `@supabase/ssr` + middleware session refresh
-  - `/login` 登入註冊、`/favorites` 自選頁
-  - 個股頁 `FavoriteButton`（雲端 favorites / 本機 fallback）
-  - API `GET/POST/DELETE /api/v1/favorites`
-  - Header：自選 / 使用者 / 登出
+- [x] Next.js 15 + React Flow 地圖 + TWSE 行情 ETL
+- [x] Supabase schema / clients / Auth / favorites
+- [x] **MOPS 重大訊息爬蟲 + API + 前端**
+  - OpenAPI `t187ap04_L` 日更（含全文說明）
+  - mopsov `ajax_t05st01` 公司年度列表
+  - snapshot 357 筆（2330/2317/2454 + 日更）
+  - `mops_announcements` 表 SQL
+  - `/api/v1/mops`、`/announcements`、首頁區塊、個股 Tab
 
-## 待你操作（需憑證）
-- [ ] 建立 Supabase 專案 + 執行 schema.sql
-- [ ] 填 `.env.local` 三個 key
-- [ ] Auth：關閉 Confirm email（開發）+ 設定 Redirect URL
-- [ ] `npm run etl:all` 寫入真實行情
+## 待你操作
+- [ ] Supabase 執行 `supabase/mops_announcements.sql`（或完整 schema.sql）
+- [ ] 填 `.env.local` 後 `npm run etl:mops:push`
 - [ ] GitHub remote + push
 
 ## 建議下一階段
-1. 你填憑證 → 端到端驗證 Auth + 收藏 + ETL
-2. 或 MOPS 爬蟲
-
-## 環境約束
-- 所有檔案存於 D:\weberanent\
+1. 個股財報（OpenAPI t187ap14 已可取）
+2. 定時 cron（GitHub Actions / Vercel cron）跑 ETL
+3. AI 摘要重大訊息標籤

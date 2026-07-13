@@ -4,6 +4,7 @@ import { MarketTabs } from '@/components/ui/MarketTabs';
 import { MapView } from '@/components/map/MapView';
 import { toFlowNodes, toFlowEdges } from '@/lib/data/graph';
 import { SupabaseDataDemo } from '@/components/demo/SupabaseDataDemo';
+import { MopsAnnouncementsPanel } from '@/components/mops/MopsAnnouncementsPanel';
 
 // 行情可每 60s 重新驗證（接 Supabase 後生效）
 export const revalidate = 60;
@@ -35,6 +36,11 @@ export default async function HomePage() {
       </section>
 
       <SupabaseDataDemo />
+
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-3 text-lg font-semibold text-slate-800">最新重大訊息</h2>
+        <MopsAnnouncementsPanel compact />
+      </section>
 
       <section>
         <h2 className="mb-3 text-lg font-semibold text-slate-800">今日產業漲幅焦點</h2>
