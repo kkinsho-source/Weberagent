@@ -92,7 +92,7 @@ def build_rows(snapshot: dict, core_only: bool) -> list[dict]:
 
 
 def rest_upsert(url: str, key: str, rows: list[dict]) -> int:
-    """PostgREST upsert：on_conflict=symbol,market"""
+    """PostgREST upsert stocks：on_conflict=symbol,market"""
     endpoint = f"{url}/rest/v1/stocks?on_conflict=symbol,market"
     headers = {
         "apikey": key,
@@ -100,7 +100,6 @@ def rest_upsert(url: str, key: str, rows: list[dict]) -> int:
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=minimal",
     }
-    # 分批，避免 payload 過大
     batch = 200
     total = 0
     with httpx.Client(timeout=60.0) as client:
@@ -108,9 +107,50 @@ def rest_upsert(url: str, key: str, rows: list[dict]) -> int:
             chunk = rows[i : i + batch]
             r = client.post(endpoint, headers=headers, json=chunk)
             if r.status_code >= 400:
-                raise RuntimeError(f"upsert failed HTTP {r.status_code}: {r.text[:500]}")
+                raise RuntimeError(f"upsert stocks failed HTTP {r.status_code}: {r.text[:500]}")
             total += len(chunk)
-            print(f"[push] upserted {total}/{len(rows)}", file=sys.stderr)
+            print(f"[push] stocks upserted {total}/{len(rows)}", file=sys.stderr)
+    return total
+
+
+def rest_upsert_prices(url: str, key: str, rows: list[dict], as_of: str, source: str) -> int:
+    """寫入 stock_prices 日線（close=最新收盤）"""
+    if not as_of or not rows:
+        return 0
+    price_rows = [
+        {
+            "symbol": r["symbol"],
+            "market": r.get("market") or "tw",
+            "trade_date": as_of,
+            "close": r.get("price"),
+            "change_pct": r.get("change_pct"),
+            "source": source,
+        }
+        for r in rows
+        if r.get("price") is not None
+    ]
+    endpoint = f"{url}/rest/v1/stock_prices?on_conflict=symbol,market,trade_date"
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    }
+    total = 0
+    batch = 200
+    with httpx.Client(timeout=60.0) as client:
+        for i in range(0, len(price_rows), batch):
+            chunk = price_rows[i : i + batch]
+            r = client.post(endpoint, headers=headers, json=chunk)
+            if r.status_code >= 400:
+                # 表可能尚未建立 — 警告但不中斷 stocks 成功
+                print(
+                    f"[push] warn stock_prices upsert HTTP {r.status_code}: {r.text[:200]}",
+                    file=sys.stderr,
+                )
+                return total
+            total += len(chunk)
+            print(f"[push] stock_prices upserted {total}/{len(price_rows)}", file=sys.stderr)
     return total
 
 
@@ -180,16 +220,23 @@ def main() -> int:
 
     try:
         n = rest_upsert(url, key, rows)
+        pn = rest_upsert_prices(
+            url,
+            key,
+            rows,
+            as_of=str(snapshot.get("asOf") or ""),
+            source=str(snapshot.get("source") or "TWSE"),
+        )
         write_etl_log(
             url,
             key,
             status="success",
             records=n,
-            message=f"upserted {n} stocks from snapshot",
+            message=f"upserted {n} stocks + {pn} stock_prices from snapshot",
             source=snapshot.get("source", "TWSE"),
-            meta={"asOf": snapshot.get("asOf"), "coreOnly": core_only},
+            meta={"asOf": snapshot.get("asOf"), "coreOnly": core_only, "prices": pn},
         )
-        print(f"[push] SUCCESS: {n} stocks → Supabase", file=sys.stderr)
+        print(f"[push] SUCCESS: {n} stocks, {pn} prices → Supabase", file=sys.stderr)
         return 0
     except Exception as e:
         print(f"[push] ERROR: {e}", file=sys.stderr)
