@@ -4,6 +4,7 @@ import { subgraphFor } from '@/lib/data/graph';
 import { MapView } from '@/components/map/MapView';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FavoriteButton } from '@/components/stock/FavoriteButton';
 
 export const revalidate = 60;
 
@@ -27,7 +28,7 @@ export default async function StockPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between gap-4">
         <div>
           <div className="text-sm text-slate-400">{stock.symbol}</div>
           <h1 className="text-2xl font-bold text-slate-800">{stock.name}</h1>
@@ -37,12 +38,15 @@ export default async function StockPage({
             {bundle.meta?.asOf ? ` · ${bundle.meta.asOf}` : ''}
           </div>
         </div>
-        <div className={`text-right text-2xl font-bold ${up ? 'text-up' : 'text-down'}`}>
-          {stock.price.toLocaleString()}
-          <span className="ml-2 text-base">
-            {up ? '+' : ''}
-            {stock.changePct.toFixed(2)}%
-          </span>
+        <div className="flex flex-col items-end gap-2">
+          <FavoriteButton symbol={stock.symbol} market={stock.market} />
+          <div className={`text-right text-2xl font-bold ${up ? 'text-up' : 'text-down'}`}>
+            {stock.price.toLocaleString()}
+            <span className="ml-2 text-base">
+              {up ? '+' : ''}
+              {stock.changePct.toFixed(2)}%
+            </span>
+          </div>
         </div>
       </div>
 

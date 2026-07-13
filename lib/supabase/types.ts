@@ -1,5 +1,5 @@
 /**
- * 精簡 Database 型別（手寫對齊 schema.sql）
+ * 精簡 Database 型別（對齊 schema.sql）
  * 之後可用 `supabase gen types typescript` 取代
  */
 export type MarketCode = 'tw' | 'us' | 'jp';
@@ -76,47 +76,65 @@ export interface DbSupplyEdge {
   market: MarketCode;
 }
 
+type TableDef<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
+  Row: Row;
+  Insert: Insert;
+  Update: Update;
+  Relationships: [];
+};
+
 export type Database = {
   public: {
     Tables: {
-      profiles: {
-        Row: DbProfile;
-        Insert: Partial<DbProfile> & { id: string };
-        Update: Partial<DbProfile>;
-      };
-      stocks: {
-        Row: DbStock;
-        Insert: Omit<DbStock, 'id' | 'updated_at'> & { id?: string; updated_at?: string };
-        Update: Partial<DbStock>;
-      };
-      favorites: {
-        Row: DbFavorite;
-        Insert: Omit<DbFavorite, 'id' | 'created_at'> & { id?: string; created_at?: string };
-        Update: Partial<DbFavorite>;
-      };
-      watchlists: {
-        Row: DbWatchlist;
-        Insert: Omit<DbWatchlist, 'id' | 'created_at'> & { id?: string; created_at?: string };
-        Update: Partial<DbWatchlist>;
-      };
-      etl_logs: {
-        Row: DbEtlLog;
-        Insert: Omit<DbEtlLog, 'id' | 'started_at'> & {
+      profiles: TableDef<
+        DbProfile,
+        Partial<DbProfile> & { id: string },
+        Partial<DbProfile>
+      >;
+      stocks: TableDef<
+        DbStock,
+        Omit<DbStock, 'id' | 'updated_at'> & { id?: string; updated_at?: string },
+        Partial<DbStock>
+      >;
+      favorites: TableDef<
+        DbFavorite,
+        { user_id: string; symbol: string; market?: MarketCode; id?: string; created_at?: string },
+        Partial<DbFavorite>
+      >;
+      watchlists: TableDef<
+        DbWatchlist,
+        { user_id: string; name?: string; id?: string; created_at?: string },
+        Partial<DbWatchlist>
+      >;
+      etl_logs: TableDef<
+        DbEtlLog,
+        {
+          job_name: string;
+          status: EtlStatus;
+          source?: string | null;
+          records_count?: number | null;
+          message?: string | null;
+          meta?: Record<string, unknown> | null;
           id?: string;
           started_at?: string;
-        };
-        Update: Partial<DbEtlLog>;
-      };
-      themes: {
-        Row: DbTheme;
-        Insert: Omit<DbTheme, 'id'> & { id?: string };
-        Update: Partial<DbTheme>;
-      };
-      supply_edges: {
-        Row: DbSupplyEdge;
-        Insert: Omit<DbSupplyEdge, 'id'> & { id?: string };
-        Update: Partial<DbSupplyEdge>;
-      };
+          finished_at?: string | null;
+        },
+        Partial<DbEtlLog>
+      >;
+      themes: TableDef<
+        DbTheme,
+        Omit<DbTheme, 'id'> & { id?: string },
+        Partial<DbTheme>
+      >;
+      supply_edges: TableDef<
+        DbSupplyEdge,
+        Omit<DbSupplyEdge, 'id'> & { id?: string },
+        Partial<DbSupplyEdge>
+      >;
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 };

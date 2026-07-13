@@ -105,8 +105,20 @@ app/api/v1/
   health/supabase/route.ts
 ```
 
-## 八、Auth / 收藏（下一階段）
+## 九、Auth + 自選股（已實作）
 
-- `profiles` 已用 trigger 對 `auth.users` 自動建檔
-- `favorites` / `watchlists` RLS 限本人
-- 接 Supabase Auth UI 後即可做自選股
+### 啟用 Auth
+1. Supabase Studio → **Authentication → Providers** → Email 開啟
+2. （開發）可關閉 **Confirm email** 方便本機測試：Authentication → Providers → Email → Confirm email off
+3. Authentication → URL Configuration：
+   - Site URL: `http://localhost:3100`（或你的 dev port）
+   - Redirect URLs 加：`http://localhost:3100/auth/callback`
+
+### 使用流程
+1. `/login` 註冊 / 登入
+2. 個股頁點「☆ 收藏」→ 寫入 `favorites`（已登入）或本機 localStorage（未登入）
+3. `/favorites` 查看自選
+4. Header 顯示「自選 / 使用者 / 登出」
+
+### API
+- `GET/POST/DELETE /api/v1/favorites`（需 session cookie）

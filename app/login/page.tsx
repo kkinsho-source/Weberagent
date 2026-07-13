@@ -1,28 +1,21 @@
+import { LoginForm } from '@/components/auth/LoginForm';
+import Link from 'next/link';
+
 export default function LoginPage() {
   return (
     <div className="mx-auto max-w-sm py-10">
-      <h1 className="text-xl font-bold text-slate-800">登入</h1>
+      <h1 className="text-xl font-bold text-slate-800">登入 / 註冊</h1>
       <p className="mt-2 text-sm text-slate-500">
-        登入以查看完整產業地圖與分析（預留 Supabase Auth）。
+        登入後可雲端同步自選股。尚未設定 Supabase 時可先用本機自選示範。
       </p>
-      <form className="mt-6 space-y-3">
-        <input
-          type="email"
-          placeholder="email@example.com"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-        />
-        <input
-          type="password"
-          placeholder="密碼"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-        />
-        <button
-          type="button"
-          className="w-full rounded-lg bg-brand-600 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          登入
-        </button>
-      </form>
+      <div className="mt-6">
+        <LoginForm />
+      </div>
+      <p className="mt-6 text-center text-xs text-slate-400">
+        <Link href="/favorites" className="text-brand-600 hover:underline">
+          查看自選股 →
+        </Link>
+      </p>
     </div>
   );
 }
