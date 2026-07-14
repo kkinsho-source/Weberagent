@@ -34,9 +34,11 @@
 Vercel Cron
   → /api/cron/twse-daily
   → fetch TWSE STOCK_DAY_ALL（重試 3 次）
-  → upsert stocks + stock_prices（重試 3 次）
-  → etl_logs success/failed
+  → 核心缺價 → TPEx / Yahoo 補（6643、5274…）
+  → upsert stocks + stock_prices
+  → MOPS 日更 → mops_announcements + etl_logs
 ```
+
 
 ---
 

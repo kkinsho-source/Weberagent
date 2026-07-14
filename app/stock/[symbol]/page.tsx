@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FavoriteButton } from '@/components/stock/FavoriteButton';
 import { MopsAnnouncementsPanel } from '@/components/mops/MopsAnnouncementsPanel';
+import { StockPriceChart } from '@/components/chart/StockPriceChart';
 
 export const revalidate = 60;
 
@@ -51,14 +52,26 @@ export default async function StockPage({
         </div>
       </div>
 
-      <Tabs defaultValue="supply">
+      <Tabs defaultValue="chart">
         <TabsList>
+          <TabsTrigger value="chart">走勢</TabsTrigger>
           <TabsTrigger value="supply">供應鏈</TabsTrigger>
           <TabsTrigger value="overview">概覽</TabsTrigger>
           <TabsTrigger value="mops">重大訊息</TabsTrigger>
           <TabsTrigger value="financials">財務分析</TabsTrigger>
           <TabsTrigger value="ai">AI 分析</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="chart" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{stock.name} 日 K 線</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StockPriceChart symbol={stock.symbol} name={stock.name} />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="supply" className="mt-4">
           <MapView

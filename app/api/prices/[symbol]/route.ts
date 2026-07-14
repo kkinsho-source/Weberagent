@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServerClient, isSupabaseConfigured } from '@/lib/supabase';
+import { getSupabaseServerClient, isSupabaseConfigured, isSupabaseAdminConfigured, getSupabaseAdminClient } from '@/lib/supabase';
 import { getDataBundle } from '@/lib/data/source';
+import { fetchSymbolHistory } from '@/lib/etl/history';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 /**
- * GET /api/prices/[symbol]?from=2026-01-01&to=2026-07-14&limit=120
- * 優先 stock_prices 時間序列；若無則回傳最新一筆（來自 stocks / snapshot）
+ * GET /api/prices/[symbol]?limit=120&refresh=1
+ * - 優先 stock_prices
+ * - 不足時抓 TWSE/Yahoo 歷史；refresh=1 且有 service role 時回寫 DB
  */
 export async function GET(
   req: Request,
@@ -18,6 +21,21 @@ export async function GET(
   const to = searchParams.get('to') ?? undefined;
   const limit = Math.min(Number(searchParams.get('limit') || 120), 500);
   const market = searchParams.get('market') || 'tw';
+  const refresh = searchParams.get('refresh') === '1';
+
+  type PriceRow = {
+    date: string | null;
+    open?: number | null;
+    high?: number | null;
+    low?: number | null;
+    close: number | null;
+    volume?: number | null;
+    changePct?: number | null;
+    source?: string | null;
+  };
+
+  let prices: PriceRow[] = [];
+  let dataSource: string = 'none';
 
   if (isSupabaseConfigured()) {
     try {
@@ -28,76 +46,108 @@ export async function GET(
           .select('symbol,market,trade_date,open,high,low,close,volume,change_pct,source')
           .eq('symbol', symbol)
           .eq('market', market)
-          .order('trade_date', { ascending: false })
+          .order('trade_date', { ascending: true })
           .limit(limit);
         if (from) q = q.gte('trade_date', from);
         if (to) q = q.lte('trade_date', to);
         const { data, error } = await q;
         if (!error && data && data.length > 0) {
-          return NextResponse.json({
-            symbol,
-            dataSource: 'supabase',
-            prices: data.map((r) => ({
-              date: r.trade_date,
-              open: r.open,
-              high: r.high,
-              low: r.low,
-              close: r.close,
-              volume: r.volume,
-              changePct: r.change_pct,
-              source: r.source,
-            })),
-            count: data.length,
-          });
-        }
-
-        // 無歷史列時，回 stocks 最新價當單點
-        const { data: stock } = await sb
-          .from('stocks')
-          .select('symbol,name,price,change_pct,as_of')
-          .eq('symbol', symbol)
-          .eq('market', market)
-          .maybeSingle();
-        if (stock) {
-          return NextResponse.json({
-            symbol,
-            dataSource: 'supabase',
-            prices: [
-              {
-                date: stock.as_of,
-                close: stock.price,
-                changePct: stock.change_pct,
-                source: 'stocks_snapshot',
-              },
-            ],
-            count: 1,
-            note: '尚無 stock_prices 歷史，回傳最新快照',
-          });
+          prices = data.map((r) => ({
+            date: r.trade_date as string,
+            open: r.open as number | null,
+            high: r.high as number | null,
+            low: r.low as number | null,
+            close: r.close as number | null,
+            volume: r.volume as number | null,
+            changePct: r.change_pct as number | null,
+            source: r.source as string | null,
+          }));
+          dataSource = 'supabase';
         }
       }
     } catch (e) {
-      console.error('[api/prices] supabase failed', e);
+      console.error('[api/prices] supabase', e);
     }
   }
 
-  // fallback snapshot
-  const bundle = await getDataBundle({ symbol });
-  const stock = bundle.stocks[0];
-  if (!stock) {
-    return NextResponse.json({ error: 'not_found', dataSource: bundle.dataSource }, { status: 404 });
+  // 資料太少 → 抓歷史
+  if (prices.length < 10 || refresh) {
+    try {
+      const hist = await fetchSymbolHistory(symbol, 6);
+      if (hist.length > prices.length) {
+        prices = hist.map((b) => ({
+          date: b.date,
+          open: b.open,
+          high: b.high,
+          low: b.low,
+          close: b.close,
+          volume: b.volume ?? null,
+          changePct: b.changePct ?? null,
+          source: b.source,
+        }));
+        dataSource = hist[0]?.source?.includes('Yahoo') ? 'yahoo' : 'twse_history';
+
+        // 可選回寫
+        if (refresh && isSupabaseAdminConfigured() && hist.length) {
+          const sb = getSupabaseAdminClient();
+          if (sb) {
+            const payload = hist.map((b) => ({
+              symbol,
+              market,
+              trade_date: b.date,
+              open: b.open,
+              high: b.high,
+              low: b.low,
+              close: b.close,
+              volume: b.volume ?? null,
+              change_pct: b.changePct ?? null,
+              source: b.source,
+            }));
+            // 分批
+            for (let i = 0; i < payload.length; i += 100) {
+              await sb.from('stock_prices').upsert(payload.slice(i, i + 100), {
+                onConflict: 'symbol,market,trade_date',
+              });
+            }
+            dataSource = 'twse_history+supabase';
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[api/prices] history', e);
+    }
   }
+
+  // 仍無資料 → snapshot 單點
+  if (!prices.length) {
+    const bundle = await getDataBundle({ symbol });
+    const stock = bundle.stocks[0];
+    if (!stock) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    return NextResponse.json({
+      symbol,
+      dataSource: bundle.dataSource,
+      prices: [
+        {
+          date: bundle.meta?.asOf ?? null,
+          close: stock.price,
+          changePct: stock.changePct,
+          source: 'snapshot',
+        },
+      ],
+      count: 1,
+      note: '尚無歷史日線',
+    });
+  }
+
+  // limit 從尾端取
+  const sliced = prices.length > limit ? prices.slice(-limit) : prices;
+
   return NextResponse.json({
     symbol,
-    dataSource: bundle.dataSource,
-    prices: [
-      {
-        date: bundle.meta?.asOf ?? null,
-        close: stock.price,
-        changePct: stock.changePct,
-        source: 'snapshot',
-      },
-    ],
-    count: 1,
-    note: 'Supabase 未設定或無歷史資料，使用 snapshot 單點',
+    dataSource,
+    prices: sliced,
+    count: sliced.length,
   });
 }
