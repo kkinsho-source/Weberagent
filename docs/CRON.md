@@ -1,66 +1,120 @@
 # 定時 ETL 排程（每日收盤後 TWSE → Supabase）
 
-## 方案選擇
+## 推薦方案：Vercel Cron
 
-| 方案 | 適用 | 優點 |
+| 方案 | 優點 | 缺點 |
 |------|------|------|
-| **A. Vercel Cron（推薦）** | 已/將部署 Vercel | 與 Next 同倉、serverless 直接抓 TWSE 寫 DB |
-| **B. GitHub Actions（備選）** | 有 GitHub remote | 跑現成 Python 腳本，不依賴 Vercel 方案 |
+| **Vercel Cron（採用）** | 與 Next.js 同部署、零額外部件、CRON_SECRET 內建支援 | Hobby 每日 cron 次數有限 |
+| Supabase Edge + pg_cron | 排程在 DB 側 | Edge 抓外部 API / 密鑰管理較麻煩；仍建議只觸發 HTTP |
+| GitHub Actions | 可跑 Python 腳本 | 需 remote + secrets；與網站部署分離 |
 
-兩者都寫 `etl_logs`，可並存或擇一。
+**結論：Vercel Cron 最合適。** 已內建；GitHub Actions 作備選。
 
 ---
 
-## A. Vercel Cron（已內建）
+## 已實作內容
 
-### 排程
-- 檔案：`vercel.json`
-- 路徑：`GET/POST /api/cron/twse-daily`
-- 時間：`30 9 * * 1-5`（**UTC**）= 台灣時間 **週一～五 17:30**
-- 邏輯：抓證交所 OpenAPI → `upsert stocks` + `stock_prices` → `etl_logs`
-
-### 環境變數（Vercel Project Settings）
-
-| Name | 說明 |
+| 項目 | 位置 |
 |------|------|
-| `NEXT_PUBLIC_SUPABASE_URL` | 專案 URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | **必填**，寫入用 |
-| `CRON_SECRET` | **必填（Production）**，保護 cron 端點 |
-| `DATA_MODE` | `auto` |
+| 排程 | `vercel.json` |
+| API | `GET/POST /api/cron/twse-daily` |
+| TWSE 抓取 | `lib/etl/twse.ts` |
+| 重試 | `lib/etl/retry.ts`（指數退避，最多 3 次） |
+| 寫入 | `upsertStockData` → `stocks` + `stock_prices` |
+| 日誌 | `etl_logs`（started / success / failed） |
+| 文件 | 本檔 `docs/CRON.md` |
+| 備選 | `.github/workflows/twse-daily.yml` |
 
-Vercel 觸發 cron 時會帶：
-```http
-Authorization: Bearer <CRON_SECRET>
+### 排程時間（台灣）
+- **17:30** 平日：`30 9 * * 1-5`（UTC）— 主跑
+- 程式內 **fetch / upsert 各重試 3 次**（指數退避）；若資料常晚到，可在 `vercel.json` 加第二條 `0 10 * * 1-5`（18:00 台灣）
+
+### 執行流程
 ```
-請把 Vercel 的 Cron Secret 與專案 `CRON_SECRET` 設成**相同值**  
-（Vercel Dashboard → Project → Settings → Environment Variables；  
-  新版也可能在 Cron Jobs 設定自動注入 `CRON_SECRET`）。
+Vercel Cron
+  → /api/cron/twse-daily
+  → fetch TWSE STOCK_DAY_ALL（重試 3 次）
+  → upsert stocks + stock_prices（重試 3 次）
+  → etl_logs success/failed
+```
 
-### 部署後生效
-1. `git push` 到連 Vercel 的 repo
-2. Production 部署完成後，Cron 出現在 **Project → Settings → Cron Jobs**
-3. Hobby 方案通常每天 1 次額度；本 job 平日一次足夠
+---
 
-### 本機 / 手動測試
+## Vercel 設定步驟
 
+### 1. 推上 GitHub 並 Import 到 Vercel
 ```bash
-# 1) .env.local 需有 SERVICE_ROLE（本機未設 CRON_SECRET 時僅允許 localhost）
-cd /d/weberanent/aistockmap-project
-PORT=3113 npm run build && PORT=3113 npm run start
+git remote add origin https://github.com/<you>/aistockmap.git
+git push -u origin master
+```
+Vercel → Add New Project → 選該 repo → Deploy
 
-# 2) 觸發
-curl -s "http://localhost:3113/api/cron/twse-daily" | python -m json.tool
+### 2. Environment Variables
+**Project → Settings → Environment Variables**（Production / Preview）：
 
-# 3) 若已設 CRON_SECRET
-curl -s "http://localhost:3113/api/cron/twse-daily" \
-  -H "Authorization: Bearer $CRON_SECRET" | python -m json.tool
+| Name | 必填 | 說明 |
+|------|------|------|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | 寫入用，勿公開 |
+| `CRON_SECRET` | ✅ Production | 長隨機字串，保護端點 |
+| `DATA_MODE` | 建議 `auto` | |
 
-# 4) 查 etl_logs
-curl -s "http://localhost:3113/api/etl-logs" | python -m json.tool
+產生 secret 範例：
+```bash
+openssl rand -hex 32
 ```
 
-成功回應範例：
+### 3. 確認 Cron Jobs
+部署後：**Project → Settings → Cron Jobs**  
+應看到兩條指向 `/api/cron/twse-daily` 的排程。
+
+> Vercel 觸發時會自動帶 `Authorization: Bearer <CRON_SECRET>`。  
+> 請確保專案 env 的 `CRON_SECRET` 與 Vercel 使用的一致（多數專案自行設定同名變數即可）。
+
+### 4. Hobby 注意
+- Hobby 通常限制 cron 頻率；兩條平日排程請確認方案額度
+- 若額度不夠，可刪掉 18:00 那條，只留 17:30
+
+---
+
+## 手動測試
+
+### 本機（未設 CRON_SECRET 時僅 localhost）
+```bash
+cd /d/weberanent/aistockmap-project
+npm run build
+PORT=3114 npm run start
+
+# 乾跑：只抓 TWSE 不寫 DB
+curl -s "http://localhost:3114/api/cron/twse-daily?dryRun=1" | python -m json.tool
+
+# 正式寫入
+curl -s "http://localhost:3114/api/cron/twse-daily" | python -m json.tool
+
+# 查日誌
+curl -s "http://localhost:3114/api/etl-logs?limit=5" | python -m json.tool
+```
+
+### 已設 CRON_SECRET
+```bash
+curl -s "http://localhost:3114/api/cron/twse-daily" \
+  -H "Authorization: Bearer $CRON_SECRET" | python -m json.tool
+```
+
+### Production 手動觸發
+```bash
+curl -s -X POST "https://YOUR_DOMAIN/api/cron/twse-daily" \
+  -H "Authorization: Bearer $CRON_SECRET" | python -m json.tool
+```
+
+### npm 捷徑
+```bash
+npm run cron:twse        # 本機觸發（需 dev/start 已開）
+npm run cron:twse:dry    # dryRun
+```
+
+成功 JSON：
 ```json
 {
   "ok": true,
@@ -69,47 +123,38 @@ curl -s "http://localhost:3113/api/etl-logs" | python -m json.tool
   "stocks": 18,
   "prices": 18,
   "coreOnly": true,
-  "ms": 1234
+  "ms": 472
 }
 ```
 
-全市場（較慢、較大 payload）：
-```bash
-curl -s "http://localhost:3113/api/cron/twse-daily?coreOnly=0" \
-  -H "Authorization: Bearer $CRON_SECRET"
-```
+`etl_logs` 應見：
+- `job_name=twse_daily_cron`
+- `status=success`
+- `records_count=18`
+- `message` 含 asOf / ms
 
 ---
 
-## B. GitHub Actions（備選）
+## 備選：GitHub Actions
 
-檔案：`.github/workflows/twse-daily.yml`  
-排程：同樣 `30 9 * * 1-5`（UTC）= 台灣 17:30 平日
-
-### Secrets（Repo → Settings → Secrets）
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-
-### 測試
-- Actions → `twse-daily-etl` → **Run workflow**
+1. Push repo 後，Settings → Secrets 加：
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+2. Actions → `twse-daily-etl` → Run workflow  
+3. 排程同為平日 17:30 台灣時間
 
 ---
 
-## C. Supabase pg_cron（可選進階）
-
-若希望排程跑在 Supabase 內：
-
-1. Dashboard → **Database → Extensions** 啟用 `pg_cron`、`pg_net`
-2. SQL（把 URL / service_role 換成你的；**不要**把 service_role 長期明文放 SQL，建議用 Vault）：
+## 可選：Supabase pg_cron 只負責「觸發」
 
 ```sql
--- 範例：週一到五 09:30 UTC 打 Vercel cron 端點
+-- 啟用 extensions: pg_cron, pg_net
 select cron.schedule(
-  'twse-daily-1730-tw',
+  'twse-daily-via-vercel',
   '30 9 * * 1-5',
   $$
   select net.http_post(
-    url := 'https://YOUR_VERCEL_DOMAIN/api/cron/twse-daily',
+    url := 'https://YOUR_DOMAIN/api/cron/twse-daily',
     headers := jsonb_build_object(
       'Authorization', 'Bearer YOUR_CRON_SECRET',
       'Content-Type', 'application/json'
@@ -119,20 +164,17 @@ select cron.schedule(
   $$
 );
 ```
-
-仍建議 **實際 ETL 跑在 Vercel API**（可抓外部 TWSE），pg_cron 只負責觸發。
+ETL 本體仍在 Vercel API（可出網抓 TWSE）。
 
 ---
 
-## 驗證 checklist
+## 狀態檢查清單
 
-- [ ] `/api/etl-logs` 出現 `job_name=twse_daily_cron`、`status=success`
-- [ ] `/api/stocks?symbol=2330` 的 `price` 有更新、`dataSource=supabase`
-- [ ] `/api/prices/2330` 有當日 `trade_date` 列
-- [ ] Vercel Cron Jobs 列表可見 ` /api/cron/twse-daily`
-
-## 注意
-
-- 證交所日資料有時在 17:30 後才齊；若偶發空資料，可改 `0 10 * * 1-5`（台灣 18:00）
-- 假日仍會跑但可能重複寫同一天（upsert 冪等，安全）
-- `maxDuration=60`；核心 20 檔足夠；全市場請在 Pro 提高 timeout
+- [x] API Route `/api/cron/twse-daily`
+- [x] `vercel.json` 17:30 + 18:00 台灣時間（平日）
+- [x] 重試（fetch + upsert）
+- [x] etl_logs started/success/failed
+- [x] 手動 dryRun / 正式觸發
+- [x] 本機實測曾成功寫入 Supabase
+- [ ] 部署 Vercel 後 Dashboard 可見 Cron Jobs
+- [ ] Production 設好 `CRON_SECRET` + service role
