@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FavoriteButton } from '@/components/stock/FavoriteButton';
 import { MopsAnnouncementsPanel } from '@/components/mops/MopsAnnouncementsPanel';
 import { StockPriceChart } from '@/components/chart/StockPriceChart';
+import { FinancialsPanel } from '@/components/stock/FinancialsPanel';
+import { AiInsightsPanel } from '@/components/stock/AiInsightsPanel';
 
 export const revalidate = 60;
 
@@ -130,16 +132,22 @@ export default async function StockPage({
 
         <TabsContent value="financials" className="mt-4">
           <Card>
-            <CardContent className="pt-6 text-sm text-slate-500">
-              財務分析（本益比河流圖、損益表）— Phase 3 接入。
+            <CardHeader>
+              <CardTitle>{stock.name} 財務分析</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FinancialsPanel symbol={stock.symbol} />
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="ai" className="mt-4">
           <Card>
-            <CardContent className="pt-6 text-sm text-slate-500">
-              AI 分析報告（多空論點 + 風險 + 引用來源）— Phase 4 接入。
+            <CardHeader>
+              <CardTitle>{stock.name} AI 洞察</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AiInsightsPanel symbol={stock.symbol} />
             </CardContent>
           </Card>
         </TabsContent>

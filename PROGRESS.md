@@ -1,21 +1,17 @@
-# 階段性進度總結
+# 進度
 
-## 已完成
-- [x] Next.js 15 + React Flow 地圖 + TWSE 行情 ETL
-- [x] Supabase schema / clients / Auth / favorites
-- [x] **MOPS 重大訊息爬蟲 + API + 前端**
-  - OpenAPI `t187ap04_L` 日更（含全文說明）
-  - mopsov `ajax_t05st01` 公司年度列表
-  - snapshot 357 筆（2330/2317/2454 + 日更）
-  - `mops_announcements` 表 SQL
-  - `/api/v1/mops`、`/announcements`、首頁區塊、個股 Tab
+## 最新完成（f860c02 之後）
+- 財報 API + 面板（月營收 t187ap05、季 EPS t187ap14）
+- 規則式 AI 洞察 API + 面板
+- K 線歷史預熱：核心 20 檔 **2103** 根日線寫入 stock_prices
+- Production cron 驗證：stocks=20 otc=2 mops=117
+- themes/supply_edges：SQL 就緒 `supabase/themes_and_edges.sql`（需手動跑一次）
 
 ## 待你操作
-- [ ] Supabase 執行 `supabase/mops_announcements.sql`（或完整 schema.sql）
-- [ ] 填 `.env.local` 後 `npm run etl:mops:push`
-- [ ] GitHub remote + push
+1. Supabase SQL Editor 執行 `supabase/themes_and_edges.sql`
+2. 然後可選：`PUT /api/admin/warmup-prices` 再 seed（或 SQL 已含 seed）
+3. 等 Vercel 部署本 commit 後驗財務/AI 分頁
 
-## 建議下一階段
-1. 個股財報（OpenAPI t187ap14 已可取）
-2. 定時 cron（GitHub Actions / Vercel cron）跑 ETL
-3. AI 摘要重大訊息標籤
+## 線上
+- https://weberagent.vercel.app
+- Cron：平日 17:30 台灣
