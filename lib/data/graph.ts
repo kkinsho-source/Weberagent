@@ -43,16 +43,23 @@ export function toFlowNodes(stockList: Stock[] = defaultStocks): Node<StockNodeD
 }
 
 export function toFlowEdges(edgeList: SupplyEdge[] = defaultEdges): Edge[] {
-  return edgeList.map((e, i) => ({
-    id: `e${i}`,
-    source: e.from,
-    target: e.to,
-    type: 'smoothstep',
-    animated: true,
-    label: '供貨',
-    labelStyle: { fontSize: 10, fill: '#94a3b8' },
-    style: { stroke: '#cbd5e1', strokeWidth: 1.5 },
-  }));
+  return edgeList.map((e, i) => {
+    const isCompetitor = e.relation === 'competitor';
+    return {
+      id: `e${i}`,
+      source: e.from,
+      target: e.to,
+      type: 'smoothstep',
+      animated: !isCompetitor,
+      label: isCompetitor ? '競品' : '供貨',
+      labelStyle: { fontSize: 10, fill: isCompetitor ? '#f59e0b' : '#94a3b8' },
+      style: {
+        stroke: isCompetitor ? '#fbbf24' : '#cbd5e1',
+        strokeWidth: 1.5,
+        strokeDasharray: isCompetitor ? '4 4' : undefined,
+      },
+    };
+  });
 }
 
 /**

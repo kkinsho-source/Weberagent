@@ -62,6 +62,8 @@ export function buildRuleInsights(opts: {
     ic_design_asic: '客製 ASIC / IP 受惠 CSP 自研晶片趨勢',
     ic_design_hpc: 'HPC / 網通 IC 與資料中心需求連動',
     pcb_ccl: '高階 PCB/CCL 受 AI 伺服器規格升級帶動',
+    thermal_power: 'AI 機櫃熱密度與耗電暴增，散熱與電源為結構性剛需',
+    optical_cpo: 'GPU 叢集互聯頻寬驅動高速光模組 / CPO 需求',
   };
   if (themeMap[stock.themeSlug]) {
     bullets.push(themeMap[stock.themeSlug]);

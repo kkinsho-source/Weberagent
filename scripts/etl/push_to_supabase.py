@@ -32,11 +32,53 @@ import httpx
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SNAPSHOT_PATH = REPO_ROOT / "lib" / "data" / "twse_snapshot.json"
+# 與 lib/data/mock.ts 核心股池同步（35 檔）
 MOCK_CORE_SYMBOLS = {
     "3443", "3661", "3035", "6643", "6533",
-    "2454", "2379", "5274", "2330", "2303",
-    "3711", "2449", "6257", "2317", "2382",
-    "6669", "4958", "3037", "8046", "2383",
+    "2454", "2379", "5274", "2330", "2303", "6770",
+    "3711", "2449", "6257", "3189", "6271",
+    "2317", "2382", "6669", "3231", "2356",
+    "4958", "3037", "8046", "2383", "6213",
+    "2308", "3017", "3653", "3324", "6230",
+    "4979", "3363", "3081", "4977",
+}
+# symbol -> (name, industry, theme_slug, market_cap)
+MOCK_META = {
+    "3443": ("創意", "IC 設計", "ic_design_asic", 1620),
+    "3661": ("世芯-KY", "IC 設計", "ic_design_asic", 2100),
+    "3035": ("智原", "IC 設計", "ic_design_asic", 380),
+    "6643": ("M31", "IP", "ic_design_asic", 210),
+    "6533": ("晶心科", "IP", "ic_design_asic", 520),
+    "2454": ("聯發科", "IC 設計", "ic_design_hpc", 20000),
+    "2379": ("瑞昱", "IC 設計", "ic_design_hpc", 2900),
+    "5274": ("信驊", "IC 設計", "ic_design_hpc", 2400),
+    "2330": ("台積電", "晶圓代工", "foundry", 306000),
+    "2303": ("聯電", "晶圓代工", "foundry", 6600),
+    "6770": ("力積電", "晶圓代工", "foundry", 900),
+    "3711": ("日月光投控", "封測", "advanced_packaging", 7800),
+    "2449": ("京元電", "封測", "advanced_packaging", 1650),
+    "6257": ("矽格", "封測", "advanced_packaging", 720),
+    "3189": ("景碩", "IC 載板", "advanced_packaging", 1600),
+    "6271": ("同欣電", "封測", "advanced_packaging", 600),
+    "2317": ("鴻海", "組裝", "ai_server", 30500),
+    "2382": ("廣達", "組裝", "ai_server", 14800),
+    "6669": ("緯穎", "組裝", "ai_server", 5200),
+    "3231": ("緯創", "組裝", "ai_server", 4200),
+    "2356": ("英業達", "組裝", "ai_server", 2000),
+    "4958": ("臻鼎-KY", "PCB", "pcb_ccl", 2600),
+    "3037": ("欣興", "PCB", "pcb_ccl", 2700),
+    "8046": ("南電", "PCB", "pcb_ccl", 3900),
+    "2383": ("台光電", "CCL", "pcb_ccl", 3100),
+    "6213": ("聯茂", "CCL", "pcb_ccl", 800),
+    "2308": ("台達電", "電源", "thermal_power", 11000),
+    "3017": ("奇鋐", "散熱", "thermal_power", 2400),
+    "3653": ("健策", "散熱", "thermal_power", 1100),
+    "3324": ("雙鴻", "散熱", "thermal_power", 900),
+    "6230": ("超眾", "散熱", "thermal_power", 400),
+    "4979": ("華星光", "光通訊", "optical_cpo", 350),
+    "3363": ("上詮", "光通訊", "optical_cpo", 200),
+    "3081": ("聯亞", "光通訊", "optical_cpo", 450),
+    "4977": ("眾達-KY", "光通訊", "optical_cpo", 280),
 }
 
 
@@ -77,17 +119,41 @@ def build_rows(snapshot: dict, core_only: bool) -> list[dict]:
     for symbol, q in quotes.items():
         if core_only and symbol not in MOCK_CORE_SYMBOLS:
             continue
+        meta = MOCK_META.get(symbol)
         rows.append(
             {
                 "symbol": symbol,
                 "market": "tw",
-                "name": q.get("name") or symbol,
+                "name": (q.get("name") or (meta[0] if meta else symbol)),
+                "industry": meta[1] if meta else None,
+                "theme_slug": meta[2] if meta else None,
+                "market_cap": meta[3] if meta else None,
                 "price": q.get("price"),
                 "change_pct": q.get("changePct"),
                 "as_of": as_of,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
         )
+    # core 股若 snapshot 缺報價，仍保留 theme meta（價格後續 cron 補）
+    if core_only:
+        have = {r["symbol"] for r in rows}
+        for symbol, meta in MOCK_META.items():
+            if symbol in have:
+                continue
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "market": "tw",
+                    "name": meta[0],
+                    "industry": meta[1],
+                    "theme_slug": meta[2],
+                    "market_cap": meta[3],
+                    "price": None,
+                    "change_pct": None,
+                    "as_of": as_of,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
     return rows
 
 
