@@ -82,7 +82,7 @@ export default async function StockPage({
             title={`${stock.name} 上下游供應鏈`}
           />
           <p className="mt-2 text-xs text-slate-400">
-            點擊節點可高亮其直接上下游連線；拖動可重新排版，滾輪/雙指縮放。
+            點一下高亮上下游 · 雙擊或按「個股」進入詳情 · 手機雙指縮放 / 單指拖曳。
           </p>
         </TabsContent>
 

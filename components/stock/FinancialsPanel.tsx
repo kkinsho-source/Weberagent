@@ -43,27 +43,55 @@ export function FinancialsPanel({ symbol }: { symbol: string }) {
   }, [symbol]);
 
   const option = useMemo(() => {
-    const cats = revenues.map((r) => r.yearMonth);
+    const cats = revenues.map((r) => r.yearMonth.slice(2)); // 短標籤
     const vals = revenues.map((r) => Math.round(r.revenue / 1000)); // 百萬
+    const yoy = revenues.map((r) => r.yoyPct);
     return {
-      tooltip: { trigger: 'axis' },
-      grid: { left: 48, right: 16, top: 24, bottom: 28 },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' },
+      },
+      legend: {
+        data: ['營收(百萬)', '年增%'],
+        top: 0,
+        textStyle: { fontSize: 11, color: '#64748b' },
+      },
+      grid: { left: 48, right: 44, top: 36, bottom: 28 },
       xAxis: {
         type: 'category',
         data: cats,
-        axisLabel: { color: '#94a3b8', fontSize: 10 },
+        axisLabel: { color: '#94a3b8', fontSize: 10, rotate: cats.length > 8 ? 30 : 0 },
       },
-      yAxis: {
-        type: 'value',
-        name: '百萬元',
-        axisLabel: { color: '#94a3b8', fontSize: 10 },
-        splitLine: { lineStyle: { color: '#f1f5f9' } },
-      },
+      yAxis: [
+        {
+          type: 'value',
+          name: '百萬',
+          axisLabel: { color: '#94a3b8', fontSize: 10 },
+          splitLine: { lineStyle: { color: '#f1f5f9' } },
+        },
+        {
+          type: 'value',
+          name: '%',
+          axisLabel: { color: '#94a3b8', fontSize: 10 },
+          splitLine: { show: false },
+        },
+      ],
       series: [
         {
+          name: '營收(百萬)',
           type: 'bar',
           data: vals,
           itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] },
+        },
+        {
+          name: '年增%',
+          type: 'line',
+          yAxisIndex: 1,
+          data: yoy,
+          smooth: true,
+          symbolSize: 6,
+          lineStyle: { width: 2, color: '#f59e0b' },
+          itemStyle: { color: '#f59e0b' },
         },
       ],
     };
@@ -106,9 +134,13 @@ export function FinancialsPanel({ symbol }: { symbol: string }) {
       )}
 
       {revenues.length > 0 ? (
-        <ReactECharts option={option} style={{ height: 240, width: '100%' }} opts={{ renderer: 'canvas' }} />
+        <ReactECharts
+          option={option}
+          style={{ height: revenues.length > 6 ? 280 : 240, width: '100%' }}
+          opts={{ renderer: 'canvas' }}
+        />
       ) : (
-        <p className="text-sm text-slate-400">此檔無月營收資料（可能為金融/特殊產業或 OpenAPI 未涵蓋）。</p>
+        <p className="text-sm text-slate-400">此檔無月營收資料（可能為金融/特殊產業或尚未申報）。</p>
       )}
 
       <div>

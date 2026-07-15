@@ -76,6 +76,22 @@ export const themes: Theme[] = [
     companyCount: 4,
     verifiedAt: '2026-07-15',
   },
+  {
+    slug: 'materials_wafer',
+    title: '矽晶圓與半導體材料',
+    description: '12 吋矽晶圓、磊晶與關鍵半導體材料，位於先進製程最上游。',
+    market: 'tw',
+    companyCount: 3,
+    verifiedAt: '2026-07-16',
+  },
+  {
+    slug: 'memory_hbm',
+    title: '記憶體 / HBM 相關',
+    description: 'DRAM/NAND 與控制器、模組，承接 AI 訓練與推論記憶體頻寬需求。',
+    market: 'tw',
+    companyCount: 4,
+    verifiedAt: '2026-07-16',
+  },
 ];
 
 export const stocks: Stock[] = [
@@ -122,6 +138,15 @@ export const stocks: Stock[] = [
   { symbol: '3363', name: '上詮', market: 'tw', industry: '光通訊', themeSlug: 'optical_cpo', price: 95, changePct: 1.3, marketCap: 200 },
   { symbol: '3081', name: '聯亞', market: 'tw', industry: '光通訊', themeSlug: 'optical_cpo', price: 420, changePct: 3.1, marketCap: 450 },
   { symbol: '4977', name: '眾達-KY', market: 'tw', industry: '光通訊', themeSlug: 'optical_cpo', price: 260, changePct: 1.6, marketCap: 280 },
+  // 矽晶圓與材料
+  { symbol: '6488', name: '環球晶', market: 'tw', industry: '矽晶圓', themeSlug: 'materials_wafer', price: 420, changePct: 0.8, marketCap: 2000 },
+  { symbol: '3532', name: '台勝科', market: 'tw', industry: '矽晶圓', themeSlug: 'materials_wafer', price: 180, changePct: 0.5, marketCap: 700 },
+  { symbol: '6182', name: '合晶', market: 'tw', industry: '矽晶圓', themeSlug: 'materials_wafer', price: 45, changePct: 0.3, marketCap: 250 },
+  // 記憶體 / HBM
+  { symbol: '2344', name: '華邦電', market: 'tw', industry: '記憶體', themeSlug: 'memory_hbm', price: 35, changePct: 1.2, marketCap: 1400 },
+  { symbol: '2408', name: '南亞科', market: 'tw', industry: '記憶體', themeSlug: 'memory_hbm', price: 70, changePct: 0.9, marketCap: 2200 },
+  { symbol: '2337', name: '旺宏', market: 'tw', industry: '記憶體', themeSlug: 'memory_hbm', price: 28, changePct: 0.4, marketCap: 500 },
+  { symbol: '8299', name: '群聯', market: 'tw', industry: '控制器', themeSlug: 'memory_hbm', price: 520, changePct: 1.5, marketCap: 1100 },
 ];
 
 // 製程流向：from = 上游, to = 下游；relation=downstream 表示 from 供貨給 to
@@ -178,12 +203,27 @@ export const supplyEdges: SupplyEdge[] = [
   { from: '3363', to: '6669', relation: 'downstream' },
   { from: '3081', to: '4979', relation: 'downstream' },
   { from: '4977', to: '2382', relation: 'downstream' },
+  // 矽晶圓 → 代工
+  { from: '6488', to: '2330', relation: 'downstream' },
+  { from: '6488', to: '2303', relation: 'downstream' },
+  { from: '3532', to: '2330', relation: 'downstream' },
+  { from: '6182', to: '2303', relation: 'downstream' },
+  { from: '6182', to: '6770', relation: 'downstream' },
+  // 記憶體 → 封測 / 伺服器
+  { from: '2344', to: '3711', relation: 'downstream' },
+  { from: '2408', to: '3711', relation: 'downstream' },
+  { from: '2337', to: '3711', relation: 'downstream' },
+  { from: '8299', to: '2317', relation: 'downstream' },
+  { from: '8299', to: '6669', relation: 'downstream' },
+  { from: '2408', to: '6669', relation: 'downstream' },
   // 競品（同層）
   { from: '2330', to: '2303', relation: 'competitor' },
   { from: '2317', to: '2382', relation: 'competitor' },
   { from: '2382', to: '6669', relation: 'competitor' },
   { from: '3017', to: '3653', relation: 'competitor' },
   { from: '3443', to: '3661', relation: 'competitor' },
+  { from: '6488', to: '3532', relation: 'competitor' },
+  { from: '2344', to: '2408', relation: 'competitor' },
 ];
 
 export function getTheme(slug: string): Theme | undefined {

@@ -31,3 +31,21 @@
 body {
   -webkit-font-smoothing: antialiased;
 }
+
+/* 手機 tabs / 地圖輔助：隱藏捲軸但可滑動 */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* React Flow 手機觸控：避免父層搶手勢 */
+.react-flow {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.react-flow__attribution {
+  display: none !important;
+}

@@ -37,7 +37,7 @@ from bs4 import BeautifulSoup
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SNAPSHOT_PATH = REPO_ROOT / "lib" / "data" / "mops_snapshot.json"
 
-# 與 lib/data/mock.ts 核心股池同步（35 檔）
+# 與 lib/data/mock.ts 核心股池同步
 CORE_SYMBOLS = [
     "3443", "3661", "3035", "6643", "6533",
     "2454", "2379", "5274", "2330", "2303", "6770",
@@ -46,6 +46,8 @@ CORE_SYMBOLS = [
     "4958", "3037", "8046", "2383", "6213",
     "2308", "3017", "3653", "3324", "6230",
     "4979", "3363", "3081", "4977",
+    "6488", "3532", "6182",
+    "2344", "2408", "2337", "8299",
 ]
 
 OPENAPI_DAILY_L = "https://openapi.twse.com.tw/v1/opendata/t187ap04_L"

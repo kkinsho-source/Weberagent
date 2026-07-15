@@ -64,6 +64,8 @@ export function buildRuleInsights(opts: {
     pcb_ccl: '高階 PCB/CCL 受 AI 伺服器規格升級帶動',
     thermal_power: 'AI 機櫃熱密度與耗電暴增，散熱與電源為結構性剛需',
     optical_cpo: 'GPU 叢集互聯頻寬驅動高速光模組 / CPO 需求',
+    materials_wafer: '矽晶圓為先進製程上游關鍵材料，資本支出與稼動率敏感',
+    memory_hbm: 'AI 訓練推論推升 HBM / 高速記憶體與控制器需求',
   };
   if (themeMap[stock.themeSlug]) {
     bullets.push(themeMap[stock.themeSlug]);

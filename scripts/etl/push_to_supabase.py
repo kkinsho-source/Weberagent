@@ -32,7 +32,7 @@ import httpx
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SNAPSHOT_PATH = REPO_ROOT / "lib" / "data" / "twse_snapshot.json"
-# 與 lib/data/mock.ts 核心股池同步（35 檔）
+# 與 lib/data/mock.ts 核心股池同步
 MOCK_CORE_SYMBOLS = {
     "3443", "3661", "3035", "6643", "6533",
     "2454", "2379", "5274", "2330", "2303", "6770",
@@ -41,6 +41,8 @@ MOCK_CORE_SYMBOLS = {
     "4958", "3037", "8046", "2383", "6213",
     "2308", "3017", "3653", "3324", "6230",
     "4979", "3363", "3081", "4977",
+    "6488", "3532", "6182",
+    "2344", "2408", "2337", "8299",
 }
 # symbol -> (name, industry, theme_slug, market_cap)
 MOCK_META = {
@@ -79,6 +81,13 @@ MOCK_META = {
     "3363": ("上詮", "光通訊", "optical_cpo", 200),
     "3081": ("聯亞", "光通訊", "optical_cpo", 450),
     "4977": ("眾達-KY", "光通訊", "optical_cpo", 280),
+    "6488": ("環球晶", "矽晶圓", "materials_wafer", 2000),
+    "3532": ("台勝科", "矽晶圓", "materials_wafer", 700),
+    "6182": ("合晶", "矽晶圓", "materials_wafer", 250),
+    "2344": ("華邦電", "記憶體", "memory_hbm", 1400),
+    "2408": ("南亞科", "記憶體", "memory_hbm", 2200),
+    "2337": ("旺宏", "記憶體", "memory_hbm", 500),
+    "8299": ("群聯", "控制器", "memory_hbm", 1100),
 }
 
 
