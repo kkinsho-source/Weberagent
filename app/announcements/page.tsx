@@ -1,7 +1,7 @@
 import { MopsAnnouncementsPanel } from '@/components/mops/MopsAnnouncementsPanel';
 
 export const metadata = {
-  title: '重大訊息｜AI 智慧產業地圖',
+  title: '重大訊息',
   description: '公開資訊觀測站 / 證交所重大訊息彙整',
 };
 

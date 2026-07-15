@@ -3,10 +3,14 @@ import './globals.css';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { AuthProvider } from '@/components/providers/AuthProvider';
 import { Header } from '@/components/layout/Header';
+import { SITE_DESCRIPTION, SITE_NAME } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'AI 智慧產業地圖',
-  description: '探索全球關鍵產業鏈，深入了解供應鏈與投資機會',
+  title: {
+    default: SITE_NAME,
+    template: `%s｜${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
 };
 
 export default function RootLayout({

@@ -1,13 +1,16 @@
 import Link from 'next/link';
 import { AuthNav } from '@/components/auth/AuthNav';
+import { SITE_NAME } from '@/lib/site';
 
 export function Header() {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-xl">🧭</span>
-          <span className="text-lg font-bold text-slate-800">AI 智慧產業地圖</span>
+        <Link href="/" className="flex min-w-0 items-center gap-2">
+          <span className="text-xl shrink-0">🧭</span>
+          <span className="truncate text-base font-bold text-slate-800 sm:text-lg">
+            {SITE_NAME}
+          </span>
         </Link>
         <nav className="flex items-center gap-5 text-sm text-slate-600">
           <Link href="/" className="hover:text-brand-600">
