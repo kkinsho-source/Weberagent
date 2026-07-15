@@ -9,6 +9,7 @@ import { MopsAnnouncementsPanel } from '@/components/mops/MopsAnnouncementsPanel
 import { StockPriceChart } from '@/components/chart/StockPriceChart';
 import { FinancialsPanel } from '@/components/stock/FinancialsPanel';
 import { AiInsightsPanel } from '@/components/stock/AiInsightsPanel';
+import { PanelErrorBoundary } from '@/components/ui/PanelErrorBoundary';
 
 export const revalidate = 60;
 
@@ -70,17 +71,21 @@ export default async function StockPage({
               <CardTitle>{stock.name} 日 K 線</CardTitle>
             </CardHeader>
             <CardContent>
-              <StockPriceChart symbol={stock.symbol} name={stock.name} />
+              <PanelErrorBoundary title="走勢">
+                <StockPriceChart symbol={stock.symbol} name={stock.name} />
+              </PanelErrorBoundary>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="supply" className="mt-4">
-          <MapView
-            nodes={subgraph.nodes}
-            edges={subgraph.edges}
-            title={`${stock.name} 上下游供應鏈`}
-          />
+          <PanelErrorBoundary title="供應鏈">
+            <MapView
+              nodes={subgraph.nodes}
+              edges={subgraph.edges}
+              title={`${stock.name} 上下游供應鏈`}
+            />
+          </PanelErrorBoundary>
           <p className="mt-2 text-xs text-slate-400">
             點一下高亮上下游 · 雙擊或按「個股」進入詳情 · 手機雙指縮放 / 單指拖曳。
           </p>
@@ -125,7 +130,9 @@ export default async function StockPage({
               <CardTitle>{stock.name} 重大訊息</CardTitle>
             </CardHeader>
             <CardContent>
-              <MopsAnnouncementsPanel initialSymbol={stock.symbol} />
+              <PanelErrorBoundary title="重大訊息">
+                <MopsAnnouncementsPanel initialSymbol={stock.symbol} />
+              </PanelErrorBoundary>
             </CardContent>
           </Card>
         </TabsContent>
@@ -136,7 +143,9 @@ export default async function StockPage({
               <CardTitle>{stock.name} 財務分析</CardTitle>
             </CardHeader>
             <CardContent>
-              <FinancialsPanel symbol={stock.symbol} />
+              <PanelErrorBoundary title="財務分析">
+                <FinancialsPanel symbol={stock.symbol} />
+              </PanelErrorBoundary>
             </CardContent>
           </Card>
         </TabsContent>
@@ -147,7 +156,9 @@ export default async function StockPage({
               <CardTitle>{stock.name} AI 洞察</CardTitle>
             </CardHeader>
             <CardContent>
-              <AiInsightsPanel symbol={stock.symbol} />
+              <PanelErrorBoundary title="AI 分析">
+                <AiInsightsPanel symbol={stock.symbol} />
+              </PanelErrorBoundary>
             </CardContent>
           </Card>
         </TabsContent>

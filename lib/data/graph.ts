@@ -7,11 +7,16 @@ export interface StockNodeData extends Record<string, unknown> {
   stock: Stock;
 }
 
+export { THEME_COLORS, themeColor } from './theme-colors';
+
 const NODE_W = 150;
 const NODE_H = 64;
 
-/** 用 dagre 自動分層佈局 */
-export function toFlowNodes(stockList: Stock[] = defaultStocks): Node<StockNodeData>[] {
+/** dagre 佈局：必須使用傳入的 edgeList（與 Supabase 一致） */
+export function toFlowNodes(
+  stockList: Stock[] = defaultStocks,
+  edgeList: SupplyEdge[] = defaultEdges
+): Node<StockNodeData>[] {
   const g = new dagre.graphlib.Graph();
   g.setGraph({ rankdir: 'LR', nodesep: 40, ranksep: 120, marginx: 20, marginy: 20 });
   g.setDefaultEdgeLabel(() => ({}));
@@ -23,10 +28,9 @@ export function toFlowNodes(stockList: Stock[] = defaultStocks): Node<StockNodeD
   }));
 
   baseNodes.forEach((n) => g.setNode(n.id, { width: NODE_W, height: NODE_H }));
-  // edges 僅連接 stockList 內的節點
   const ids = new Set(stockList.map((s) => s.symbol));
-  defaultEdges
-    .filter((e) => ids.has(e.from) && ids.has(e.to))
+  edgeList
+    .filter((e) => e.relation !== 'competitor' && ids.has(e.from) && ids.has(e.to))
     .forEach((e) => g.setEdge(e.from, e.to));
 
   dagre.layout(g);
@@ -62,12 +66,6 @@ export function toFlowEdges(edgeList: SupplyEdge[] = defaultEdges): Edge[] {
   });
 }
 
-/**
- * 取某檔個股 / 某題材的上下游子圖
- * @param symbols 種子代號
- * @param stockList 可選：完整股票列表（預設 snapshot/mock）
- * @param edgeList 可選：供應鏈邊
- */
 export function subgraphFor(
   symbols: string[],
   expandNeighbors = true,
@@ -87,7 +85,7 @@ export function subgraphFor(
   });
 
   const subStocks = stockList.filter((s) => keepNodes.has(s.symbol));
-  const nodes = toFlowNodes(subStocks);
+  const nodes = toFlowNodes(subStocks, keptEdges);
   const edgeIdSet = new Set(keptEdges.map((e) => `${e.from}->${e.to}`));
   const edges = toFlowEdges(keptEdges).filter((e) =>
     edgeIdSet.has(`${e.source}->${e.target}`)

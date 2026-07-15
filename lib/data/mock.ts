@@ -1,12 +1,10 @@
 import type { Stock, Theme, SupplyEdge } from '../types';
+import coreUniverse from './core_universe.json';
 
 /**
- * 編輯型領域資料（題材 / 供應鏈 / 產業標籤）
- * 報價由 TWSE / Supabase 覆蓋；此檔是地圖與主題的 source of truth。
- * 擴充股池時請同步：
- *  - supabase/themes_and_edges.sql
- *  - scripts/etl/push_to_supabase.py MOCK_CORE_SYMBOLS
- *  - scripts/etl/mops_announcements.py CORE_SYMBOLS
+ * 編輯型領域資料（題材 / 供應鏈）
+ * 核心股池 SSOT：lib/data/core_universe.json（TS + Python ETL 共用）
+ * 擴股：改 core_universe.json，並更新 edges / themes / SQL
  */
 
 export const themes: Theme[] = [
@@ -94,60 +92,22 @@ export const themes: Theme[] = [
   },
 ];
 
-export const stocks: Stock[] = [
-  // IC 設計｜ASIC / IP
-  { symbol: '3443', name: '創意', market: 'tw', industry: 'IC 設計', themeSlug: 'ic_design_asic', price: 1080, changePct: 3.21, marketCap: 1620 },
-  { symbol: '3661', name: '世芯-KY', market: 'tw', industry: 'IC 設計', themeSlug: 'ic_design_asic', price: 2750, changePct: 1.85, marketCap: 2100 },
-  { symbol: '3035', name: '智原', market: 'tw', industry: 'IC 設計', themeSlug: 'ic_design_asic', price: 312, changePct: -0.64, marketCap: 380 },
-  { symbol: '6643', name: 'M31', market: 'tw', industry: 'IP', themeSlug: 'ic_design_asic', price: 405, changePct: 2.1, marketCap: 210 },
-  { symbol: '6533', name: '晶心科', market: 'tw', industry: 'IP', themeSlug: 'ic_design_asic', price: 498, changePct: 4.55, marketCap: 520 },
-  // IC 設計｜HPC
-  { symbol: '2454', name: '聯發科', market: 'tw', industry: 'IC 設計', themeSlug: 'ic_design_hpc', price: 1280, changePct: 0.95, marketCap: 20000 },
-  { symbol: '2379', name: '瑞昱', market: 'tw', industry: 'IC 設計', themeSlug: 'ic_design_hpc', price: 568, changePct: 1.2, marketCap: 2900 },
-  { symbol: '5274', name: '信驊', market: 'tw', industry: 'IC 設計', themeSlug: 'ic_design_hpc', price: 2980, changePct: 2.4, marketCap: 2400 },
-  // 晶圓代工
-  { symbol: '2330', name: '台積電', market: 'tw', industry: '晶圓代工', themeSlug: 'foundry', price: 1180, changePct: 1.55, marketCap: 306000 },
-  { symbol: '2303', name: '聯電', market: 'tw', industry: '晶圓代工', themeSlug: 'foundry', price: 52.5, changePct: 0.38, marketCap: 6600 },
-  { symbol: '6770', name: '力積電', market: 'tw', industry: '晶圓代工', themeSlug: 'foundry', price: 28, changePct: 0.5, marketCap: 900 },
-  // 先進封裝 / 測試 / 載板
-  { symbol: '3711', name: '日月光投控', market: 'tw', industry: '封測', themeSlug: 'advanced_packaging', price: 185, changePct: 2.78, marketCap: 7800 },
-  { symbol: '2449', name: '京元電', market: 'tw', industry: '封測', themeSlug: 'advanced_packaging', price: 132, changePct: 1.95, marketCap: 1650 },
-  { symbol: '6257', name: '矽格', market: 'tw', industry: '封測', themeSlug: 'advanced_packaging', price: 118, changePct: 0.85, marketCap: 720 },
-  { symbol: '3189', name: '景碩', market: 'tw', industry: 'IC 載板', themeSlug: 'advanced_packaging', price: 180, changePct: 1.2, marketCap: 1600 },
-  { symbol: '6271', name: '同欣電', market: 'tw', industry: '封測', themeSlug: 'advanced_packaging', price: 220, changePct: 0.9, marketCap: 600 },
-  // AI 伺服器 ODM
-  { symbol: '2317', name: '鴻海', market: 'tw', industry: '組裝', themeSlug: 'ai_server', price: 218, changePct: 3.32, marketCap: 30500 },
-  { symbol: '2382', name: '廣達', market: 'tw', industry: '組裝', themeSlug: 'ai_server', price: 368, changePct: 2.1, marketCap: 14800 },
-  { symbol: '6669', name: '緯穎', market: 'tw', industry: '組裝', themeSlug: 'ai_server', price: 2980, changePct: 1.45, marketCap: 5200 },
-  { symbol: '3231', name: '緯創', market: 'tw', industry: '組裝', themeSlug: 'ai_server', price: 140, changePct: 1.1, marketCap: 4200 },
-  { symbol: '2356', name: '英業達', market: 'tw', industry: '組裝', themeSlug: 'ai_server', price: 55, changePct: 0.8, marketCap: 2000 },
-  // PCB / CCL
-  { symbol: '4958', name: '臻鼎-KY', market: 'tw', industry: 'PCB', themeSlug: 'pcb_ccl', price: 168, changePct: 1.12, marketCap: 2600 },
-  { symbol: '3037', name: '欣興', market: 'tw', industry: 'PCB', themeSlug: 'pcb_ccl', price: 175, changePct: 0.92, marketCap: 2700 },
-  { symbol: '8046', name: '南電', market: 'tw', industry: 'PCB', themeSlug: 'pcb_ccl', price: 1270, changePct: 18.1, marketCap: 3900 },
-  { symbol: '2383', name: '台光電', market: 'tw', industry: 'CCL', themeSlug: 'pcb_ccl', price: 420, changePct: 0.26, marketCap: 3100 },
-  { symbol: '6213', name: '聯茂', market: 'tw', industry: 'CCL', themeSlug: 'pcb_ccl', price: 95, changePct: 0.5, marketCap: 800 },
-  // AI 散熱與電源
-  { symbol: '2308', name: '台達電', market: 'tw', industry: '電源', themeSlug: 'thermal_power', price: 420, changePct: 1.0, marketCap: 11000 },
-  { symbol: '3017', name: '奇鋐', market: 'tw', industry: '散熱', themeSlug: 'thermal_power', price: 680, changePct: 2.2, marketCap: 2400 },
-  { symbol: '3653', name: '健策', market: 'tw', industry: '散熱', themeSlug: 'thermal_power', price: 920, changePct: 1.5, marketCap: 1100 },
-  { symbol: '3324', name: '雙鴻', market: 'tw', industry: '散熱', themeSlug: 'thermal_power', price: 620, changePct: 1.8, marketCap: 900 },
-  { symbol: '6230', name: '超眾', market: 'tw', industry: '散熱', themeSlug: 'thermal_power', price: 280, changePct: 0.7, marketCap: 400 },
-  // 光通訊 / CPO
-  { symbol: '4979', name: '華星光', market: 'tw', industry: '光通訊', themeSlug: 'optical_cpo', price: 180, changePct: 2.5, marketCap: 350 },
-  { symbol: '3363', name: '上詮', market: 'tw', industry: '光通訊', themeSlug: 'optical_cpo', price: 95, changePct: 1.3, marketCap: 200 },
-  { symbol: '3081', name: '聯亞', market: 'tw', industry: '光通訊', themeSlug: 'optical_cpo', price: 420, changePct: 3.1, marketCap: 450 },
-  { symbol: '4977', name: '眾達-KY', market: 'tw', industry: '光通訊', themeSlug: 'optical_cpo', price: 260, changePct: 1.6, marketCap: 280 },
-  // 矽晶圓與材料
-  { symbol: '6488', name: '環球晶', market: 'tw', industry: '矽晶圓', themeSlug: 'materials_wafer', price: 420, changePct: 0.8, marketCap: 2000 },
-  { symbol: '3532', name: '台勝科', market: 'tw', industry: '矽晶圓', themeSlug: 'materials_wafer', price: 180, changePct: 0.5, marketCap: 700 },
-  { symbol: '6182', name: '合晶', market: 'tw', industry: '矽晶圓', themeSlug: 'materials_wafer', price: 45, changePct: 0.3, marketCap: 250 },
-  // 記憶體 / HBM
-  { symbol: '2344', name: '華邦電', market: 'tw', industry: '記憶體', themeSlug: 'memory_hbm', price: 35, changePct: 1.2, marketCap: 1400 },
-  { symbol: '2408', name: '南亞科', market: 'tw', industry: '記憶體', themeSlug: 'memory_hbm', price: 70, changePct: 0.9, marketCap: 2200 },
-  { symbol: '2337', name: '旺宏', market: 'tw', industry: '記憶體', themeSlug: 'memory_hbm', price: 28, changePct: 0.4, marketCap: 500 },
-  { symbol: '8299', name: '群聯', market: 'tw', industry: '控制器', themeSlug: 'memory_hbm', price: 520, changePct: 1.5, marketCap: 1100 },
-];
+export const stocks: Stock[] = (coreUniverse.stocks as Array<{
+  symbol: string;
+  name: string;
+  industry: string;
+  themeSlug: string;
+  marketCap: number;
+}>).map((s) => ({
+  symbol: s.symbol,
+  name: s.name,
+  market: 'tw' as const,
+  industry: s.industry,
+  themeSlug: s.themeSlug,
+  price: 0,
+  changePct: 0,
+  marketCap: s.marketCap,
+}));
 
 // 製程流向：from = 上游, to = 下游；relation=downstream 表示 from 供貨給 to
 export const supplyEdges: SupplyEdge[] = [

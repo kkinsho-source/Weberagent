@@ -148,7 +148,9 @@ export function FinancialsPanel({ symbol }: { symbol: string }) {
         {eps.length === 0 ? (
           <p className="text-sm text-slate-400">無季報 EPS 資料</p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            <div className="mb-2 text-xs text-slate-400">近 {eps.length} 季</div>
+            <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-xs text-slate-400">
                 <tr>
@@ -169,7 +171,8 @@ export function FinancialsPanel({ symbol }: { symbol: string }) {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>

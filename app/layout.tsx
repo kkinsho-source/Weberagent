@@ -26,7 +26,7 @@ export default function RootLayout({
             <Header />
             <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
             <footer className="mx-auto max-w-6xl px-4 py-8 text-center text-xs text-slate-400">
-              本網站僅供參考，非投資建議。資料為示意，正式版將接入即時來源。
+              本網站僅供參考，非投資建議。行情與財報來自公開資料（TWSE / TPEx / MOPS 等），請自行交叉驗證。
             </footer>
           </AuthProvider>
         </QueryProvider>

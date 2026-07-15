@@ -20,7 +20,7 @@ export async function GET(
     ]);
     return NextResponse.json({
       symbol,
-      dataSource: 'MOPS monthly history + TWSE OpenAPI',
+      dataSource: 'MOPS + FinMind EPS + TWSE OpenAPI',
       revenues,
       eps,
       count: { revenues: revenues.length, eps: eps.length },

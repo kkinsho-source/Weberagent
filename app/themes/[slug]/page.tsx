@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getDataBundle } from '@/lib/data/source';
 import { subgraphFor } from '@/lib/data/graph';
-import { StockCard } from '@/components/ui/StockCard';
 import { MapView } from '@/components/map/MapView';
+import { ThemeStockTable } from '@/components/theme/ThemeStockTable';
 
 export default async function ThemeDetailPage({
   params,
@@ -34,20 +34,13 @@ export default async function ThemeDetailPage({
           {theme.description}
         </p>
         <div className="mt-2 text-xs text-slate-400">
-          共 {theme.companyCount} 家 · 核實於 {theme.verifiedAt} · 資料源 {bundle.dataSource}
+          列表 {stocks.length} 家 · 核實於 {theme.verifiedAt} · 資料源 {bundle.dataSource}
         </div>
       </div>
 
       <MapView nodes={subgraph.nodes} edges={subgraph.edges} title={theme.title} />
 
-      <div>
-        <h2 className="mb-3 text-lg font-semibold text-slate-800">相關公司</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {stocks.map((s) => (
-            <StockCard key={s.symbol} stock={s} />
-          ))}
-        </div>
-      </div>
+      <ThemeStockTable stocks={stocks} />
     </div>
   );
 }

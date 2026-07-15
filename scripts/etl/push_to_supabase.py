@@ -32,63 +32,26 @@ import httpx
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SNAPSHOT_PATH = REPO_ROOT / "lib" / "data" / "twse_snapshot.json"
-# 與 lib/data/mock.ts 核心股池同步
-MOCK_CORE_SYMBOLS = {
-    "3443", "3661", "3035", "6643", "6533",
-    "2454", "2379", "5274", "2330", "2303", "6770",
-    "3711", "2449", "6257", "3189", "6271",
-    "2317", "2382", "6669", "3231", "2356",
-    "4958", "3037", "8046", "2383", "6213",
-    "2308", "3017", "3653", "3324", "6230",
-    "4979", "3363", "3081", "4977",
-    "6488", "3532", "6182",
-    "2344", "2408", "2337", "8299",
-}
-# symbol -> (name, industry, theme_slug, market_cap)
-MOCK_META = {
-    "3443": ("創意", "IC 設計", "ic_design_asic", 1620),
-    "3661": ("世芯-KY", "IC 設計", "ic_design_asic", 2100),
-    "3035": ("智原", "IC 設計", "ic_design_asic", 380),
-    "6643": ("M31", "IP", "ic_design_asic", 210),
-    "6533": ("晶心科", "IP", "ic_design_asic", 520),
-    "2454": ("聯發科", "IC 設計", "ic_design_hpc", 20000),
-    "2379": ("瑞昱", "IC 設計", "ic_design_hpc", 2900),
-    "5274": ("信驊", "IC 設計", "ic_design_hpc", 2400),
-    "2330": ("台積電", "晶圓代工", "foundry", 306000),
-    "2303": ("聯電", "晶圓代工", "foundry", 6600),
-    "6770": ("力積電", "晶圓代工", "foundry", 900),
-    "3711": ("日月光投控", "封測", "advanced_packaging", 7800),
-    "2449": ("京元電", "封測", "advanced_packaging", 1650),
-    "6257": ("矽格", "封測", "advanced_packaging", 720),
-    "3189": ("景碩", "IC 載板", "advanced_packaging", 1600),
-    "6271": ("同欣電", "封測", "advanced_packaging", 600),
-    "2317": ("鴻海", "組裝", "ai_server", 30500),
-    "2382": ("廣達", "組裝", "ai_server", 14800),
-    "6669": ("緯穎", "組裝", "ai_server", 5200),
-    "3231": ("緯創", "組裝", "ai_server", 4200),
-    "2356": ("英業達", "組裝", "ai_server", 2000),
-    "4958": ("臻鼎-KY", "PCB", "pcb_ccl", 2600),
-    "3037": ("欣興", "PCB", "pcb_ccl", 2700),
-    "8046": ("南電", "PCB", "pcb_ccl", 3900),
-    "2383": ("台光電", "CCL", "pcb_ccl", 3100),
-    "6213": ("聯茂", "CCL", "pcb_ccl", 800),
-    "2308": ("台達電", "電源", "thermal_power", 11000),
-    "3017": ("奇鋐", "散熱", "thermal_power", 2400),
-    "3653": ("健策", "散熱", "thermal_power", 1100),
-    "3324": ("雙鴻", "散熱", "thermal_power", 900),
-    "6230": ("超眾", "散熱", "thermal_power", 400),
-    "4979": ("華星光", "光通訊", "optical_cpo", 350),
-    "3363": ("上詮", "光通訊", "optical_cpo", 200),
-    "3081": ("聯亞", "光通訊", "optical_cpo", 450),
-    "4977": ("眾達-KY", "光通訊", "optical_cpo", 280),
-    "6488": ("環球晶", "矽晶圓", "materials_wafer", 2000),
-    "3532": ("台勝科", "矽晶圓", "materials_wafer", 700),
-    "6182": ("合晶", "矽晶圓", "materials_wafer", 250),
-    "2344": ("華邦電", "記憶體", "memory_hbm", 1400),
-    "2408": ("南亞科", "記憶體", "memory_hbm", 2200),
-    "2337": ("旺宏", "記憶體", "memory_hbm", 500),
-    "8299": ("群聯", "控制器", "memory_hbm", 1100),
-}
+CORE_PATH = REPO_ROOT / "lib" / "data" / "core_universe.json"
+
+
+def _load_core():
+    data = json.loads(CORE_PATH.read_text(encoding="utf-8"))
+    stocks = data.get("stocks") or []
+    symbols = {s["symbol"] for s in stocks}
+    meta = {
+        s["symbol"]: (
+            s.get("name") or s["symbol"],
+            s.get("industry") or "",
+            s.get("themeSlug") or "",
+            s.get("marketCap"),
+        )
+        for s in stocks
+    }
+    return symbols, meta
+
+
+MOCK_CORE_SYMBOLS, MOCK_META = _load_core()
 
 
 def load_env_file(path: Path) -> None:

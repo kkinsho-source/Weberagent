@@ -1,23 +1,28 @@
 # 進度
 
-## 本輪全做完（手機 UX + 財報歷史 + 材料/HBM）
+## A/B/C 優化（本輪）
 
-### 1) 手機地圖 UX
-- 響應高度 `min(70vh)`、觸控 pinch/pan
-- 手機隱藏 MiniMap、節點更緊湊
-- 點選底部 action bar + 雙擊進個股
-- Tabs 橫向滑動
+### A 防 bug
+- A1 核心股 SSOT：`lib/data/core_universe.json`（TS mock + Python ETL）
+- A2 財報 6h 快取 + fetch timeout
+- A3 地圖 layout 使用傳入 edges（不再硬吃 mock）
+- A4 Header 手機選單 + 搜尋
 
-### 2) 財報多月歷史
-- MOPS `t21sc03` 歷史頁拉近 12 個月營收
-- 圖表：營收 bar + 年增% line
-- Production 驗證：2330 → **12 個月** `dataSource: MOPS monthly history + TWSE OpenAPI`
+### B 品質
+- B1 首頁移除 Demo 面板
+- B2 Footer 文案改「公開資料」
+- B3 個股面板 ErrorBoundary
+- B4 `/status` ETL 健康頁
 
-### 3) 供應鏈擴層
-- 題材 10（+矽晶圓、記憶體/HBM）
-- 核心股 **42**、邊 **63**
-- REST seed + cron：`stocks=42 prices=42 otc=9`
+### C 體驗
+- C1 全站股票搜尋
+- C2 題材公司表可排序/篩選
+- C3 季 EPS：FinMind 多季 + OpenAPI 備援
+- C4 地圖節點依題材配色
+
+### 工程
+- GitHub Actions CI：`npm run build`
 
 ## 線上
 - https://weberagent.vercel.app
-- commit: d0c853c
+- 狀態：/status
