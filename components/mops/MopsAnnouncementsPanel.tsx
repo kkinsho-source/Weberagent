@@ -95,10 +95,9 @@ export function MopsAnnouncementsPanel({
 
       {!loading && items.length === 0 && (
         <div className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
-          尚無資料。請執行：
-          <code className="mx-1 rounded bg-slate-100 px-1 text-xs">
-            python3 scripts/etl/mops_announcements.py --mode core
-          </code>
+          {symbol.trim()
+            ? `目前資料庫尚無 ${symbol.trim()} 的官方公告（可能尚未被 ETL 收錄）。下方「相關新聞」仍可能有外鏈。`
+            : '尚無公告資料。'}
         </div>
       )}
 

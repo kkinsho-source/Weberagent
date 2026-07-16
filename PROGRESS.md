@@ -1,28 +1,29 @@
 # 進度
 
-## A/B/C 優化（本輪）
+## 穩健包 + 爽感包（個股頁）
 
-### A 防 bug
-- A1 核心股 SSOT：`lib/data/core_universe.json`（TS mock + Python ETL）
-- A2 財報 6h 快取 + fetch timeout
-- A3 地圖 layout 使用傳入 edges（不再硬吃 mock）
-- A4 Header 手機選單 + 搜尋
+### 走勢 T1/T2/T3
+- prices API：desc 取最新、stale/refresh 強制補歷史並回寫
+- Lightweight Charts：K 線 + MA5/MA20 + 成交量
+- TradingView Advanced Chart 可切換
 
-### B 品質
-- B1 首頁移除 Demo 面板
-- B2 Footer 文案改「公開資料」
-- B3 個股面板 ErrorBoundary
-- B4 `/status` ETL 健康頁
+### 供應鏈 S1–S4
+- 圖例、漸層底、題材色
+- 右側詳情側欄（上下游/競品/進個股）
 
-### C 體驗
-- C1 全站股票搜尋
-- C2 題材公司表可排序/篩選
-- C3 季 EPS：FinMind 多季 + OpenAPI 備援
-- C4 地圖節點依題材配色
+### 財務 F1/F2/F5
+- 月營收 + 年增
+- 季報損益（營收/毛利/營業利益/淨利/EPS）
+- 估值 PER/PBR/殖利率/52W（FinMind）
 
-### 工程
-- GitHub Actions CI：`npm run build`
+### 基本資料 B1/B3/B4 + ETF E1
+- 概覽 → 基本資料（TWSE t187ap03）
+- TradingView Symbol Info widget
+- 相關 ETF 示意表
 
-## 線上
-- https://weberagent.vercel.app
-- 狀態：/status
+### 消息 N
+- 重大訊息 → 消息
+- MOPS 公告 + Google News RSS 外鏈
+
+## 驗證
+- `npm run build` OK

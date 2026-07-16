@@ -5,10 +5,11 @@ import { MapView } from '@/components/map/MapView';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FavoriteButton } from '@/components/stock/FavoriteButton';
-import { MopsAnnouncementsPanel } from '@/components/mops/MopsAnnouncementsPanel';
 import { StockPriceChart } from '@/components/chart/StockPriceChart';
 import { FinancialsPanel } from '@/components/stock/FinancialsPanel';
 import { AiInsightsPanel } from '@/components/stock/AiInsightsPanel';
+import { BasicInfoPanel } from '@/components/stock/BasicInfoPanel';
+import { NewsPanel } from '@/components/stock/NewsPanel';
 import { PanelErrorBoundary } from '@/components/ui/PanelErrorBoundary';
 
 export const revalidate = 60;
@@ -59,8 +60,8 @@ export default async function StockPage({
         <TabsList>
           <TabsTrigger value="chart">走勢</TabsTrigger>
           <TabsTrigger value="supply">供應鏈</TabsTrigger>
-          <TabsTrigger value="overview">概覽</TabsTrigger>
-          <TabsTrigger value="mops">重大訊息</TabsTrigger>
+          <TabsTrigger value="basic">基本資料</TabsTrigger>
+          <TabsTrigger value="news">消息</TabsTrigger>
           <TabsTrigger value="financials">財務分析</TabsTrigger>
           <TabsTrigger value="ai">AI 分析</TabsTrigger>
         </TabsList>
@@ -87,51 +88,35 @@ export default async function StockPage({
             />
           </PanelErrorBoundary>
           <p className="mt-2 text-xs text-slate-400">
-            點一下高亮上下游 · 雙擊或按「個股」進入詳情 · 手機雙指縮放 / 單指拖曳。
+            點一下高亮上下游 · 側欄看詳情 · 雙擊進個股 · 手機雙指縮放。
           </p>
         </TabsContent>
 
-        <TabsContent value="overview" className="mt-4">
+        <TabsContent value="basic" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>公司資訊</CardTitle>
+              <CardTitle>{stock.name} 基本資料</CardTitle>
             </CardHeader>
             <CardContent>
-              <dl className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <dt className="text-slate-400">市值</dt>
-                  <dd className="font-medium text-slate-800">
-                    {stock.marketCap.toLocaleString()} 億
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-slate-400">產業</dt>
-                  <dd className="font-medium text-slate-800">{stock.industry}</dd>
-                </div>
-                <div>
-                  <dt className="text-slate-400">今日漲跌</dt>
-                  <dd className={`font-medium ${up ? 'text-up' : 'text-down'}`}>
-                    {up ? '+' : ''}
-                    {stock.changePct.toFixed(2)}%
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-slate-400">股價</dt>
-                  <dd className="font-medium text-slate-800">{stock.price.toLocaleString()}</dd>
-                </div>
-              </dl>
+              <PanelErrorBoundary title="基本資料">
+                <BasicInfoPanel
+                  symbol={stock.symbol}
+                  industry={stock.industry}
+                  themeSlug={stock.themeSlug}
+                />
+              </PanelErrorBoundary>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="mops" className="mt-4">
+        <TabsContent value="news" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>{stock.name} 重大訊息</CardTitle>
+              <CardTitle>{stock.name} 消息</CardTitle>
             </CardHeader>
             <CardContent>
-              <PanelErrorBoundary title="重大訊息">
-                <MopsAnnouncementsPanel initialSymbol={stock.symbol} />
+              <PanelErrorBoundary title="消息">
+                <NewsPanel symbol={stock.symbol} name={stock.name} />
               </PanelErrorBoundary>
             </CardContent>
           </Card>
