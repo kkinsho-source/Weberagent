@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
+import { Sparkline } from '@/components/ui/Sparkline';
 
 type Revenue = {
   yearMonth: string;
@@ -226,10 +227,65 @@ export function FinancialsPanel({ symbol }: { symbol: string }) {
           <p className="mt-1 text-[11px] text-slate-400">
             比率以最近一季損益 ÷ 對應分母（ROE/ROA 用最近一季權益/總資產），僅供參考。
           </p>
+          {income.length >= 2 && (
+            <div className="mt-4">
+              <h4 className="mb-2 text-xs font-semibold text-slate-600">多季毛利率 / 淨利率</h4>
+              <ReactECharts
+                option={{
+                  tooltip: { trigger: 'axis' },
+                  legend: {
+                    data: ['毛利率%', '淨利率%'],
+                    top: 0,
+                    textStyle: { fontSize: 11, color: '#64748b' },
+                  },
+                  grid: { left: 40, right: 16, top: 28, bottom: 24 },
+                  xAxis: {
+                    type: 'category',
+                    data: income.map((q) => `${q.year}Q${q.season}`),
+                    axisLabel: { fontSize: 10, color: '#94a3b8' },
+                  },
+                  yAxis: {
+                    type: 'value',
+                    axisLabel: { fontSize: 10, color: '#94a3b8' },
+                    splitLine: { lineStyle: { color: '#f1f5f9' } },
+                  },
+                  series: [
+                    {
+                      name: '毛利率%',
+                      type: 'line',
+                      smooth: true,
+                      data: income.map((q) =>
+                        q.revenue && q.grossProfit != null
+                          ? +((q.grossProfit / q.revenue) * 100).toFixed(1)
+                          : null
+                      ),
+                      color: '#3b82f6',
+                    },
+                    {
+                      name: '淨利率%',
+                      type: 'line',
+                      smooth: true,
+                      data: income.map((q) =>
+                        q.revenue && q.netIncome != null
+                          ? +((q.netIncome / q.revenue) * 100).toFixed(1)
+                          : null
+                      ),
+                      color: '#f59e0b',
+                    },
+                  ],
+                }}
+                style={{ height: 200, width: '100%' }}
+              />
+            </div>
+          )}
         </div>
       )}
 
       <Section title="季報損益">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="text-xs text-slate-400">淨利走勢</span>
+        <Sparkline values={income.map((x) => x.netIncome)} width={96} height={24} />
+      </div>
       <TableBlock title={`季報損益表（近 ${income.length} 季）`}>
         {income.length === 0 ? (
           <Empty />
@@ -274,6 +330,11 @@ export function FinancialsPanel({ symbol }: { symbol: string }) {
       </Section>
 
       <TableBlock title={`資產負債（近 ${balance.length} 季）`}>
+        <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2 text-xs text-slate-400">
+          總資產走勢 <Sparkline values={balance.map((x) => x.totalAssets)} width={96} />
+          <span className="mx-1">·</span>
+          權益 <Sparkline values={balance.map((x) => x.equity)} width={96} />
+        </div>
         {balance.length === 0 ? (
           <Empty />
         ) : (
@@ -312,6 +373,11 @@ export function FinancialsPanel({ symbol }: { symbol: string }) {
       </TableBlock>
 
       <TableBlock title={`現金流（近 ${cashflow.length} 季）`}>
+        <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2 text-xs text-slate-400">
+          營運 CF <Sparkline values={cashflow.map((x) => x.operating)} width={96} />
+          <span className="mx-1">·</span>
+          期末現金 <Sparkline values={cashflow.map((x) => x.endCash)} width={96} />
+        </div>
         {cashflow.length === 0 ? (
           <Empty />
         ) : (

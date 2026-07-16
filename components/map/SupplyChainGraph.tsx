@@ -104,6 +104,7 @@ function GraphInner({ nodes, edges, title }: Props) {
   const [isMobile, setIsMobile] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [hoverEdge, setHoverEdge] = useState<string | null>(null);
+  const [layerFilter, setLayerFilter] = useState<string | 'all'>('all');
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 640px)');
@@ -122,17 +123,31 @@ function GraphInner({ nodes, edges, title }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [fullscreen]);
 
+  const filteredNodes = useMemo(() => {
+    if (layerFilter === 'all') return nodes;
+    const L = LAYER_HINTS.find((x) => x.key === layerFilter);
+    if (!L) return nodes;
+    return nodes.filter((n) => L.match((n.data as StockNodeData)?.stock?.themeSlug));
+  }, [nodes, layerFilter]);
+
+  const filteredEdges = useMemo(() => {
+    if (layerFilter === 'all') return edges;
+    const ids = new Set(filteredNodes.map((n) => n.id));
+    return edges.filter((e) => ids.has(e.source) && ids.has(e.target));
+  }, [edges, filteredNodes, layerFilter]);
+
   const selectedStock = useMemo(() => {
     if (!selected) return null;
-    return (nodes.find((n) => n.id === selected)?.data as StockNodeData | undefined)?.stock;
-  }, [nodes, selected]);
+    return (filteredNodes.find((n) => n.id === selected)?.data as StockNodeData | undefined)
+      ?.stock;
+  }, [filteredNodes, selected]);
 
   const relatedInfo = useMemo(() => {
     if (!selected) return { up: [] as string[], down: [] as string[], peers: [] as string[] };
     const up: string[] = [];
     const down: string[] = [];
     const peers: string[] = [];
-    edges.forEach((e) => {
+    filteredEdges.forEach((e) => {
       const label = String((e as Edge & { label?: string }).label || '');
       if (e.target === selected) {
         if (label === '競品') peers.push(e.source);
@@ -144,10 +159,10 @@ function GraphInner({ nodes, edges, title }: Props) {
       }
     });
     return { up, down, peers };
-  }, [edges, selected]);
+  }, [filteredEdges, selected]);
 
   const baseEdges = useMemo(() => {
-    return edges.map((e) => {
+    return filteredEdges.map((e) => {
       const label = String((e as Edge & { label?: string }).label || '');
       const isPeer = label === '競品';
       return {
@@ -163,13 +178,13 @@ function GraphInner({ nodes, edges, title }: Props) {
         labelBgPadding: [4, 2] as [number, number],
       };
     });
-  }, [edges]);
+  }, [filteredEdges]);
 
   const { styledNodes, styledEdges } = useMemo(() => {
     const related = selected
       ? (() => {
           const s = new Set<string>([selected]);
-          edges.forEach((e) => {
+          filteredEdges.forEach((e) => {
             if (e.source === selected) s.add(e.target);
             if (e.target === selected) s.add(e.source);
           });
@@ -177,7 +192,7 @@ function GraphInner({ nodes, edges, title }: Props) {
         })()
       : null;
 
-    const sn = nodes.map((n) => ({
+    const sn = filteredNodes.map((n) => ({
       ...n,
       selected: n.id === selected,
       style: related ? { opacity: related.has(n.id) ? 1 : 0.15 } : undefined,
@@ -198,7 +213,7 @@ function GraphInner({ nodes, edges, title }: Props) {
       };
     });
     return { styledNodes: sn, styledEdges: se };
-  }, [nodes, edges, selected, baseEdges, hoverEdge]);
+  }, [filteredNodes, filteredEdges, selected, baseEdges, hoverEdge]);
 
   const onNodeClick: NodeMouseHandler = useCallback((_evt, node) => {
     setSelected((prev) => (prev === node.id ? null : node.id));
@@ -212,7 +227,9 @@ function GraphInner({ nodes, edges, title }: Props) {
   );
 
   const nameOf = (sym: string) =>
-    (nodes.find((n) => n.id === sym)?.data as StockNodeData | undefined)?.stock?.name || sym;
+    (filteredNodes.find((n) => n.id === sym)?.data as StockNodeData | undefined)?.stock?.name ||
+    (nodes.find((n) => n.id === sym)?.data as StockNodeData | undefined)?.stock?.name ||
+    sym;
 
   const mapBox = (
     <div
@@ -304,7 +321,7 @@ function GraphInner({ nodes, edges, title }: Props) {
           className="!m-2 !scale-100 sm:!m-3 sm:!scale-110"
         />
         <ZoomToolbar />
-        <FitOnMount nodeCount={nodes.length} />
+        <FitOnMount nodeCount={filteredNodes.length} />
       </ReactFlow>
     </div>
   );
@@ -314,18 +331,32 @@ function GraphInner({ nodes, edges, title }: Props) {
       {/* 題材色層提示列 */}
       <div className="flex flex-wrap items-center gap-2 px-1 text-[11px] text-slate-500">
         <span className="font-medium text-slate-600">層級</span>
+        <button
+          type="button"
+          className={`rounded-full px-2 py-0.5 ${layerFilter === 'all' ? 'bg-brand-600 text-white' : 'bg-slate-100'}`}
+          onClick={() => setLayerFilter('all')}
+        >
+          全部
+        </button>
         {LAYER_HINTS.map((L) => {
           const n = nodes.filter((nd) =>
             L.match((nd.data as StockNodeData)?.stock?.themeSlug)
           ).length;
           return (
-            <span key={L.key} className="rounded-full bg-slate-100 px-2 py-0.5">
+            <button
+              key={L.key}
+              type="button"
+              className={`rounded-full px-2 py-0.5 ${
+                layerFilter === L.key ? 'bg-brand-600 text-white' : 'bg-slate-100'
+              }`}
+              onClick={() => setLayerFilter(L.key)}
+            >
               {L.label}
               {n ? ` ${n}` : ''}
-            </span>
+            </button>
           );
         })}
-        <span className="text-slate-400">· 供貨線較粗 · hover 顯示關係</span>
+        <span className="text-slate-400">· 供貨線較粗 · hover 顯示關係 · 節點含漲跌%</span>
       </div>
 
       <div className={`flex flex-col gap-3 lg:flex-row ${fullscreen ? '' : ''}`}>

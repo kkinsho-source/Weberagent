@@ -132,6 +132,10 @@ export function StockPriceChart({
   });
   const [bbOn, setBbOn] = useState(false);
   const [deductOn, setDeductOn] = useState(false);
+  const [valSeries, setValSeries] = useState<Array<{date:string;pe:number|null;pb:number|null;dividendYield:number|null}>>([]);
+  const [peOn, setPeOn] = useState(true);
+  const [pbOn, setPbOn] = useState(false);
+  const [dyOn, setDyOn] = useState(false);
 
   const bars = useMemo(() => aggregateBars(rawBars, tf), [rawBars, tf]);
 
@@ -141,18 +145,21 @@ export function StockPriceChart({
       setLoading(true);
       setErr(null);
       try {
-        const [pRes, iRes] = await Promise.all([
+        const [pRes, iRes, vRes] = await Promise.all([
           fetch(`/api/prices/${symbol}?limit=320&refresh=1`, { cache: 'no-store' }),
           fetch(`/api/institutional/${symbol}`, { cache: 'no-store' }),
+          fetch(`/api/valuation/${symbol}?months=6`, { cache: 'no-store' }),
         ]);
         const pJson = await pRes.json();
         const iJson = await iRes.json();
+        const vJson = await vRes.json();
         if (cancelled) return;
         if (!pRes.ok) throw new Error(pJson.error || pRes.statusText);
         setRawBars(pJson.prices || []);
         setSource(pJson.dataSource || '');
         setLastDate(pJson.lastDate || pJson.prices?.at?.(-1)?.date || null);
         setInst(iJson.items || []);
+        setValSeries(vJson.items || []);
       } catch (e) {
         if (!cancelled) setErr(e instanceof Error ? e.message : String(e));
       } finally {
@@ -532,6 +539,43 @@ export function StockPriceChart({
         )}
         <p className="mt-1 text-[11px] text-slate-400">
           堆疊面積＝外資 + 投信 + 自營淨買超（FinMind）。正值偏多、負值偏空。
+        </p>
+      </div>
+
+      <div>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-slate-700">本益比河流圖（估值）</h3>
+          <div className="flex flex-wrap gap-3 text-xs text-slate-600">
+            <label className="inline-flex items-center gap-1"><input type="checkbox" checked={peOn} onChange={() => setPeOn(v=>!v)} /> PER</label>
+            <label className="inline-flex items-center gap-1"><input type="checkbox" checked={pbOn} onChange={() => setPbOn(v=>!v)} /> PBR</label>
+            <label className="inline-flex items-center gap-1"><input type="checkbox" checked={dyOn} onChange={() => setDyOn(v=>!v)} /> 殖利率%</label>
+          </div>
+        </div>
+        {valSeries.length === 0 ? (
+          <p className="text-sm text-slate-400">暫無估值序列</p>
+        ) : (
+          <ReactECharts
+            option={{
+              tooltip: { trigger: 'axis' },
+              legend: { data: ['PER','PBR','殖利率%'].filter((_,i)=>[peOn,pbOn,dyOn][i]), top: 0, textStyle:{fontSize:11,color:'#64748b'} },
+              grid: { left: 48, right: 48, top: 32, bottom: 28 },
+              xAxis: { type: 'category', data: valSeries.map(d=>d.date.slice(5)), axisLabel:{color:'#94a3b8',fontSize:10} },
+              yAxis: [
+                { type: 'value', name: '倍', axisLabel:{color:'#94a3b8',fontSize:10}, splitLine:{lineStyle:{color:'#f1f5f9'}} },
+                { type: 'value', name: '%', axisLabel:{color:'#94a3b8',fontSize:10}, splitLine:{show:false} },
+              ],
+              series: [
+                peOn && { name:'PER', type:'line', data: valSeries.map(d=>d.pe), smooth:true, showSymbol:false, areaStyle:{opacity:0.12}, color:'#8b5cf6' },
+                pbOn && { name:'PBR', type:'line', data: valSeries.map(d=>d.pb), smooth:true, showSymbol:false, areaStyle:{opacity:0.1}, color:'#0ea5e9' },
+                dyOn && { name:'殖利率%', type:'line', yAxisIndex:1, data: valSeries.map(d=>d.dividendYield), smooth:true, showSymbol:false, color:'#f59e0b' },
+              ].filter(Boolean),
+            }}
+            style={{ height: 220, width: '100%' }}
+          />
+        )}
+        <p className="mt-1 text-[11px] text-slate-400">
+          日頻 PER/PBR/殖利率（FinMind）。可勾選顯示。
+
         </p>
       </div>
     </div>

@@ -9,6 +9,7 @@ import { etfsHolding } from '@/lib/data/etf';
 import { fetchStockNews } from '@/lib/data/news';
 import { getDataBundle } from '@/lib/data/source';
 import { fetchMonthlyRevenue, fetchQuarterlyEps } from '@/lib/data/financials';
+import { companyExtraOf } from '@/lib/data/company-extra';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -23,7 +24,11 @@ export async function GET(
   const { symbol } = await ctx.params;
   const bundle = await getDataBundle();
   const stock = bundle.stocks.find((s) => s.symbol === symbol);
-  const theme = bundle.themes.find((t) => t.slug === stock?.themeSlug);
+  let theme = bundle.themes.find((t) => t.slug === stock?.themeSlug) || null;
+  // T1 display guard：slug 保留，標題統一記憶體
+  if (theme?.slug === 'memory_hbm' && theme.title !== '記憶體') {
+    theme = { ...theme, title: '記憶體' };
+  }
   const peers = stock
     ? bundle.stocks
         .filter((s) => s.themeSlug === stock.themeSlug && s.symbol !== stock.symbol)
@@ -42,13 +47,23 @@ export async function GET(
       fetchQuarterlyEps(symbol, 4).catch(() => []),
     ]);
 
-  // peer valuations lightweight: only price from bundle
+  const extra = companyExtraOf(symbol);
+
   return NextResponse.json({
     symbol,
     stock: stock || null,
     theme: theme || null,
     peers,
-    profile,
+    profile: profile
+      ? { ...profile, product: extra.product || null, website: extra.website || null }
+      : extra.product || extra.website
+        ? {
+            symbol,
+            product: extra.product || null,
+            website: extra.website || null,
+            dataSource: 'editorial',
+          }
+        : null,
     valuation,
     income,
     balance,

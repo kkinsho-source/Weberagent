@@ -79,16 +79,16 @@ export async function GET(
 
   const lastDb = prices[prices.length - 1]?.date || '';
   const todayTw = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
-  const stale =
-    !lastDb ||
-    lastDb < todayTw.slice(0, 8) /* rough */ ||
-    // 落後超過 3 個日曆天（略過假日粗判）
-    (() => {
-      const a = Date.parse(lastDb);
-      const b = Date.parse(todayTw);
-      return Number.isFinite(a) && b - a > 3 * 86400000;
-    })();
+  // P1：落後 1 個日曆日以上就視為可能缺最新 K（假日再由 hist 校正）
+  const stale = (() => {
+    if (!lastDb) return true;
+    const a = Date.parse(lastDb);
+    const b = Date.parse(todayTw);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return true;
+    return b - a > 1.5 * 86400000;
+  })();
 
+  // 預設在 stale / 資料不足 / 明確 refresh 時補歷史
   if (prices.length < 20 || refresh || stale) {
     try {
       const hist = await fetchSymbolHistory(symbol, 12);
@@ -97,22 +97,35 @@ export async function GET(
         const shouldReplace =
           prices.length < 20 ||
           refresh ||
-          (lastHist && lastDb && lastHist > lastDb) ||
+          stale ||
+          (lastHist && (!lastDb || lastHist > lastDb)) ||
           hist.length > prices.length;
         if (shouldReplace) {
-          prices = hist.map((b) => ({
-            date: b.date,
-            open: b.open,
-            high: b.high,
-            low: b.low,
-            close: b.close,
-            volume: b.volume ?? null,
-            changePct: b.changePct ?? null,
-            source: b.source,
-          }));
-          dataSource = hist[0]?.source?.includes('Yahoo') ? 'yahoo' : 'twse_history';
+          // merge: prefer hist for overlapping dates
+          const byDate = new Map<string, PriceRow>();
+          for (const p of prices) {
+            if (p.date) byDate.set(p.date, p);
+          }
+          for (const b of hist) {
+            byDate.set(b.date, {
+              date: b.date,
+              open: b.open,
+              high: b.high,
+              low: b.low,
+              close: b.close,
+              volume: b.volume ?? null,
+              changePct: b.changePct ?? null,
+              source: b.source,
+            });
+          }
+          prices = Array.from(byDate.values()).sort((x, y) =>
+            String(x.date).localeCompare(String(y.date))
+          );
+          dataSource =
+            (hist[0]?.source?.includes('Yahoo') ? 'yahoo' : 'twse_history') +
+            (dataSource === 'supabase' ? '+supabase' : '');
 
-          if ((refresh || stale) && isSupabaseAdminConfigured()) {
+          if (isSupabaseAdminConfigured() && (refresh || stale || lastHist > lastDb)) {
             const sb = getSupabaseAdminClient();
             if (sb) {
               const payload = hist.map((b) => ({
@@ -132,7 +145,7 @@ export async function GET(
                   onConflict: 'symbol,market,trade_date',
                 });
               }
-              dataSource = `${dataSource}+supabase`;
+              if (!dataSource.includes('supabase')) dataSource = `${dataSource}+supabase`;
             }
           }
         }
@@ -148,28 +161,34 @@ export async function GET(
     if (!stock) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
-    return NextResponse.json({
-      symbol,
-      dataSource: bundle.dataSource,
-      prices: [
-        {
-          date: bundle.meta?.asOf ?? null,
-          close: stock.price,
-          changePct: stock.changePct,
-          source: 'snapshot',
-        },
-      ],
-      count: 1,
-      note: '尚無歷史日線',
-    });
+    return NextResponse.json(
+      {
+        symbol,
+        dataSource: bundle.dataSource,
+        prices: [
+          {
+            date: bundle.meta?.asOf ?? null,
+            close: stock.price,
+            changePct: stock.changePct,
+            source: 'snapshot',
+          },
+        ],
+        count: 1,
+        note: '尚無歷史日線',
+      },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   }
 
   const sliced = prices.length > limit ? prices.slice(-limit) : prices;
-  return NextResponse.json({
-    symbol,
-    dataSource,
-    prices: sliced,
-    count: sliced.length,
-    lastDate: sliced[sliced.length - 1]?.date ?? null,
-  });
+  return NextResponse.json(
+    {
+      symbol,
+      dataSource,
+      prices: sliced,
+      count: sliced.length,
+      lastDate: sliced[sliced.length - 1]?.date ?? null,
+    },
+    { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+  );
 }

@@ -22,6 +22,8 @@ type Profile = {
   privateShares?: string;
   preferredShares?: string;
   dataSource?: string;
+  product?: string;
+  website?: string;
 };
 
 type Valuation = {
@@ -122,6 +124,27 @@ export function BasicInfoPanel({
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {(hl?.lastRevenue || hl?.lastEps || profile?.product || (profile as { website?: string })?.website) && (
+        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          {(profile as { product?: string })?.product && (
+            <div className="rounded-lg bg-brand-50/50 p-3 sm:col-span-2">
+              <div className="text-xs text-slate-400">主要業務 / 產品</div>
+              <div className="mt-0.5 text-slate-800">{(profile as { product?: string }).product}</div>
+              {(profile as { website?: string })?.website && (
+                <a
+                  href={(profile as { website?: string }).website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-block text-xs text-brand-600 hover:underline"
+                >
+                  公司官網 ↗
+                </a>
+              )}
+            </div>
+          )}
         </div>
       )}
 

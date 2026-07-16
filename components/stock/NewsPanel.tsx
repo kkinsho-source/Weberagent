@@ -63,7 +63,7 @@ export function NewsPanel({ symbol, name }: { symbol: string; name: string }) {
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-slate-800">
-            ① 官方公告（MOPS / 證交所）
+            官方公告（MOPS / 證交所）
           </h3>
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
             source: {officialSource || (loadingOfficial ? '…' : '—')}
@@ -125,7 +125,7 @@ export function NewsPanel({ symbol, name }: { symbol: string; name: string }) {
       {/* 外鏈媒體 */}
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-800">② 媒體外鏈新聞</h3>
+          <h3 className="text-sm font-semibold text-slate-800">媒體外鏈新聞</h3>
           <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
             僅標題外連 · 非全文轉載
           </span>

@@ -187,13 +187,53 @@ async function run(req: Request) {
       { retries: 3, baseMs: 1200, label: 'upsertStockData' }
     );
 
+    // P2：核心股補近 2 個月歷史 K（避免櫃買/單日漏棒）
+    let histWarmed = 0;
+    try {
+      const { fetchSymbolHistory } = await import('@/lib/etl/history');
+      const { getSupabaseAdminClient } = await import('@/lib/supabase');
+      const sb = getSupabaseAdminClient();
+      if (sb) {
+        for (const symbol of coreSymbols) {
+          try {
+            const bars = await fetchSymbolHistory(symbol, 2);
+            if (!bars.length) continue;
+            const payload = bars.map((b) => ({
+              symbol,
+              market: 'tw' as const,
+              trade_date: b.date,
+              open: b.open,
+              high: b.high,
+              low: b.low,
+              close: b.close,
+              volume: b.volume ?? null,
+              change_pct: b.changePct ?? null,
+              source: b.source,
+            }));
+            for (let i = 0; i < payload.length; i += 100) {
+              await sb.from('stock_prices').upsert(payload.slice(i, i + 100), {
+                onConflict: 'symbol,market,trade_date',
+              });
+            }
+            histWarmed++;
+          } catch {
+            /* skip one */
+          }
+          // 避免整段 cron 超時
+          if (Date.now() - started > 45000) break;
+        }
+      }
+    } catch (e) {
+      console.error('[cron] hist warm', e);
+    }
+
     const ms = Date.now() - started;
     await writeEtlLog({
       jobName: 'twse_daily_cron',
       status: 'success',
       source: 'TWSE+TPEX+MOPS',
       recordsCount: result.stocks,
-      message: `cron ok stocks=${result.stocks} prices=${result.prices} otc=${otcFilled} mops=${mopsCount} asOf=${fetched.asOf} ${ms}ms`,
+      message: `cron ok stocks=${result.stocks} prices=${result.prices} otc=${otcFilled} mops=${mopsCount} histWarm=${histWarmed} asOf=${fetched.asOf} ${ms}ms`,
       meta: {
         asOf: fetched.asOf,
         marketCount: fetched.count,
@@ -203,6 +243,7 @@ async function run(req: Request) {
         otcSource,
         mopsCount,
         mopsError,
+        histWarmed,
         coreOnly,
         ms,
       },
@@ -218,6 +259,7 @@ async function run(req: Request) {
       otcSource,
       mopsCount,
       mopsError,
+      histWarmed,
       coreOnly,
       ms,
     });
