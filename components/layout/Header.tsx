@@ -11,7 +11,6 @@ const links = [
   { href: '/themes', label: '題材' },
   { href: '/announcements', label: '重大訊息' },
   { href: '/favorites', label: '自選' },
-  { href: '/status', label: '狀態' },
 ];
 
 export function Header() {
