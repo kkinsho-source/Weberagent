@@ -81,7 +81,27 @@ export function IndustryAnalysisPanel({
                 可切到「供應鏈」分頁
               </span>
             )}
+            <a
+              href={`https://ic.tpex.org.tw/index.php`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md bg-white px-2 py-1 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+              title="櫃買/證交所官方產業價值鏈（外連，不爬取）"
+            >
+              官方產業價值鏈 ↗
+            </a>
+            <a
+              href={`https://ic.tpex.org.tw/introduce.php?ic=D000`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md bg-white px-2 py-1 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+            >
+              半導體鏈簡介 ↗
+            </a>
           </div>
+          <p className="mt-2 text-[11px] text-slate-400">
+            官方平台為產業上中下游分類參考，非本站業務供應鏈；資料以該站為準。
+          </p>
         </div>
       ) : (
         <p className="text-sm text-slate-400">此檔尚未對應題材 slug。</p>

@@ -55,6 +55,11 @@ export function BasicInfoPanel({
   const [profile, setProfile] = useState<Profile | null>(null);
   const [val, setVal] = useState<Valuation | null>(null);
   const [hl, setHl] = useState<Highlight | null>(null);
+  const [quote, setQuote] = useState<{
+    price?: number;
+    changePct?: number;
+    name?: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -70,6 +75,7 @@ export function BasicInfoPanel({
         setProfile(json.profile);
         setVal(json.valuation);
         setHl(json.highlight || null);
+        setQuote(json.stock || null);
       } catch (e) {
         if (!cancelled) setErr(e instanceof Error ? e.message : String(e));
       } finally {
@@ -91,8 +97,34 @@ export function BasicInfoPanel({
     return `${(n / 1e8).toFixed(2)} 億`;
   };
 
+  const up = (quote?.changePct ?? 0) >= 0;
+
   return (
     <div className="space-y-5">
+      {/* B-B 今日行情卡 */}
+      {quote && (
+        <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-slate-50 to-white p-4">
+          <div className="text-xs text-slate-400">今日行情（與頁首同源）</div>
+          <div className="mt-1 flex flex-wrap items-end gap-4">
+            <div>
+              <div className={`text-2xl font-bold tabular-nums ${up ? 'text-up' : 'text-down'}`}>
+                {Number(quote.price || 0).toLocaleString()}
+              </div>
+              <div className={`text-sm font-medium ${up ? 'text-up' : 'text-down'}`}>
+                {up ? '+' : ''}
+                {Number(quote.changePct || 0).toFixed(2)}%
+              </div>
+            </div>
+            <div className="text-xs text-slate-500">
+              {quote.name || symbol}
+              {val?.avgVolume20 != null && (
+                <div>近20日均量 {val.avgVolume20.toLocaleString()}</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {(hl?.lastRevenue || hl?.lastEps) && (
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
           {hl.lastRevenue && (

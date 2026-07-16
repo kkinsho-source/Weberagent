@@ -63,7 +63,7 @@ export function NewsPanel({ symbol, name }: { symbol: string; name: string }) {
           ))}
         </ul>
         <p className="mt-2 text-[11px] text-slate-400">
-          僅顯示標題與外連，全文請至原站閱讀。非正式投資建議。
+          僅顯示標題與外連，全文請至原站閱讀。來源可含 Google News / Yahoo 等。非正式投資建議。
         </p>
       </section>
     </div>

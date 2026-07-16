@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from 'react';
 
-type Etf = { etf: string; name: string; note?: string };
+type Etf = {
+  etf: string;
+  name: string;
+  note?: string;
+  weightPct?: number | null;
+  changeNote?: string | null;
+};
 
 export function EtfPanel({ symbol }: { symbol: string }) {
   const [etfs, setEtfs] = useState<Etf[]>([]);
@@ -36,19 +42,23 @@ export function EtfPanel({ symbol }: { symbol: string }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-500">
-        下列為常見台股 ETF 對照（編輯型導覽，非投信即時申報權重）。
+        反查「哪些 ETF 可能持有本檔」。含被動 + 常見主動/主題型代號。
+        <strong className="font-medium text-slate-700"> 持倉比重 / 增減</strong>
+        需投信公開持股檔；目前多數顯示「—」，有資料才填。
       </p>
       {etfs.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">
-          此檔尚未收錄 ETF 對照。後續可接公開成分股檔自動反查。
+          此檔尚未收錄 ETF 對照。
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full min-w-[420px] text-left text-sm">
+          <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
-                <th className="px-3 py-2">ETF 代號</th>
+                <th className="px-3 py-2">ETF</th>
                 <th className="px-3 py-2">名稱</th>
+                <th className="px-3 py-2">持倉比重</th>
+                <th className="px-3 py-2">持倉增減</th>
                 <th className="px-3 py-2">備註</th>
               </tr>
             </thead>
@@ -57,6 +67,10 @@ export function EtfPanel({ symbol }: { symbol: string }) {
                 <tr key={e.etf} className="border-t border-slate-100">
                   <td className="px-3 py-2 font-semibold text-brand-600">{e.etf}</td>
                   <td className="px-3 py-2 text-slate-800">{e.name}</td>
+                  <td className="px-3 py-2 tabular-nums text-slate-700">
+                    {e.weightPct != null ? `${e.weightPct.toFixed(2)}%` : '—'}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-slate-500">{e.changeNote || '—'}</td>
                   <td className="px-3 py-2 text-xs text-slate-400">{e.note || '—'}</td>
                 </tr>
               ))}
@@ -65,7 +79,7 @@ export function EtfPanel({ symbol }: { symbol: string }) {
         </div>
       )}
       <p className="text-[11px] text-slate-400">
-        涵蓋：0050 / 006208 / 0052 / 00878 / 00881 / 00919 / 00891 等常見標的（依個股收錄）。
+        非投信即時申報。日後可接公開成分股 CSV 自動填比重與增減。
       </p>
     </div>
   );

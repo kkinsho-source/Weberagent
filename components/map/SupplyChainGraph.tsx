@@ -6,7 +6,6 @@ import {
   ReactFlow,
   Background,
   Controls,
-  MiniMap,
   type Node,
   type Edge,
   type NodeMouseHandler,
@@ -203,14 +202,7 @@ function GraphInner({ nodes, edges, title }: Props) {
               position="bottom-right"
               className="!m-2 !scale-100 sm:!m-3 sm:!scale-110"
             />
-            {!isMobile && (
-              <MiniMap
-                pannable
-                zoomable
-                className="!bg-slate-50"
-                maskColor="rgba(241,245,249,0.7)"
-              />
-            )}
+            {/* MiniMap 會擋主圖，桌機改以左上縮放鈕為主 */}
             <ZoomToolbar />
             <FitOnMount nodeCount={nodes.length} />
           </ReactFlow>

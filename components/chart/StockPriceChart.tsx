@@ -55,9 +55,9 @@ export function StockPriceChart({
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [maOn, setMaOn] = useState<Record<MaKey, boolean>>({
-    ma5: true,
+    ma5: false,
     ma10: false,
-    ma20: true,
+    ma20: false,
     ma60: false,
   });
 

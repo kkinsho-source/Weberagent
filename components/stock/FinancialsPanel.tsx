@@ -46,6 +46,11 @@ function yi(n: number | null): string {
   return (n / 1e8).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' 億';
 }
 
+function pct(num: number | null, den: number | null): string {
+  if (num == null || den == null || !den) return '—';
+  return `${((num / den) * 100).toFixed(1)}%`;
+}
+
 export function FinancialsPanel({ symbol }: { symbol: string }) {
   const [revenues, setRevenues] = useState<Revenue[]>([]);
   const [income, setIncome] = useState<Income[]>([]);
@@ -199,6 +204,35 @@ export function FinancialsPanel({ symbol }: { symbol: string }) {
             <Mini k="稅後淨利" v={yi(lastInc.netIncome)} />
             <Mini k="EPS" v={lastInc.eps != null ? lastInc.eps.toFixed(2) : '—'} />
           </div>
+          {/* F-A / F-B 比率 */}
+          <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
+            <Mini
+              k="毛利率"
+              v={pct(lastInc.grossProfit, lastInc.revenue)}
+            />
+            <Mini
+              k="營益率"
+              v={pct(lastInc.operatingIncome, lastInc.revenue)}
+            />
+            <Mini k="淨利率" v={pct(lastInc.netIncome, lastInc.revenue)} />
+            <Mini
+              k="ROE"
+              v={pct(
+                lastInc.netIncome,
+                balance[balance.length - 1]?.equity ?? null
+              )}
+            />
+            <Mini
+              k="ROA"
+              v={pct(
+                lastInc.netIncome,
+                balance[balance.length - 1]?.totalAssets ?? null
+              )}
+            />
+          </div>
+          <p className="mt-1 text-[11px] text-slate-400">
+            比率以最近一季損益 ÷ 對應分母（ROE/ROA 用最近一季權益/總資產），僅供參考。
+          </p>
         </div>
       )}
 
