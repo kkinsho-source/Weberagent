@@ -84,30 +84,30 @@ export const themes: Theme[] = [
   },
   {
     slug: 'memory_hbm',
-    title: '記憶體 / HBM 相關',
+    title: '記憶體',
     description: 'DRAM/NAND 與控制器、模組，承接 AI 訓練與推論記憶體頻寬需求。',
     market: 'tw',
     companyCount: 4,
     verifiedAt: '2026-07-16',
-  },
+      },
 ];
 
 export const stocks: Stock[] = (coreUniverse.stocks as Array<{
-  symbol: string;
-  name: string;
-  industry: string;
-  themeSlug: string;
-  marketCap: number;
-}>).map((s) => ({
-  symbol: s.symbol,
-  name: s.name,
-  market: 'tw' as const,
-  industry: s.industry,
-  themeSlug: s.themeSlug,
-  price: 0,
-  changePct: 0,
-  marketCap: s.marketCap,
-}));
+      symbol: string;
+      name: string;
+      industry: string;
+      themeSlug: string;
+      marketCap: number;
+    }>).map((s) => ({
+      symbol: s.symbol,
+      name: s.name,
+      market: 'tw' as const,
+      industry: s.industry,
+      themeSlug: s.themeSlug,
+      price: 0,
+      changePct: 0,
+      marketCap: s.marketCap,
+    }));
 
 // 製程流向：from = 上游, to = 下游；relation=downstream 表示 from 供貨給 to
 export const supplyEdges: SupplyEdge[] = [

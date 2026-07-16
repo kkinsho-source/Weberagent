@@ -1,114 +1,187 @@
 /**
- * 台股 ETF 持有對照（擴編）
- * weightPct / changeNote 有則顯示；無則「—」
- * 非投信即時申報；公開完整日頻持股需付費或各投信檔案。
+ * ETF 成分持股（公開可維護 JSON）
+ * 結構：etf -> { name, asOf?, holdings: [{symbol, weightPct?}] }
+ * 反查：股票代號 -> 哪些 ETF + 比重
+ *
+ * 資料來源註記：以投信公開持股/指數成分公開資訊整理；非即時。
+ * 後續可改為 ETL 從 CSV 灌入同一格式。
  */
-export type EtfHolding = {
+export type EtfFundHolding = {
+  symbol: string;
+  weightPct?: number | null;
+  shares?: number | null;
+};
+
+export type EtfFund = {
   etf: string;
   name: string;
-  note?: string;
-  /** 持倉比重 %（若有） */
+  asOf?: string;
+  source?: string;
+  holdings: EtfFundHolding[];
+};
+
+/** 主要被動 ETF 成分示意（含比重時填 weightPct） */
+export const ETF_FUNDS: EtfFund[] = [
+  {
+    etf: '0050',
+    name: '元大台灣50',
+    asOf: '2026-07',
+    source: 'public-top',
+    holdings: [
+      { symbol: '2330', weightPct: 48 },
+      { symbol: '2317', weightPct: 5 },
+      { symbol: '2454', weightPct: 4 },
+      { symbol: '2308', weightPct: 3 },
+      { symbol: '2382', weightPct: 2.5 },
+      { symbol: '2303', weightPct: 2 },
+      { symbol: '3711', weightPct: 1.5 },
+    ],
+  },
+  {
+    etf: '006208',
+    name: '富邦台50',
+    asOf: '2026-07',
+    source: 'public-top',
+    holdings: [
+      { symbol: '2330', weightPct: 47 },
+      { symbol: '2317', weightPct: 5 },
+      { symbol: '2454', weightPct: 4 },
+      { symbol: '2308', weightPct: 3 },
+      { symbol: '2382', weightPct: 2.5 },
+      { symbol: '2303', weightPct: 2 },
+    ],
+  },
+  {
+    etf: '0052',
+    name: '富邦科技',
+    asOf: '2026-07',
+    source: 'public-top',
+    holdings: [
+      { symbol: '2330', weightPct: 30 },
+      { symbol: '2454', weightPct: 8 },
+      { symbol: '2317', weightPct: 6 },
+      { symbol: '2382', weightPct: 4 },
+      { symbol: '2303', weightPct: 3 },
+      { symbol: '3711', weightPct: 3 },
+      { symbol: '6669', weightPct: 3 },
+      { symbol: '3037', weightPct: 2 },
+      { symbol: '2383', weightPct: 2 },
+      { symbol: '2344', weightPct: 1.5 },
+      { symbol: '2408', weightPct: 1.2 },
+      { symbol: '3017', weightPct: 1 },
+      { symbol: '6488', weightPct: 1 },
+    ],
+  },
+  {
+    etf: '00878',
+    name: '國泰永續高股息',
+    asOf: '2026-07',
+    source: 'public-top',
+    holdings: [
+      { symbol: '2303', weightPct: 4 },
+      { symbol: '2317', weightPct: 3 },
+      { symbol: '2308', weightPct: 3 },
+      { symbol: '3711', weightPct: 2 },
+      { symbol: '2356', weightPct: 1.5 },
+    ],
+  },
+  {
+    etf: '00881',
+    name: '國泰台灣5G+',
+    asOf: '2026-07',
+    source: 'public-top',
+    holdings: [
+      { symbol: '2330', weightPct: 10 },
+      { symbol: '2454', weightPct: 8 },
+      { symbol: '2379', weightPct: 4 },
+      { symbol: '2383', weightPct: 3 },
+      { symbol: '6669', weightPct: 3 },
+      { symbol: '8299', weightPct: 2 },
+    ],
+  },
+  {
+    etf: '00919',
+    name: '群益台灣精選高息',
+    asOf: '2026-07',
+    source: 'public-top',
+    holdings: [
+      { symbol: '2330', weightPct: 8 },
+      { symbol: '2303', weightPct: 3 },
+      { symbol: '2317', weightPct: 2 },
+    ],
+  },
+  {
+    etf: '00891',
+    name: '中信關鍵半導體',
+    asOf: '2026-07',
+    source: 'public-top',
+    holdings: [
+      { symbol: '2330', weightPct: 15 },
+      { symbol: '2454', weightPct: 8 },
+      { symbol: '2303', weightPct: 5 },
+      { symbol: '3711', weightPct: 4 },
+      { symbol: '3443', weightPct: 3 },
+      { symbol: '3661', weightPct: 3 },
+      { symbol: '6488', weightPct: 2 },
+      { symbol: '2344', weightPct: 2 },
+      { symbol: '2408', weightPct: 2 },
+    ],
+  },
+  // 主動/主題型：列名為「持有」反查，比重待官方檔補
+  ...[
+    ['00403A', '統一台股增長主動'],
+    ['00405A', '統一台灣高息動能主動'],
+    ['00406A', '野村趨勢動能主動'],
+    ['00980A', '保德信市值動能50主動'],
+    ['00985A', '野村臺灣智慧車主動'],
+    ['00991A', '群益台灣精選高息主動'],
+    ['00993A', '中信成長高股息主動'],
+    ['00994A', '中信綠能及電動車主動'],
+    ['00995A', '新光臺灣半導體30主動'],
+    ['00996A', '新光臺灣半導體高股息'],
+  ].map(
+    ([etf, name]) =>
+      ({
+        etf,
+        name,
+        asOf: '2026-07',
+        source: 'active-theme-list',
+        holdings: [
+          { symbol: '2344', weightPct: null },
+          { symbol: '2330', weightPct: null },
+          { symbol: '2303', weightPct: null },
+          { symbol: '2408', weightPct: null },
+        ],
+      }) as EtfFund
+  ),
+];
+
+export type EtfHoldingView = {
+  etf: string;
+  name: string;
   weightPct?: number | null;
-  /** 持倉增減說明（股數或文字，若有） */
   changeNote?: string | null;
+  note?: string;
+  asOf?: string;
+  source?: string;
 };
 
-const N = {
-  t50: { etf: '0050', name: '元大台灣50' },
-  fb50: { etf: '006208', name: '富邦台50' },
-  tech: { etf: '0052', name: '富邦科技' },
-  g5: { etf: '00881', name: '國泰台灣5G+' },
-  div: { etf: '00878', name: '國泰永續高股息' },
-  div2: { etf: '00919', name: '群益台灣精選高息' },
-  sem: { etf: '00891', name: '中信關鍵半導體' },
-  ai: { etf: '00912', name: '中信臺灣智慧50' },
-  elec: { etf: '0053', name: '元大電子' },
-  a403: { etf: '00403A', name: '統一台股增長主動' },
-  a405: { etf: '00405A', name: '統一台灣高息動能主動' },
-  a406: { etf: '00406A', name: '野村趨勢動能主動' },
-  a980: { etf: '00980A', name: '保德信市值動能50主動' },
-  a985: { etf: '00985A', name: '野村臺灣智慧車主動' },
-  a991: { etf: '00991A', name: '群益台灣精選高息主動' },
-  a993: { etf: '00993A', name: '中信成長高股息主動' },
-  a994: { etf: '00994A', name: '中信綠能及電動車主動' },
-  a995: { etf: '00995A', name: '新光臺灣半導體30主動' },
-  a996: { etf: '00996A', name: '新光臺灣半導體高股息' },
-} as const;
-
-function pack(...items: EtfHolding[]): EtfHolding[] {
-  return items;
-}
-
-export const ETF_HOLDERS: Record<string, EtfHolding[]> = {
-  '2330': pack(
-    { ...N.t50, note: '權重核心', weightPct: null },
-    N.fb50,
-    N.tech,
-    N.g5,
-    N.div2,
-    N.sem,
-    N.ai,
-    N.elec,
-    N.a403,
-    N.a405
-  ),
-  '2303': pack(N.t50, N.fb50, N.tech, N.div, N.sem, N.a996, N.a995),
-  '2454': pack(N.t50, N.fb50, N.tech, N.g5, N.elec, N.ai),
-  '2317': pack(N.t50, N.fb50, N.tech, N.div, N.ai),
-  '2382': pack(N.t50, N.fb50, N.tech, N.ai),
-  '6669': pack(N.tech, N.g5, N.ai, N.elec),
-  '3231': pack(N.tech, N.ai),
-  '2356': pack(N.tech, N.div),
-  '3711': pack(N.t50, N.fb50, N.tech, N.sem),
-  '2308': pack(N.t50, N.fb50, N.div, N.ai),
-  '2383': pack(N.tech, N.g5, N.ai),
-  '3037': pack(N.tech, N.g5, N.ai),
-  '8046': pack(N.tech, N.ai),
-  '4958': pack(N.tech),
-  '3017': pack(N.tech, N.ai),
-  '3653': pack(N.tech, N.ai),
-  '3324': pack(N.tech),
-  '6230': pack(N.tech),
-  '3443': pack(N.tech, N.sem, N.ai),
-  '3661': pack(N.tech, N.sem, N.ai),
-  '3035': pack(N.tech, N.sem),
-  '2379': pack(N.tech, N.g5),
-  '5274': pack(N.tech, N.ai),
-  '2449': pack(N.tech, N.sem),
-  '6257': pack(N.tech),
-  '3189': pack(N.tech, N.sem),
-  '6271': pack(N.tech),
-  '6770': pack(N.tech, N.sem),
-  '6488': pack(N.tech, N.sem),
-  '3532': pack(N.tech, N.sem),
-  '6182': pack(N.tech),
-  // 華邦電 — 含使用者回報之主動/主題型 ETF（比重待公開檔補齊）
-  '2344': pack(
-    N.tech,
-    N.sem,
-    N.a403,
-    N.a405,
-    N.a406,
-    N.a980,
-    N.a985,
-    N.a991,
-    N.a993,
-    N.a994,
-    N.a995,
-    N.a996
-  ),
-  '2408': pack(N.tech, N.sem, N.a995, N.a996),
-  '2337': pack(N.tech, N.a995),
-  '8299': pack(N.tech, N.g5),
-  '4979': pack(N.tech, N.g5),
-  '3081': pack(N.tech),
-  '4977': pack(N.tech),
-  '3363': pack(N.tech),
-  '6643': pack(N.tech, N.sem),
-  '6533': pack(N.tech, N.sem),
-  '6213': pack(N.tech),
-};
-
-export function etfsHolding(symbol: string): EtfHolding[] {
-  return ETF_HOLDERS[symbol] || [];
+/** 反查：股票被哪些 ETF 持有 */
+export function etfsHolding(symbol: string): EtfHoldingView[] {
+  const out: EtfHoldingView[] = [];
+  for (const fund of ETF_FUNDS) {
+    const h = fund.holdings.find((x) => x.symbol === symbol);
+    if (!h) continue;
+    out.push({
+      etf: fund.etf,
+      name: fund.name,
+      weightPct: h.weightPct ?? null,
+      changeNote: null,
+      note: fund.source === 'active-theme-list' ? '主動/主題型（比重待公開檔）' : undefined,
+      asOf: fund.asOf,
+      source: fund.source,
+    });
+  }
+  // 比重高的排前面
+  return out.sort((a, b) => (b.weightPct ?? -1) - (a.weightPct ?? -1));
 }

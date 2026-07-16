@@ -8,6 +8,8 @@ type Etf = {
   note?: string;
   weightPct?: number | null;
   changeNote?: string | null;
+  asOf?: string;
+  source?: string;
 };
 
 export function EtfPanel({ symbol }: { symbol: string }) {
@@ -42,9 +44,9 @@ export function EtfPanel({ symbol }: { symbol: string }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-500">
-        反查「哪些 ETF 可能持有本檔」。含被動 + 常見主動/主題型代號。
-        <strong className="font-medium text-slate-700"> 持倉比重 / 增減</strong>
-        需投信公開持股檔；目前多數顯示「—」，有資料才填。
+        <strong className="font-medium text-slate-700">公開持股反查</strong>
+        ：由 ETF 成分檔（投信/指數公開資訊整理）反查持有本檔的 ETF 與比重。
+        主動型多數尚無穩定公開權重 → 顯示「—」。
       </p>
       {etfs.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">
@@ -58,20 +60,35 @@ export function EtfPanel({ symbol }: { symbol: string }) {
                 <th className="px-3 py-2">ETF</th>
                 <th className="px-3 py-2">名稱</th>
                 <th className="px-3 py-2">持倉比重</th>
-                <th className="px-3 py-2">持倉增減</th>
+                <th className="px-3 py-2">資料日</th>
                 <th className="px-3 py-2">備註</th>
               </tr>
             </thead>
             <tbody>
-              {etfs.map((e) => (
-                <tr key={e.etf} className="border-t border-slate-100">
+              {etfs.map((e, i) => (
+                <tr
+                  key={e.etf}
+                  className={`border-t border-slate-100 ${i % 2 ? 'bg-slate-50/60' : ''}`}
+                >
                   <td className="px-3 py-2 font-semibold text-brand-600">{e.etf}</td>
                   <td className="px-3 py-2 text-slate-800">{e.name}</td>
                   <td className="px-3 py-2 tabular-nums text-slate-700">
-                    {e.weightPct != null ? `${e.weightPct.toFixed(2)}%` : '—'}
+                    {e.weightPct != null ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="font-medium">{e.weightPct.toFixed(2)}%</span>
+                        <span className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
+                          <span
+                            className="block h-full rounded-full bg-brand-500/70"
+                            style={{ width: `${Math.min(100, e.weightPct * 2)}%` }}
+                          />
+                        </span>
+                      </span>
+                    ) : (
+                      '—'
+                    )}
                   </td>
-                  <td className="px-3 py-2 text-xs text-slate-500">{e.changeNote || '—'}</td>
-                  <td className="px-3 py-2 text-xs text-slate-400">{e.note || '—'}</td>
+                  <td className="px-3 py-2 text-xs text-slate-400">{e.asOf || '—'}</td>
+                  <td className="px-3 py-2 text-xs text-slate-400">{e.note || e.source || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -79,7 +96,7 @@ export function EtfPanel({ symbol }: { symbol: string }) {
         </div>
       )}
       <p className="text-[11px] text-slate-400">
-        非投信即時申報。日後可接公開成分股 CSV 自動填比重與增減。
+        非投信即時申報。後續可把 CSV 灌入同一 ETF_FUNDS 格式自動更新比重。
       </p>
     </div>
   );
