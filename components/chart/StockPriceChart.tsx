@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   createChart,
   type IChartApi,
+  type ISeriesApi,
   ColorType,
   CrosshairMode,
 } from 'lightweight-charts';
@@ -17,6 +18,15 @@ type Bar = {
   volume?: number | null;
 };
 
+type MaKey = 'ma5' | 'ma10' | 'ma20' | 'ma60';
+
+const MA_META: Record<MaKey, { period: number; color: string; label: string; defaultOn: boolean }> = {
+  ma5: { period: 5, color: '#f59e0b', label: '5MA', defaultOn: true },
+  ma10: { period: 10, color: '#a855f7', label: '10MA', defaultOn: false },
+  ma20: { period: 20, color: '#3b82f6', label: '20MA', defaultOn: true },
+  ma60: { period: 60, color: '#14b8a6', label: '60MA', defaultOn: false },
+};
+
 function sma(closes: number[], period: number): Array<number | null> {
   const out: Array<number | null> = [];
   let sum = 0;
@@ -28,10 +38,7 @@ function sma(closes: number[], period: number): Array<number | null> {
   return out;
 }
 
-/**
- * Lightweight Charts K 線（紅漲綠跌）+ MA5/MA20 + 成交量
- * 資料：/api/prices?limit=240&refresh=1
- */
+/** 自有 K 線：5/10/20/60 MA 可勾選 + 成交量 */
 export function StockPriceChart({
   symbol,
   name,
@@ -41,12 +48,18 @@ export function StockPriceChart({
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const maSeriesRef = useRef<Partial<Record<MaKey, ISeriesApi<'Line'>>>>({});
   const [bars, setBars] = useState<Bar[]>([]);
   const [source, setSource] = useState('');
   const [lastDate, setLastDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-  const [mode, setMode] = useState<'native' | 'tv'>('native');
+  const [maOn, setMaOn] = useState<Record<MaKey, boolean>>({
+    ma5: true,
+    ma10: false,
+    ma20: true,
+    ma60: false,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -75,11 +88,11 @@ export function StockPriceChart({
   }, [symbol]);
 
   useEffect(() => {
-    if (mode !== 'native' || !wrapRef.current || !bars.length) return;
+    if (!wrapRef.current || !bars.length) return;
 
     const el = wrapRef.current;
     const chart = createChart(el, {
-      height: 360,
+      height: 380,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
         textColor: '#64748b',
@@ -115,32 +128,25 @@ export function StockPriceChart({
     candle.setData(candleData as never);
 
     const closes = candleData.map((c) => c.close);
-    const ma5 = sma(closes, 5);
-    const ma20 = sma(closes, 20);
-
-    const line5 = chart.addLineSeries({
-      color: '#f59e0b',
-      lineWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: false,
+    const seriesMap: Partial<Record<MaKey, ISeriesApi<'Line'>>> = {};
+    (Object.keys(MA_META) as MaKey[]).forEach((key) => {
+      const meta = MA_META[key];
+      const series = chart.addLineSeries({
+        color: meta.color,
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        visible: maOn[key],
+      });
+      const vals = sma(closes, meta.period);
+      series.setData(
+        candleData
+          .map((c, i) => (vals[i] != null ? { time: c.time, value: vals[i]! } : null))
+          .filter(Boolean) as never
+      );
+      seriesMap[key] = series;
     });
-    line5.setData(
-      candleData
-        .map((c, i) => (ma5[i] != null ? { time: c.time, value: ma5[i]! } : null))
-        .filter(Boolean) as never
-    );
-
-    const line20 = chart.addLineSeries({
-      color: '#3b82f6',
-      lineWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: false,
-    });
-    line20.setData(
-      candleData
-        .map((c, i) => (ma20[i] != null ? { time: c.time, value: ma20[i]! } : null))
-        .filter(Boolean) as never
-    );
+    maSeriesRef.current = seriesMap;
 
     const vol = chart.addHistogramSeries({
       priceFormat: { type: 'volume' },
@@ -174,20 +180,26 @@ export function StockPriceChart({
       ro.disconnect();
       chart.remove();
       chartRef.current = null;
+      maSeriesRef.current = {};
     };
-  }, [bars, mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- maOn toggled via separate effect
+  }, [bars]);
+
+  useEffect(() => {
+    (Object.keys(MA_META) as MaKey[]).forEach((key) => {
+      maSeriesRef.current[key]?.applyOptions({ visible: maOn[key] });
+    });
+  }, [maOn]);
 
   if (loading) {
     return (
-      <div className="flex h-72 items-center justify-center text-sm text-slate-400">
-        載入 K 線…
-      </div>
+      <div className="flex h-72 items-center justify-center text-sm text-slate-400">載入 K 線…</div>
     );
   }
   if (err) {
     return <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{err}</div>;
   }
-  if (!bars.length && mode === 'native') {
+  if (!bars.length) {
     return <div className="text-sm text-slate-400">尚無價格資料</div>;
   }
 
@@ -195,94 +207,34 @@ export function StockPriceChart({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
         <span>
-          {name || symbol} · {mode === 'native' ? `${bars.length} 根日 K` : 'TradingView'}
+          {name || symbol} · {bars.length} 根日 K
           {lastDate ? ` · 至 ${lastDate}` : ''}
         </span>
-        <div className="flex items-center gap-2">
-          <span className="hidden sm:inline">source: {source || 'tv'}</span>
-          <div className="inline-flex rounded-lg bg-slate-100 p-0.5">
-            <button
-              type="button"
-              className={`rounded-md px-2 py-1 text-[11px] ${mode === 'native' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}
-              onClick={() => setMode('native')}
-            >
-              自有資料
-            </button>
-            <button
-              type="button"
-              className={`rounded-md px-2 py-1 text-[11px] ${mode === 'tv' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}
-              onClick={() => setMode('tv')}
-            >
-              TradingView
-            </button>
-          </div>
-        </div>
+        <span>source: {source}</span>
       </div>
 
-      {mode === 'native' ? (
-        <>
-          <div className="mb-1 flex gap-3 text-[11px] text-slate-400">
-            <span className="inline-flex items-center gap-1">
-              <i className="inline-block h-0.5 w-3 bg-amber-500" /> MA5
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <i className="inline-block h-0.5 w-3 bg-blue-500" /> MA20
-            </span>
-            <span>紅漲綠跌</span>
-          </div>
-          <div ref={wrapRef} className="w-full" />
-        </>
-      ) : (
-        <TradingViewAdvanced symbol={symbol} />
-      )}
-    </div>
-  );
-}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 px-3 py-2 text-xs">
+        <span className="font-medium text-slate-600">均線</span>
+        {(Object.keys(MA_META) as MaKey[]).map((key) => {
+          const m = MA_META[key];
+          return (
+            <label key={key} className="inline-flex cursor-pointer items-center gap-1.5 text-slate-700">
+              <input
+                type="checkbox"
+                className="rounded border-slate-300"
+                checked={maOn[key]}
+                onChange={() => setMaOn((prev) => ({ ...prev, [key]: !prev[key] }))}
+              />
+              <span style={{ color: m.color }} className="font-medium">
+                {m.label}
+              </span>
+            </label>
+          );
+        })}
+        <span className="ml-auto text-[11px] text-slate-400">紅漲綠跌 · 拖曳縮放</span>
+      </div>
 
-function TradingViewAdvanced({ symbol }: { symbol: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!ref.current) return;
-    ref.current.innerHTML = '';
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/tv.js';
-    script.async = true;
-    script.onload = () => {
-      // @ts-expect-error TradingView global
-      if (typeof TradingView === 'undefined' || !ref.current) return;
-      // @ts-expect-error TradingView widget
-      new TradingView.widget({
-        width: '100%',
-        height: 420,
-        symbol: `TWSE:${symbol}`,
-        interval: 'D',
-        timezone: 'Asia/Taipei',
-        theme: 'light',
-        style: '1',
-        locale: 'zh_TW',
-        toolbar_bg: '#f8fafc',
-        enable_publishing: false,
-        hide_side_toolbar: false,
-        allow_symbol_change: false,
-        container_id: ref.current.id,
-      });
-    };
-    const id = `tv_${symbol}_${Math.random().toString(36).slice(2, 8)}`;
-    ref.current.id = id;
-    document.body.appendChild(script);
-    return () => {
-      script.remove();
-      if (ref.current) ref.current.innerHTML = '';
-    };
-  }, [symbol]);
-
-  return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div ref={ref} className="min-h-[420px] w-full" />
-      <p className="border-t border-slate-100 px-3 py-2 text-[11px] text-slate-400">
-        TradingView 小工具（技術分析完整）。日線主資料仍以本站 TWSE/TPEx 為準。
-      </p>
+      <div ref={wrapRef} className="w-full" />
     </div>
   );
 }

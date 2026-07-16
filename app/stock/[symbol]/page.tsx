@@ -10,6 +10,8 @@ import { FinancialsPanel } from '@/components/stock/FinancialsPanel';
 import { AiInsightsPanel } from '@/components/stock/AiInsightsPanel';
 import { BasicInfoPanel } from '@/components/stock/BasicInfoPanel';
 import { NewsPanel } from '@/components/stock/NewsPanel';
+import { EtfPanel } from '@/components/stock/EtfPanel';
+import { IndustryAnalysisPanel } from '@/components/stock/IndustryAnalysisPanel';
 import { PanelErrorBoundary } from '@/components/ui/PanelErrorBoundary';
 
 export const revalidate = 60;
@@ -59,8 +61,10 @@ export default async function StockPage({
       <Tabs defaultValue="chart">
         <TabsList>
           <TabsTrigger value="chart">走勢</TabsTrigger>
+          <TabsTrigger value="industry">產業分析</TabsTrigger>
           <TabsTrigger value="supply">供應鏈</TabsTrigger>
           <TabsTrigger value="basic">基本資料</TabsTrigger>
+          <TabsTrigger value="etf">ETF</TabsTrigger>
           <TabsTrigger value="news">消息</TabsTrigger>
           <TabsTrigger value="financials">財務分析</TabsTrigger>
           <TabsTrigger value="ai">AI 分析</TabsTrigger>
@@ -79,6 +83,19 @@ export default async function StockPage({
           </Card>
         </TabsContent>
 
+        <TabsContent value="industry" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{stock.name} 產業分析</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PanelErrorBoundary title="產業分析">
+                <IndustryAnalysisPanel symbol={stock.symbol} />
+              </PanelErrorBoundary>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="supply" className="mt-4">
           <PanelErrorBoundary title="供應鏈">
             <MapView
@@ -88,7 +105,7 @@ export default async function StockPage({
             />
           </PanelErrorBoundary>
           <p className="mt-2 text-xs text-slate-400">
-            點一下高亮上下游 · 側欄看詳情 · 雙擊進個股 · 手機雙指縮放。
+            點節點高亮 · 側欄詳情 · 左上角 +/- 置中 · 桌機 Ctrl+滾輪縮放 · 手機雙指縮放
           </p>
         </TabsContent>
 
@@ -104,6 +121,19 @@ export default async function StockPage({
                   industry={stock.industry}
                   themeSlug={stock.themeSlug}
                 />
+              </PanelErrorBoundary>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="etf" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{stock.name} 相關 ETF</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PanelErrorBoundary title="ETF">
+                <EtfPanel symbol={stock.symbol} />
               </PanelErrorBoundary>
             </CardContent>
           </Card>

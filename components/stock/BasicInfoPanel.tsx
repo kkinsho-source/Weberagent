@@ -1,19 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 type Profile = {
   fullName?: string;
   shortName?: string;
+  industryCode?: string;
+  industryName?: string;
   address?: string;
   chairman?: string;
   generalManager?: string;
   spokesman?: string;
+  spokesmanTitle?: string;
   phone?: string;
   established?: string;
   listedDate?: string;
   paidInCapital?: string;
   parValue?: string;
+  taxId?: string;
+  privateShares?: string;
+  preferredShares?: string;
   dataSource?: string;
 };
 
@@ -27,7 +34,14 @@ type Valuation = {
   dataSource?: string;
 };
 
-type Etf = { etf: string; name: string; note?: string };
+type Highlight = {
+  lastRevenue?: {
+    yearMonth: string;
+    revenue: number;
+    yoyPct: number | null;
+  } | null;
+  lastEps?: { year: number; season: number; eps: number } | null;
+};
 
 export function BasicInfoPanel({
   symbol,
@@ -40,7 +54,7 @@ export function BasicInfoPanel({
 }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [val, setVal] = useState<Valuation | null>(null);
-  const [etfs, setEtfs] = useState<Etf[]>([]);
+  const [hl, setHl] = useState<Highlight | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -55,7 +69,7 @@ export function BasicInfoPanel({
         if (!res.ok) throw new Error(json.error || res.statusText);
         setProfile(json.profile);
         setVal(json.valuation);
-        setEtfs(json.etfs || []);
+        setHl(json.highlight || null);
       } catch (e) {
         if (!cancelled) setErr(e instanceof Error ? e.message : String(e));
       } finally {
@@ -74,23 +88,56 @@ export function BasicInfoPanel({
     if (!s) return '—';
     const n = Number(String(s).replace(/,/g, ''));
     if (!Number.isFinite(n)) return s;
-    // 實收資本額多為元 → 億
     return `${(n / 1e8).toFixed(2)} 億`;
   };
 
   return (
     <div className="space-y-5">
+      {(hl?.lastRevenue || hl?.lastEps) && (
+        <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+          {hl.lastRevenue && (
+            <KV
+              k="最新月營收"
+              v={`${(hl.lastRevenue.revenue / 1000).toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+              })} 百萬（${hl.lastRevenue.yearMonth}）`}
+            />
+          )}
+          {hl.lastRevenue?.yoyPct != null && (
+            <KV
+              k="營收年增"
+              v={`${hl.lastRevenue.yoyPct >= 0 ? '+' : ''}${hl.lastRevenue.yoyPct.toFixed(1)}%`}
+            />
+          )}
+          {hl.lastEps && (
+            <KV k="最近季 EPS" v={`${hl.lastEps.year} Q${hl.lastEps.season} · ${hl.lastEps.eps.toFixed(2)} 元`} />
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
         <KV k="公司全名" v={profile?.fullName || '—'} />
-        <KV k="產業" v={industry || '—'} />
+        <KV k="統一編號" v={profile?.taxId || '—'} />
+        <KV k="產業" v={profile?.industryName || industry || '—'} />
+        <KV k="產業代碼" v={profile?.industryCode || '—'} />
         <KV k="題材" v={themeSlug || '—'} />
+        <KV k="面額" v={profile?.parValue || '—'} />
         <KV k="董事長" v={profile?.chairman || '—'} />
         <KV k="總經理" v={profile?.generalManager || '—'} />
-        <KV k="發言人" v={profile?.spokesman || '—'} />
+        <KV
+          k="發言人"
+          v={
+            profile?.spokesman
+              ? `${profile.spokesman}${profile.spokesmanTitle ? `（${profile.spokesmanTitle}）` : ''}`
+              : '—'
+          }
+        />
         <KV k="成立日期" v={profile?.established || '—'} />
         <KV k="上市日期" v={profile?.listedDate || '—'} />
         <KV k="實收資本額" v={fmtCap(profile?.paidInCapital)} />
         <KV k="總機" v={profile?.phone || '—'} />
+        <KV k="私募股數" v={profile?.privateShares || '—'} />
+        <KV k="特別股" v={profile?.preferredShares || '—'} />
         <div className="col-span-2 sm:col-span-3">
           <KV k="地址" v={profile?.address || '—'} />
         </div>
@@ -120,34 +167,17 @@ export function BasicInfoPanel({
         )}
       </div>
 
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">相關 ETF（示意）</h3>
-        {etfs.length === 0 ? (
-          <p className="text-sm text-slate-400">
-            暫無編輯的 ETF 對照。後續可接公開成分股檔。
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {etfs.map((e) => (
-              <li
-                key={e.etf}
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-              >
-                <span>
-                  <span className="font-semibold text-brand-600">{e.etf}</span>
-                  <span className="ml-2 text-slate-700">{e.name}</span>
-                </span>
-                {e.note && <span className="text-xs text-slate-400">{e.note}</span>}
-              </li>
-            ))}
-          </ul>
+      <p className="text-xs text-slate-400">
+        ETF 持股請見獨立分頁「ETF」。更完整供應鏈見「供應鏈 / 產業分析」。
+        {themeSlug && (
+          <>
+            {' '}
+            <Link href={`/themes/${themeSlug}`} className="text-brand-600 hover:underline">
+              前往題材頁
+            </Link>
+          </>
         )}
-        <p className="mt-2 text-[11px] text-slate-400">
-          成分與權重會變動，僅供導覽；非即時投信申報。
-        </p>
-      </div>
-
-      <TradingViewSymbolOverview symbol={symbol} />
+      </p>
     </div>
   );
 }
@@ -156,38 +186,7 @@ function KV({ k, v }: { k: string; v: string }) {
   return (
     <div className="rounded-lg bg-slate-50 p-3">
       <div className="text-xs text-slate-400">{k}</div>
-      <div className="mt-0.5 font-medium text-slate-800 break-words">{v}</div>
-    </div>
-  );
-}
-
-function TradingViewSymbolOverview({ symbol }: { symbol: string }) {
-  useEffect(() => {
-    const id = `tv_overview_${symbol}`;
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.innerHTML = '';
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js';
-    script.async = true;
-    script.type = 'text/javascript';
-    script.innerHTML = JSON.stringify({
-      symbol: `TWSE:${symbol}`,
-      width: '100%',
-      locale: 'zh_TW',
-      colorTheme: 'light',
-      isTransparent: true,
-    });
-    el.appendChild(script);
-  }, [symbol]);
-
-  return (
-    <div>
-      <h3 className="mb-2 text-sm font-semibold text-slate-700">TradingView 概覽</h3>
-      <div
-        id={`tv_overview_${symbol}`}
-        className="overflow-hidden rounded-xl border border-slate-200 bg-white"
-      />
+      <div className="mt-0.5 break-words font-medium text-slate-800">{v}</div>
     </div>
   );
 }

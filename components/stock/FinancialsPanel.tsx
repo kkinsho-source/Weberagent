@@ -9,7 +9,6 @@ type Revenue = {
   momPct: number | null;
   yoyPct: number | null;
 };
-type Eps = { year: number; season: number; eps: number };
 type Income = {
   date: string;
   year: number;
@@ -21,17 +20,37 @@ type Income = {
   netIncome: number | null;
   eps: number | null;
 };
+type Balance = {
+  date: string;
+  year: number;
+  season: number;
+  cash: number | null;
+  currentAssets: number | null;
+  totalAssets: number | null;
+  currentLiabilities: number | null;
+  totalLiabilities: number | null;
+  equity: number | null;
+};
+type Cashflow = {
+  date: string;
+  year: number;
+  season: number;
+  operating: number | null;
+  investing: number | null;
+  financing: number | null;
+  endCash: number | null;
+};
 
 function yi(n: number | null): string {
   if (n == null) return '—';
-  // FinMind 財報單位多為元
   return (n / 1e8).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' 億';
 }
 
 export function FinancialsPanel({ symbol }: { symbol: string }) {
   const [revenues, setRevenues] = useState<Revenue[]>([]);
-  const [eps, setEps] = useState<Eps[]>([]);
   const [income, setIncome] = useState<Income[]>([]);
+  const [balance, setBalance] = useState<Balance[]>([]);
+  const [cashflow, setCashflow] = useState<Cashflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [source, setSource] = useState('');
@@ -49,9 +68,12 @@ export function FinancialsPanel({ symbol }: { symbol: string }) {
         if (cancelled) return;
         if (!fin.ok) throw new Error(fin.j.error || 'financials failed');
         setRevenues(fin.j.revenues || []);
-        setEps(fin.j.eps || []);
         setSource(fin.j.dataSource || '');
-        if (prof.ok) setIncome(prof.j.income || []);
+        if (prof.ok) {
+          setIncome(prof.j.income || []);
+          setBalance(prof.j.balance || []);
+          setCashflow(prof.j.cashflow || []);
+        }
       } catch (e) {
         if (!cancelled) setErr(e instanceof Error ? e.message : String(e));
       } finally {
@@ -124,35 +146,33 @@ export function FinancialsPanel({ symbol }: { symbol: string }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-        <span>月營收（近 {revenues.length} 月）· 單位換算為百萬元</span>
+        <span>月營收（近 {revenues.length} 月）</span>
         <span className="max-w-[50%] truncate">{source}</span>
       </div>
 
       {last && (
         <div className="grid grid-cols-3 gap-3 text-sm">
-          <div className="rounded-lg bg-slate-50 p-3">
-            <div className="text-xs text-slate-400">最新月營收</div>
-            <div className="font-semibold text-slate-800">
-              {(last.revenue / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} 百萬
-            </div>
-            <div className="text-[11px] text-slate-400">{last.yearMonth}</div>
-          </div>
-          <div className="rounded-lg bg-slate-50 p-3">
-            <div className="text-xs text-slate-400">月增</div>
-            <div className={`font-semibold ${(last.momPct ?? 0) >= 0 ? 'text-up' : 'text-down'}`}>
-              {last.momPct != null
+          <Mini
+            k="最新月營收"
+            v={`${(last.revenue / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} 百萬`}
+            sub={last.yearMonth}
+          />
+          <Mini
+            k="月增"
+            v={
+              last.momPct != null
                 ? `${last.momPct >= 0 ? '+' : ''}${last.momPct.toFixed(1)}%`
-                : '—'}
-            </div>
-          </div>
-          <div className="rounded-lg bg-slate-50 p-3">
-            <div className="text-xs text-slate-400">年增</div>
-            <div className={`font-semibold ${(last.yoyPct ?? 0) >= 0 ? 'text-up' : 'text-down'}`}>
-              {last.yoyPct != null
+                : '—'
+            }
+          />
+          <Mini
+            k="年增"
+            v={
+              last.yoyPct != null
                 ? `${last.yoyPct >= 0 ? '+' : ''}${last.yoyPct.toFixed(1)}%`
-                : '—'}
-            </div>
-          </div>
+                : '—'
+            }
+          />
         </div>
       )}
 
@@ -177,92 +197,134 @@ export function FinancialsPanel({ symbol }: { symbol: string }) {
             <Mini k="營業利益" v={yi(lastInc.operatingIncome)} />
             <Mini k="稅前淨利" v={yi(lastInc.pretaxIncome)} />
             <Mini k="稅後淨利" v={yi(lastInc.netIncome)} />
-            <Mini
-              k="EPS"
-              v={lastInc.eps != null ? lastInc.eps.toFixed(2) : '—'}
-            />
+            <Mini k="EPS" v={lastInc.eps != null ? lastInc.eps.toFixed(2) : '—'} />
           </div>
         </div>
       )}
 
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">季報損益表（近 {income.length} 季）</h3>
+      <TableBlock title={`季報損益表（近 ${income.length} 季）`}>
         {income.length === 0 ? (
-          <p className="text-sm text-slate-400">無季報損益資料</p>
+          <Empty />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-500">
-                <tr>
-                  <th className="px-3 py-2">期間</th>
-                  <th className="px-3 py-2">營收</th>
-                  <th className="px-3 py-2">毛利</th>
-                  <th className="px-3 py-2">營業利益</th>
-                  <th className="px-3 py-2">稅後淨利</th>
-                  <th className="px-3 py-2">EPS</th>
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="bg-slate-50 text-xs text-slate-500">
+              <tr>
+                <th className="px-3 py-2">期間</th>
+                <th className="px-3 py-2">營收</th>
+                <th className="px-3 py-2">毛利</th>
+                <th className="px-3 py-2">營業利益</th>
+                <th className="px-3 py-2">稅後淨利</th>
+                <th className="px-3 py-2">EPS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...income].reverse().map((q) => (
+                <tr key={q.date} className="border-t border-slate-100">
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {q.year} Q{q.season}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.revenue)}</td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.grossProfit)}</td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.operatingIncome)}</td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.netIncome)}</td>
+                  <td className="px-3 py-2 tabular-nums font-medium">
+                    {q.eps != null ? q.eps.toFixed(2) : '—'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {[...income].reverse().map((q) => (
-                  <tr key={q.date} className="border-t border-slate-100">
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {q.year} Q{q.season}
-                    </td>
-                    <td className="px-3 py-2 tabular-nums">{yi(q.revenue)}</td>
-                    <td className="px-3 py-2 tabular-nums">{yi(q.grossProfit)}</td>
-                    <td className="px-3 py-2 tabular-nums">{yi(q.operatingIncome)}</td>
-                    <td className="px-3 py-2 tabular-nums">{yi(q.netIncome)}</td>
-                    <td className="px-3 py-2 tabular-nums font-medium">
-                      {q.eps != null ? q.eps.toFixed(2) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         )}
-      </div>
+      </TableBlock>
 
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">季 EPS（近 {eps.length} 季）</h3>
-        {eps.length === 0 ? (
-          <p className="text-sm text-slate-400">無季報 EPS 資料</p>
+      <TableBlock title={`資產負債（近 ${balance.length} 季）`}>
+        {balance.length === 0 ? (
+          <Empty />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-xs text-slate-400">
-                <tr>
-                  <th className="py-1">年度</th>
-                  <th className="py-1">季別</th>
-                  <th className="py-1">EPS（元）</th>
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="bg-slate-50 text-xs text-slate-500">
+              <tr>
+                <th className="px-3 py-2">期間</th>
+                <th className="px-3 py-2">現金</th>
+                <th className="px-3 py-2">流動資產</th>
+                <th className="px-3 py-2">總資產</th>
+                <th className="px-3 py-2">流動負債</th>
+                <th className="px-3 py-2">總負債</th>
+                <th className="px-3 py-2">權益</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...balance].reverse().map((q) => (
+                <tr key={q.date} className="border-t border-slate-100">
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {q.year} Q{q.season}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.cash)}</td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.currentAssets)}</td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.totalAssets)}</td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.currentLiabilities)}</td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.totalLiabilities)}</td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.equity)}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {[...eps].reverse().map((e) => (
-                  <tr key={`${e.year}-Q${e.season}`} className="border-t border-slate-100">
-                    <td className="py-1.5">{e.year}</td>
-                    <td className="py-1.5">Q{e.season}</td>
-                    <td
-                      className={`py-1.5 font-medium ${e.eps >= 0 ? 'text-slate-800' : 'text-down'}`}
-                    >
-                      {e.eps.toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         )}
-      </div>
+      </TableBlock>
+
+      <TableBlock title={`現金流（近 ${cashflow.length} 季）`}>
+        {cashflow.length === 0 ? (
+          <Empty />
+        ) : (
+          <table className="w-full min-w-[560px] text-left text-sm">
+            <thead className="bg-slate-50 text-xs text-slate-500">
+              <tr>
+                <th className="px-3 py-2">期間</th>
+                <th className="px-3 py-2">營運</th>
+                <th className="px-3 py-2">投資</th>
+                <th className="px-3 py-2">融資</th>
+                <th className="px-3 py-2">期末現金</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...cashflow].reverse().map((q) => (
+                <tr key={q.date} className="border-t border-slate-100">
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {q.year} Q{q.season}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.operating)}</td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.investing)}</td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.financing)}</td>
+                  <td className="px-3 py-2 tabular-nums">{yi(q.endCash)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </TableBlock>
     </div>
   );
 }
 
-function Mini({ k, v }: { k: string; v: string }) {
+function Mini({ k, v, sub }: { k: string; v: string; sub?: string }) {
   return (
     <div className="rounded-lg bg-slate-50 p-3">
       <div className="text-xs text-slate-400">{k}</div>
       <div className="font-semibold text-slate-800">{v}</div>
+      {sub && <div className="text-[11px] text-slate-400">{sub}</div>}
     </div>
   );
+}
+
+function TableBlock({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="mb-2 text-sm font-semibold text-slate-700">{title}</h3>
+      <div className="overflow-x-auto rounded-xl border border-slate-200">{children}</div>
+    </div>
+  );
+}
+
+function Empty() {
+  return <p className="p-4 text-sm text-slate-400">暫無資料</p>;
 }

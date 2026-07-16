@@ -26,6 +26,38 @@ interface Props {
   title?: string;
 }
 
+function ZoomToolbar() {
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  return (
+    <div className="absolute left-2 top-10 z-10 flex gap-1 sm:left-3 sm:top-12">
+      <button
+        type="button"
+        className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+        onClick={() => zoomIn({ duration: 160 })}
+        title="放大"
+      >
+        +
+      </button>
+      <button
+        type="button"
+        className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+        onClick={() => zoomOut({ duration: 160 })}
+        title="縮小"
+      >
+        −
+      </button>
+      <button
+        type="button"
+        className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm hover:bg-slate-50"
+        onClick={() => fitView({ padding: 0.15, duration: 200 })}
+        title="置中"
+      >
+        置中
+      </button>
+    </div>
+  );
+}
+
 function FitOnMount({ nodeCount }: { nodeCount: number }) {
   const { fitView } = useReactFlow();
   useEffect(() => {
@@ -156,9 +188,10 @@ function GraphInner({ nodes, edges, title }: Props) {
             nodesDraggable={!isMobile}
             nodesConnectable={false}
             elementsSelectable
-            panOnScroll={!isMobile}
-            zoomOnScroll={!isMobile}
+            panOnScroll={false}
+            zoomOnScroll
             zoomOnPinch
+            zoomActivationKeyCode="Control"
             panOnDrag
             selectionOnDrag={false}
             preventScrolling
@@ -168,7 +201,7 @@ function GraphInner({ nodes, edges, title }: Props) {
             <Controls
               showInteractive={false}
               position="bottom-right"
-              className="!m-2 !scale-90 sm:!m-3 sm:!scale-100"
+              className="!m-2 !scale-100 sm:!m-3 sm:!scale-110"
             />
             {!isMobile && (
               <MiniMap
@@ -178,6 +211,7 @@ function GraphInner({ nodes, edges, title }: Props) {
                 maskColor="rgba(241,245,249,0.7)"
               />
             )}
+            <ZoomToolbar />
             <FitOnMount nodeCount={nodes.length} />
           </ReactFlow>
         </div>
