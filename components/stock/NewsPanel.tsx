@@ -135,7 +135,17 @@ export function NewsPanel({ symbol, name }: { symbol: string; name: string }) {
 
         {!loadingNews && news.length === 0 && (
           <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-            暫無外鏈新聞（RSS 可能暫時不可用）。
+            暫無外鏈新聞（Google / Yahoo RSS 可能暫時不可用）。
+          </div>
+        )}
+
+        {!loadingNews && news.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 text-[11px] text-slate-500">
+            {Array.from(new Set(news.map((n) => n.source))).map((s) => (
+              <span key={s} className="rounded-full bg-slate-100 px-2 py-0.5">
+                {s} × {news.filter((n) => n.source === s).length}
+              </span>
+            ))}
           </div>
         )}
 
@@ -150,9 +160,20 @@ export function NewsPanel({ symbol, name }: { symbol: string; name: string }) {
               >
                 {n.title}
               </a>
-              <div className="mt-1 text-[11px] text-slate-400">
-                {n.source}
-                {n.pubDate ? ` · ${n.pubDate}` : ''} · {name}
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                <span
+                  className={`rounded px-1.5 py-0.5 ${
+                    n.source.startsWith('Yahoo')
+                      ? 'bg-purple-50 text-purple-700'
+                      : n.source.includes('Google')
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {n.source}
+                </span>
+                {n.pubDate ? <span>{n.pubDate}</span> : null}
+                <span>· {name}</span>
               </div>
             </li>
           ))}
