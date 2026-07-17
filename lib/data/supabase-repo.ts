@@ -20,6 +20,7 @@ function mapStock(row: DbStock): Stock {
     price: Number(row.price ?? 0),
     changePct: Number(row.change_pct ?? 0),
     marketCap: Number(row.market_cap ?? 0),
+    asOf: row.as_of ?? undefined,
   };
 }
 

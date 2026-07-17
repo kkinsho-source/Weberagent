@@ -4,7 +4,7 @@
  * 反查：股票代號 -> 哪些 ETF + 比重
  *
  * 資料來源註記：以投信公開持股/指數成分公開資訊整理；非即時。
- * 後續可改為 ETL 從 CSV 灌入同一格式。
+ * E2：擴覆蓋核心股；無可靠比重 → weightPct null + 誠實備註
  */
 export type EtfFundHolding = {
   symbol: string;
@@ -35,6 +35,7 @@ export const ETF_FUNDS: EtfFund[] = [
       { symbol: '2382', weightPct: 2.5 },
       { symbol: '2303', weightPct: 2 },
       { symbol: '3711', weightPct: 1.5 },
+      { symbol: '3034', weightPct: 1.2 },
     ],
   },
   {
@@ -49,6 +50,7 @@ export const ETF_FUNDS: EtfFund[] = [
       { symbol: '2308', weightPct: 3 },
       { symbol: '2382', weightPct: 2.5 },
       { symbol: '2303', weightPct: 2 },
+      { symbol: '3034', weightPct: 1.2 },
     ],
   },
   {
@@ -70,6 +72,10 @@ export const ETF_FUNDS: EtfFund[] = [
       { symbol: '2408', weightPct: 1.2 },
       { symbol: '3017', weightPct: 1 },
       { symbol: '6488', weightPct: 1 },
+      { symbol: '2376', weightPct: 1 },
+      { symbol: '3034', weightPct: 2 },
+      { symbol: '6415', weightPct: 1.5 },
+      { symbol: '2360', weightPct: 1 },
     ],
   },
   {
@@ -83,6 +89,7 @@ export const ETF_FUNDS: EtfFund[] = [
       { symbol: '2308', weightPct: 3 },
       { symbol: '3711', weightPct: 2 },
       { symbol: '2356', weightPct: 1.5 },
+      { symbol: '2324', weightPct: 1.2 },
     ],
   },
   {
@@ -97,6 +104,7 @@ export const ETF_FUNDS: EtfFund[] = [
       { symbol: '2383', weightPct: 3 },
       { symbol: '6669', weightPct: 3 },
       { symbol: '8299', weightPct: 2 },
+      { symbol: '3034', weightPct: 2 },
     ],
   },
   {
@@ -108,6 +116,7 @@ export const ETF_FUNDS: EtfFund[] = [
       { symbol: '2330', weightPct: 8 },
       { symbol: '2303', weightPct: 3 },
       { symbol: '2317', weightPct: 2 },
+      { symbol: '2324', weightPct: 1.5 },
     ],
   },
   {
@@ -125,6 +134,59 @@ export const ETF_FUNDS: EtfFund[] = [
       { symbol: '6488', weightPct: 2 },
       { symbol: '2344', weightPct: 2 },
       { symbol: '2408', weightPct: 2 },
+      { symbol: '2360', weightPct: 2 },
+      { symbol: '3680', weightPct: 1.5 },
+      { symbol: '6510', weightPct: 1.2 },
+      { symbol: '6239', weightPct: 1.5 },
+      { symbol: '3529', weightPct: 1 },
+    ],
+  },
+  {
+    etf: '00892',
+    name: '富邦台灣半導體',
+    asOf: '2026-07',
+    source: 'public-top',
+    holdings: [
+      { symbol: '2330', weightPct: 35 },
+      { symbol: '2454', weightPct: 8 },
+      { symbol: '2303', weightPct: 5 },
+      { symbol: '3711', weightPct: 4 },
+      { symbol: '3034', weightPct: 3 },
+      { symbol: '2379', weightPct: 2.5 },
+      { symbol: '6488', weightPct: 2 },
+      { symbol: '2344', weightPct: 2 },
+      { symbol: '2360', weightPct: 1.5 },
+      { symbol: '6415', weightPct: 1.5 },
+    ],
+  },
+  {
+    etf: '00927',
+    name: '群益台灣精選高息',
+    asOf: '2026-07',
+    source: 'public-top',
+    holdings: [
+      { symbol: '2330', weightPct: 7 },
+      { symbol: '2317', weightPct: 3 },
+      { symbol: '2308', weightPct: 2 },
+      { symbol: '2376', weightPct: 1.5 },
+    ],
+  },
+  {
+    etf: '00905',
+    name: 'FT臺灣半導體',
+    asOf: '2026-07',
+    source: 'public-top',
+    holdings: [
+      { symbol: '2330', weightPct: 28 },
+      { symbol: '2454', weightPct: 7 },
+      { symbol: '2303', weightPct: 5 },
+      { symbol: '3711', weightPct: 4 },
+      { symbol: '3443', weightPct: 2 },
+      { symbol: '3661', weightPct: 2 },
+      { symbol: '2360', weightPct: 1.5 },
+      { symbol: '3680', weightPct: 1 },
+      { symbol: '6239', weightPct: 1.5 },
+      { symbol: '6510', weightPct: 1 },
     ],
   },
   // 主動/主題型：列名為「持有」反查，比重待官方檔補
@@ -151,6 +213,8 @@ export const ETF_FUNDS: EtfFund[] = [
           { symbol: '2330', weightPct: null },
           { symbol: '2303', weightPct: null },
           { symbol: '2408', weightPct: null },
+          { symbol: '2360', weightPct: null },
+          { symbol: '3034', weightPct: null },
         ],
       }) as EtfFund
   ),
@@ -182,6 +246,5 @@ export function etfsHolding(symbol: string): EtfHoldingView[] {
       source: fund.source,
     });
   }
-  // 比重高的排前面
   return out.sort((a, b) => (b.weightPct ?? -1) - (a.weightPct ?? -1));
 }

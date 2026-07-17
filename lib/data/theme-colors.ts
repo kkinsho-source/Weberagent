@@ -10,6 +10,7 @@ export const THEME_COLORS: Record<string, string> = {
   optical_cpo: '#ec4899',
   materials_wafer: '#64748b',
   memory_hbm: '#a855f7',
+  semicon_equipment: '#0f766e',
 };
 
 export function themeColor(slug: string): string {

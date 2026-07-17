@@ -66,6 +66,7 @@ export function buildRuleInsights(opts: {
     optical_cpo: 'GPU 叢集互聯頻寬驅動高速光模組 / CPO 需求',
     materials_wafer: '矽晶圓為先進製程上游關鍵材料，資本支出與稼動率敏感',
     memory_hbm: 'AI 訓練推論推升 HBM / 高速記憶體與控制器需求',
+    semicon_equipment: '測試與製程設備承接先進製程擴產與良率驗證需求',
   };
   if (themeMap[stock.themeSlug]) {
     bullets.push(themeMap[stock.themeSlug]);

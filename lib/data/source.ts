@@ -13,6 +13,7 @@ import {
   fetchThemesFromSupabase,
   fetchEdgesFromSupabase,
 } from './supabase-repo';
+import { overlayStocksWithLatestPrices } from './quote-overlay';
 
 /**
  * 單一資料縫合層
@@ -41,7 +42,12 @@ export interface DataBundle {
   themes: Theme[];
   supplyEdges: SupplyEdge[];
   dataSource: DataSource;
-  meta: { asOf?: string; source?: string; count?: number } | null;
+  meta: {
+    asOf?: string;
+    source?: string;
+    count?: number;
+    quoteSource?: string;
+  } | null;
 }
 
 let snapshotCache: Snapshot | null | undefined;
@@ -114,15 +120,19 @@ export async function getDataBundle(opts?: {
       ]);
       // 有資料才視為成功（空表退回 snapshot）
       if (stocks.length > 0) {
+        // Q1：用 stock_prices 最新 close 覆寫顯示報價，對齊 K 線收盤
+        const { stocks: overlaid, meta: qMeta } =
+          await overlayStocksWithLatestPrices(stocks);
         return {
-          stocks,
+          stocks: overlaid,
           themes: themes.length ? themes : mockThemes,
           supplyEdges: edges.length ? edges : mockEdges,
           dataSource: 'supabase',
           meta: {
             source: 'supabase',
-            count: stocks.length,
-            asOf: new Date().toISOString().slice(0, 10),
+            count: overlaid.length,
+            asOf: qMeta.priceAsOf || overlaid[0]?.asOf || undefined,
+            quoteSource: qMeta.quoteSource,
           },
         };
       }

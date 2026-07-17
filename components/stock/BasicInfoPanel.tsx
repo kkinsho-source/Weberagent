@@ -61,6 +61,7 @@ export function BasicInfoPanel({
     price?: number;
     changePct?: number;
     name?: string;
+    asOf?: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -116,6 +117,11 @@ export function BasicInfoPanel({
                 {up ? '+' : ''}
                 {Number(quote.changePct || 0).toFixed(2)}%
               </div>
+              {(quote as { asOf?: string }).asOf && (
+                <div className="mt-0.5 text-[11px] text-slate-400">
+                  報價日 {(quote as { asOf?: string }).asOf} · 對齊日K
+                </div>
+              )}
             </div>
             <div className="text-xs text-slate-500">
               {quote.name || symbol}

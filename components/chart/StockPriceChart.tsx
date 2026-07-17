@@ -65,6 +65,52 @@ function bollinger(closes: number[], period = 20, k = 2) {
   return { mid, upper, lower };
 }
 
+function emaSeries(values: number[], period: number): number[] {
+  if (!values.length) return [];
+  const k = 2 / (period + 1);
+  const out: number[] = new Array(values.length);
+  out[0] = values[0];
+  for (let i = 1; i < values.length; i++) {
+    out[i] = values[i] * k + out[i - 1] * (1 - k);
+  }
+  return out;
+}
+
+/** MACD(12,26,9) */
+function macdOf(closes: number[]) {
+  const e12 = emaSeries(closes, 12);
+  const e26 = emaSeries(closes, 26);
+  const line = e12.map((v, i) => v - e26[i]);
+  const signal = emaSeries(line, 9);
+  const hist = line.map((v, i) => v - signal[i]);
+  return { line, signal, hist };
+}
+
+/** RSI Wilder */
+function rsiOf(closes: number[], period = 14): Array<number | null> {
+  const out: Array<number | null> = closes.map(() => null);
+  if (closes.length <= period) return out;
+  let avgGain = 0;
+  let avgLoss = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d >= 0) avgGain += d;
+    else avgLoss -= d;
+  }
+  avgGain /= period;
+  avgLoss /= period;
+  out[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    const gain = d > 0 ? d : 0;
+    const loss = d < 0 ? -d : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    out[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  }
+  return out;
+}
+
 /** 日線 → 週/月 K */
 function aggregateBars(bars: Bar[], tf: Tf): Bar[] {
   if (tf === 'day') return bars;
@@ -115,27 +161,31 @@ export function StockPriceChart({
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const maSeriesRef = useRef<Partial<Record<MaKey, ISeriesApi<'Line'>>>>({});
-  const bbRef = useRef<Partial<Record<'u' | 'm' | 'l', ISeriesApi<'Line'>>>>({});
-  const [rawBars, setRawBars] = useState<Bar[]>([]);
-  const [inst, setInst] = useState<InstDay[]>([]);
-  const [source, setSource] = useState('');
-  const [lastDate, setLastDate] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
-  const [tf, setTf] = useState<Tf>('day');
-  const [maOn, setMaOn] = useState<Record<MaKey, boolean>>({
-    ma5: false,
-    ma10: false,
-    ma20: false,
-    ma60: false,
-  });
-  const [bbOn, setBbOn] = useState(false);
-  const [deductOn, setDeductOn] = useState(false);
-  const [valSeries, setValSeries] = useState<Array<{date:string;pe:number|null;pb:number|null;dividendYield:number|null}>>([]);
-  const [peOn, setPeOn] = useState(true);
-  const [pbOn, setPbOn] = useState(false);
-  const [dyOn, setDyOn] = useState(false);
+    const maSeriesRef = useRef<Partial<Record<MaKey, ISeriesApi<'Line'>>>>({});
+    const bbRef = useRef<Partial<Record<'u' | 'm' | 'l', ISeriesApi<'Line'>>>>({});
+    const volSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+    const [rawBars, setRawBars] = useState<Bar[]>([]);
+    const [inst, setInst] = useState<InstDay[]>([]);
+    const [source, setSource] = useState('');
+    const [lastDate, setLastDate] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [err, setErr] = useState<string | null>(null);
+    const [tf, setTf] = useState<Tf>('day');
+    const [maOn, setMaOn] = useState<Record<MaKey, boolean>>({
+      ma5: false,
+      ma10: false,
+      ma20: false,
+      ma60: false,
+    });
+    const [bbOn, setBbOn] = useState(false);
+    const [deductOn, setDeductOn] = useState(false);
+    const [volOn, setVolOn] = useState(true);
+    const [macdOn, setMacdOn] = useState(false);
+    const [rsiOn, setRsiOn] = useState(false);
+    const [valSeries, setValSeries] = useState<Array<{date:string;pe:number|null;pb:number|null;dividendYield:number|null}>>([]);
+    const [peOn, setPeOn] = useState(true);
+    const [pbOn, setPbOn] = useState(false);
+    const [dyOn, setDyOn] = useState(false);
 
   const bars = useMemo(() => aggregateBars(rawBars, tf), [rawBars, tf]);
 
@@ -273,71 +323,173 @@ export function StockPriceChart({
     bbRef.current = { u, m, l };
 
     const vol = chart.addHistogramSeries({
-      priceFormat: { type: 'volume' },
-      priceScaleId: 'vol',
-    });
-    chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
-    vol.setData(
-      bars
-        .filter((b) => b.date)
-        .map((b) => {
-          const up = Number(b.close) >= Number(b.open ?? b.close);
-          return {
-            time: b.date as string,
-            value: Number(b.volume ?? 0),
-            color: up ? 'rgba(239,68,68,0.35)' : 'rgba(16,185,129,0.35)',
-          };
-        }) as never
-    );
+          priceFormat: { type: 'volume' },
+          priceScaleId: 'vol',
+          visible: volOn,
+        });
+        chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+        vol.setData(
+          bars
+            .filter((b) => b.date)
+            .map((b) => {
+              const up = Number(b.close) >= Number(b.open ?? b.close);
+              return {
+                time: b.date as string,
+                value: Number(b.volume ?? 0),
+                color: up ? 'rgba(239,68,68,0.35)' : 'rgba(16,185,129,0.35)',
+              };
+            }) as never
+        );
+        volSeriesRef.current = vol;
 
-    chart.timeScale().fitContent();
-    const ro = new ResizeObserver(() => {
-      if (el) chart.applyOptions({ width: el.clientWidth });
-    });
-    ro.observe(el);
-    chart.applyOptions({ width: el.clientWidth });
+        chart.timeScale().fitContent();
+        const ro = new ResizeObserver(() => {
+          if (el) chart.applyOptions({ width: el.clientWidth });
+        });
+        ro.observe(el);
+        chart.applyOptions({ width: el.clientWidth });
 
-    return () => {
-      ro.disconnect();
-      chart.remove();
-      chartRef.current = null;
-      maSeriesRef.current = {};
-      bbRef.current = {};
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bars, tf]);
+        return () => {
+          ro.disconnect();
+          chart.remove();
+          chartRef.current = null;
+          maSeriesRef.current = {};
+          bbRef.current = {};
+          volSeriesRef.current = null;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [bars, tf]);
 
-  useEffect(() => {
-    (Object.keys(MA_META) as MaKey[]).forEach((key) => {
-      maSeriesRef.current[key]?.applyOptions({ visible: maOn[key] });
-    });
-  }, [maOn]);
+      useEffect(() => {
+        (Object.keys(MA_META) as MaKey[]).forEach((key) => {
+          maSeriesRef.current[key]?.applyOptions({ visible: maOn[key] });
+        });
+      }, [maOn]);
 
-  useEffect(() => {
-    bbRef.current.u?.applyOptions({ visible: bbOn });
-    bbRef.current.m?.applyOptions({ visible: bbOn });
-    bbRef.current.l?.applyOptions({ visible: bbOn });
-  }, [bbOn]);
+      useEffect(() => {
+        bbRef.current.u?.applyOptions({ visible: bbOn });
+        bbRef.current.m?.applyOptions({ visible: bbOn });
+        bbRef.current.l?.applyOptions({ visible: bbOn });
+      }, [bbOn]);
+
+      useEffect(() => {
+        volSeriesRef.current?.applyOptions({ visible: volOn });
+      }, [volOn]);
 
   const lastClose = bars.length ? Number(bars[bars.length - 1].close) : null;
-  const closes = bars.map((b) => Number(b.close || 0));
-  const deductRows = useMemo(() => {
-    if (lastClose == null) return [];
-    return (Object.keys(MA_META) as MaKey[]).map((key) => {
-      const vals = sma(closes, MA_META[key].period);
-      const ma = vals[vals.length - 1];
-      return {
-        key,
-        label: MA_META[key].label,
-        color: MA_META[key].color,
-        ma,
-        deduct: ma != null ? lastClose - ma : null,
-        pct: ma != null && ma ? ((lastClose - ma) / ma) * 100 : null,
-      };
-    });
-  }, [closes, lastClose]);
+      const prevClose =
+        bars.length >= 2 ? Number(bars[bars.length - 2].close) : null;
+      const dayChangePct =
+        lastClose != null && prevClose && prevClose > 0
+          ? ((lastClose - prevClose) / prevClose) * 100
+          : null;
+    const closes = bars.map((b) => Number(b.close || 0));
+    const deductRows = useMemo(() => {
+      if (lastClose == null) return [];
+      return (Object.keys(MA_META) as MaKey[]).map((key) => {
+        const vals = sma(closes, MA_META[key].period);
+        const ma = vals[vals.length - 1];
+        return {
+          key,
+          label: MA_META[key].label,
+          color: MA_META[key].color,
+          ma,
+          deduct: ma != null ? lastClose - ma : null,
+          pct: ma != null && ma ? ((lastClose - ma) / ma) * 100 : null,
+        };
+      });
+    }, [closes, lastClose]);
 
-  const riverOption = useMemo(() => {
+    const macdOption = useMemo(() => {
+      if (!macdOn || closes.length < 30) return null;
+      const { line, signal, hist } = macdOf(closes);
+      const cats = bars.map((b) => (b.date || '').slice(5));
+      return {
+        tooltip: { trigger: 'axis' },
+        legend: {
+          data: ['MACD', 'Signal', 'Hist'],
+          top: 0,
+          textStyle: { fontSize: 11, color: '#64748b' },
+        },
+        grid: { left: 48, right: 16, top: 32, bottom: 28 },
+        xAxis: {
+          type: 'category',
+          data: cats,
+          axisLabel: { color: '#94a3b8', fontSize: 10 },
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { color: '#94a3b8', fontSize: 10 },
+          splitLine: { lineStyle: { color: '#f1f5f9' } },
+        },
+        series: [
+          {
+            name: 'Hist',
+            type: 'bar',
+            data: hist.map((v) => +v.toFixed(2)),
+            itemStyle: {
+              color: (p: { data: number }) =>
+                p.data >= 0 ? 'rgba(239,68,68,0.45)' : 'rgba(16,185,129,0.45)',
+            },
+          },
+          {
+            name: 'MACD',
+            type: 'line',
+            data: line.map((v) => +v.toFixed(2)),
+            showSymbol: false,
+            color: '#3b82f6',
+            lineStyle: { width: 1.5 },
+          },
+          {
+            name: 'Signal',
+            type: 'line',
+            data: signal.map((v) => +v.toFixed(2)),
+            showSymbol: false,
+            color: '#f59e0b',
+            lineStyle: { width: 1.5 },
+          },
+        ],
+      };
+    }, [macdOn, closes, bars]);
+
+    const rsiOption = useMemo(() => {
+      if (!rsiOn || closes.length < 20) return null;
+      const rsi = rsiOf(closes, 14);
+      const cats = bars.map((b) => (b.date || '').slice(5));
+      return {
+        tooltip: { trigger: 'axis' },
+        grid: { left: 48, right: 16, top: 24, bottom: 28 },
+        xAxis: {
+          type: 'category',
+          data: cats,
+          axisLabel: { color: '#94a3b8', fontSize: 10 },
+        },
+        yAxis: {
+          type: 'value',
+          min: 0,
+          max: 100,
+          axisLabel: { color: '#94a3b8', fontSize: 10 },
+          splitLine: { lineStyle: { color: '#f1f5f9' } },
+        },
+        series: [
+          {
+            name: 'RSI14',
+            type: 'line',
+            data: rsi.map((v) => (v == null ? null : +v.toFixed(1))),
+            showSymbol: false,
+            color: '#8b5cf6',
+            markLine: {
+              silent: true,
+              symbol: 'none',
+              lineStyle: { type: 'dashed', color: '#cbd5e1' },
+              data: [{ yAxis: 70 }, { yAxis: 30 }],
+            },
+          },
+        ],
+      };
+    }, [rsiOn, closes, bars]);
+
+    const riverOption = useMemo(() => {
     const cats = inst.map((d) => d.date.slice(5));
     const f = inst.map((d) => Math.round(d.foreign / 1000));
     const t = inst.map((d) => Math.round(d.trust / 1000));
@@ -412,77 +564,146 @@ export function StockPriceChart({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-        <span>
-          {name || symbol} · {bars.length} 根
-          {tf === 'day' ? '日' : tf === 'week' ? '週' : '月'}K
-          {lastDate ? ` · 至 ${lastDate}` : ''}
-        </span>
-        <span>source: {source}</span>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-lg bg-slate-100 p-0.5">
-          {(
-            [
-              ['day', '日線'],
-              ['week', '週線'],
-              ['month', '月線'],
-            ] as const
-          ).map(([k, label]) => (
-            <button
-              key={k}
-              type="button"
-              className={`rounded-md px-2.5 py-1 text-[11px] ${
-                tf === k ? 'bg-white font-medium text-slate-800 shadow-sm' : 'text-slate-500'
+      <div className="space-y-4">
+        {/* C1：K 線最後交易日 / 收盤對齊說明 */}
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          <span className="font-medium text-slate-700">K 線最後交易日</span>
+          {lastDate ? ` ${lastDate}` : ' —'}
+          {lastClose != null && (
+            <>
+              {' '}
+              · 收{' '}
+              <span className="font-semibold tabular-nums text-slate-800">
+                {lastClose.toLocaleString()}
+              </span>
+            </>
+          )}
+          {dayChangePct != null && (
+            <span
+              className={`ml-1 font-medium tabular-nums ${
+                dayChangePct >= 0 ? 'text-up' : 'text-down'
               }`}
-              onClick={() => setTf(k)}
             >
-              {label}
-            </button>
-          ))}
+              {dayChangePct >= 0 ? '+' : ''}
+              {dayChangePct.toFixed(2)}%
+            </span>
+          )}
+          <span className="ml-2 text-slate-400">
+            （頁首／地圖報價已對齊此日 K，source: {source || '—'}）
+          </span>
         </div>
-      </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 px-3 py-2 text-xs">
-        <span className="font-medium text-slate-600">指標</span>
-        {(Object.keys(MA_META) as MaKey[]).map((key) => (
-          <label key={key} className="inline-flex cursor-pointer items-center gap-1.5 text-slate-700">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+          <span>
+            {name || symbol} · {bars.length} 根
+            {tf === 'day' ? '日' : tf === 'week' ? '週' : '月'}K
+            {lastDate ? ` · 至 ${lastDate}` : ''}
+          </span>
+          <span>source: {source}</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg bg-slate-100 p-0.5">
+            {(
+              [
+                ['day', '日線'],
+                ['week', '週線'],
+                ['month', '月線'],
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                className={`rounded-md px-2.5 py-1 text-[11px] ${
+                  tf === k ? 'bg-white font-medium text-slate-800 shadow-sm' : 'text-slate-500'
+                }`}
+                onClick={() => setTf(k)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 px-3 py-2 text-xs">
+          <span className="font-medium text-slate-600">指標</span>
+          {(Object.keys(MA_META) as MaKey[]).map((key) => (
+            <label key={key} className="inline-flex cursor-pointer items-center gap-1.5 text-slate-700">
+              <input
+                type="checkbox"
+                className="rounded border-slate-300"
+                checked={maOn[key]}
+                onChange={() => setMaOn((p) => ({ ...p, [key]: !p[key] }))}
+              />
+              <span style={{ color: MA_META[key].color }} className="font-medium">
+                {MA_META[key].label}
+              </span>
+            </label>
+          ))}
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-slate-700">
             <input
               type="checkbox"
               className="rounded border-slate-300"
-              checked={maOn[key]}
-              onChange={() => setMaOn((p) => ({ ...p, [key]: !p[key] }))}
+              checked={bbOn}
+              onChange={() => setBbOn((v) => !v)}
             />
-            <span style={{ color: MA_META[key].color }} className="font-medium">
-              {MA_META[key].label}
-            </span>
+            <span className="font-medium text-slate-600">布林 BB</span>
           </label>
-        ))}
-        <label className="inline-flex cursor-pointer items-center gap-1.5 text-slate-700">
-          <input
-            type="checkbox"
-            className="rounded border-slate-300"
-            checked={bbOn}
-            onChange={() => setBbOn((v) => !v)}
-          />
-          <span className="font-medium text-slate-600">布林 BB</span>
-        </label>
-        <label className="inline-flex cursor-pointer items-center gap-1.5 text-slate-700">
-          <input
-            type="checkbox"
-            className="rounded border-slate-300"
-            checked={deductOn}
-            onChange={() => setDeductOn((v) => !v)}
-          />
-          <span className="font-medium text-slate-600">均線扣抵</span>
-        </label>
-      </div>
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-slate-700">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300"
+              checked={deductOn}
+              onChange={() => setDeductOn((v) => !v)}
+            />
+            <span className="font-medium text-slate-600">均線扣抵</span>
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-slate-700">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300"
+              checked={volOn}
+              onChange={() => setVolOn((v) => !v)}
+            />
+            <span className="font-medium text-slate-600">成交量</span>
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-slate-700">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300"
+              checked={macdOn}
+              onChange={() => setMacdOn((v) => !v)}
+            />
+            <span className="font-medium text-slate-600">MACD</span>
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-slate-700">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300"
+              checked={rsiOn}
+              onChange={() => setRsiOn((v) => !v)}
+            />
+            <span className="font-medium text-slate-600">RSI</span>
+          </label>
+        </div>
 
       <div ref={wrapRef} className="w-full" />
 
-      {deductOn && lastClose != null && (
+            {macdOn && macdOption && (
+              <div>
+                <h3 className="mb-2 text-sm font-semibold text-slate-700">MACD (12,26,9)</h3>
+                <ReactECharts option={macdOption} style={{ height: 180, width: '100%' }} />
+              </div>
+            )}
+            {rsiOn && rsiOption && (
+              <div>
+                <h3 className="mb-2 text-sm font-semibold text-slate-700">RSI (14)</h3>
+                <ReactECharts option={rsiOption} style={{ height: 160, width: '100%' }} />
+                <p className="mt-1 text-[11px] text-slate-400">虛線 70 / 30 為超買超賣參考。</p>
+              </div>
+            )}
+
+            {deductOn && lastClose != null && (
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="w-full min-w-[420px] text-left text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500">

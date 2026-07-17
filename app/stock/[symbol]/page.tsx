@@ -55,6 +55,12 @@ export default async function StockPage({
               {stock.changePct.toFixed(2)}%
             </span>
           </div>
+          {(stock.asOf || bundle.meta?.asOf) && (
+            <div className="text-[11px] text-slate-400">
+              報價日 {stock.asOf || bundle.meta?.asOf}
+              {bundle.meta?.quoteSource === 'stock_prices' ? ' · 對齊日K' : ''}
+            </div>
+          )}
         </div>
       </div>
 

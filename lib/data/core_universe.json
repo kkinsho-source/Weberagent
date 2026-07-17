@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "stocks": [
     {
       "symbol": "3443",
@@ -294,6 +294,111 @@
       "industry": "控制器",
       "themeSlug": "memory_hbm",
       "marketCap": 1100
+    },
+    {
+      "symbol": "2376",
+      "name": "技嘉",
+      "industry": "組裝",
+      "themeSlug": "ai_server",
+      "marketCap": 1800
+    },
+    {
+      "symbol": "2324",
+      "name": "仁寶",
+      "industry": "組裝",
+      "themeSlug": "ai_server",
+      "marketCap": 1600
+    },
+    {
+      "symbol": "3034",
+      "name": "聯詠",
+      "industry": "IC 設計",
+      "themeSlug": "ic_design_hpc",
+      "marketCap": 4200
+    },
+    {
+      "symbol": "6415",
+      "name": "矽力*-KY",
+      "industry": "IC 設計",
+      "themeSlug": "ic_design_hpc",
+      "marketCap": 2800
+    },
+    {
+      "symbol": "6239",
+      "name": "力成",
+      "industry": "封測",
+      "themeSlug": "advanced_packaging",
+      "marketCap": 1500
+    },
+    {
+      "symbol": "3264",
+      "name": "欣銓",
+      "industry": "封測",
+      "themeSlug": "advanced_packaging",
+      "marketCap": 450
+    },
+    {
+      "symbol": "2368",
+      "name": "金像電",
+      "industry": "PCB",
+      "themeSlug": "pcb_ccl",
+      "marketCap": 1200
+    },
+    {
+      "symbol": "5469",
+      "name": "瀚宇博",
+      "industry": "PCB",
+      "themeSlug": "pcb_ccl",
+      "marketCap": 350
+    },
+    {
+      "symbol": "2421",
+      "name": "建準",
+      "industry": "散熱",
+      "themeSlug": "thermal_power",
+      "marketCap": 700
+    },
+    {
+      "symbol": "3529",
+      "name": "力旺",
+      "industry": "IP",
+      "themeSlug": "ic_design_asic",
+      "marketCap": 900
+    },
+    {
+      "symbol": "2360",
+      "name": "致茂",
+      "industry": "測試設備",
+      "themeSlug": "semicon_equipment",
+      "marketCap": 2200
+    },
+    {
+      "symbol": "3450",
+      "name": "聯鈞",
+      "industry": "測試設備",
+      "themeSlug": "semicon_equipment",
+      "marketCap": 280
+    },
+    {
+      "symbol": "6510",
+      "name": "精測",
+      "industry": "測試設備",
+      "themeSlug": "semicon_equipment",
+      "marketCap": 450
+    },
+    {
+      "symbol": "3680",
+      "name": "家登",
+      "industry": "設備耗材",
+      "themeSlug": "semicon_equipment",
+      "marketCap": 700
+    },
+    {
+      "symbol": "3131",
+      "name": "弘塑",
+      "industry": "製程設備",
+      "themeSlug": "semicon_equipment",
+      "marketCap": 320
     }
   ]
 }

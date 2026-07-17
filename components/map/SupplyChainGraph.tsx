@@ -23,8 +23,9 @@ const nodeTypes = { stock: StockNode };
 const LAYER_HINTS: Array<{ key: string; label: string; match: (slug?: string) => boolean }> = [
   {
     key: 'mat',
-    label: '材料',
-    match: (s) => s === 'materials_wafer' || s === 'memory_hbm',
+    label: '材料/設備',
+    match: (s) =>
+      s === 'materials_wafer' || s === 'memory_hbm' || s === 'semicon_equipment',
   },
   {
     key: 'design',
