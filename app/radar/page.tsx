@@ -1,10 +1,15 @@
 import { Suspense } from 'react';
 import { getDataBundle } from '@/lib/data/source';
-import { buildThemeFlow, tideStateCounts } from '@/lib/data/theme-flow';
+import {
+  buildThemeFlow,
+  buildThemeFlowBrief,
+  tideStateCounts,
+} from '@/lib/data/theme-flow';
 import { parseThemeScope, type ThemeScope } from '@/lib/data/theme-scope';
 import { themeColor } from '@/lib/data/theme-colors';
 import { ThemeScopeTabs } from '@/components/theme/ThemeScopeTabs';
 import { ThemeFlowRadar } from '@/components/radar/ThemeFlowRadar';
+import { RadarTodayBrief } from '@/components/radar/RadarTodayBrief';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +27,7 @@ export default async function RadarPage({
     scope,
   });
   const counts = tideStateCounts(rows);
+  const brief = buildThemeFlowBrief(rows);
   const viewRows = rows.map((r) => ({
     ...r,
     color: themeColor(r.slug, r.family),
@@ -44,6 +50,8 @@ export default async function RadarPage({
       <Suspense fallback={null}>
         <ThemeScopeTabs basePath="/radar" defaultScope="all" />
       </Suspense>
+
+      {meta.dataSource !== 'empty' ? <RadarTodayBrief brief={brief} /> : null}
 
       <ThemeFlowRadar
         rows={viewRows}

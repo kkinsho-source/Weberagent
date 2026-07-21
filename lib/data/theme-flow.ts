@@ -18,6 +18,8 @@ export type ThemeFlowRow = {
   colorHint: string;
   /** 近 1 日法人淨額（億） */
   net1dYi: number;
+  /** 前一交易日淨額（億），供「昨日買超回顧」 */
+  netPrev1dYi: number;
   /** 近 5 日合計（億） */
   net5dYi: number;
   /** 近 20 日合計（億） */
@@ -31,7 +33,24 @@ export type ThemeFlowRow = {
   state: TideState;
   stateLabel: string;
   stockCount: number;
+  /** 成分股今日均漲跌%（有報價者） */
+  avgChangePct: number | null;
   asOf: string | null;
+};
+
+export type ThemeFlowBrief = {
+  asOf: string | null;
+  topBuy1d: Array<{ slug: string; title: string; net1dYi: number; avgChangePct: number | null }>;
+  topSell1d: Array<{ slug: string; title: string; net1dYi: number; avgChangePct: number | null }>;
+  /** 昨日買超 Top3 於今日之成分均漲跌 */
+  prevBuyReview: Array<{
+    slug: string;
+    title: string;
+    netPrev1dYi: number;
+    avgChangePct: number | null;
+  }>;
+  tideLeaders: Array<{ slug: string; title: string; stateLabel: string; net5dYi: number }>;
+  summary: string;
 };
 
 type InstSnap = {
@@ -124,6 +143,8 @@ export function buildThemeFlow(opts: {
     const sortedDays = Array.from(dayNet.keys()).sort();
     const seriesYi = sortedDays.map((d) => dayNet.get(d) || 0);
     const net1dYi = sumLast(seriesYi, 1);
+    const netPrev1dYi =
+      seriesYi.length >= 2 ? seriesYi[seriesYi.length - 2] : 0;
     const net5dYi = sumLast(seriesYi, 5);
     const net20dYi = sumLast(seriesYi, 20);
     const n5 = Math.min(5, seriesYi.length) || 1;
@@ -134,6 +155,10 @@ export function buildThemeFlow(opts: {
     const { state, stateLabel } = classify(net5dYi, accelYi);
     const asOf = sortedDays.length ? sortedDays[sortedDays.length - 1] : snap?.asOf || null;
 
+    const chgs = members.map((m) => m.changePct).filter((x) => Number.isFinite(x));
+    const avgChangePct =
+      chgs.length > 0 ? round4(chgs.reduce((a, b) => a + b, 0) / chgs.length) : null;
+
     rows.push({
       slug: th.slug,
       title: th.title,
@@ -141,6 +166,7 @@ export function buildThemeFlow(opts: {
       family: th.family,
       colorHint: th.slug,
       net1dYi: round4(net1dYi),
+      netPrev1dYi: round4(netPrev1dYi),
       net5dYi: round4(net5dYi),
       net20dYi: round4(net20dYi),
       avg5Yi: round4(avg5Yi),
@@ -149,6 +175,7 @@ export function buildThemeFlow(opts: {
       state,
       stateLabel,
       stockCount: members.length,
+      avgChangePct,
       asOf,
     });
   }
@@ -181,4 +208,98 @@ export function tideStateCounts(rows: ThemeFlowRow[]): Record<TideState, number>
   };
   for (const r of rows) c[r.state] += 1;
   return c;
+}
+
+function pickBriefItem(r: ThemeFlowRow) {
+  return {
+    slug: r.slug,
+    title: r.title,
+    net1dYi: r.net1dYi,
+    avgChangePct: r.avgChangePct,
+  };
+}
+
+/** 盤後「今日重點」：買超／賣超 Top、昨日買超回顧、規則摘要 */
+export function buildThemeFlowBrief(rows: ThemeFlowRow[]): ThemeFlowBrief {
+  const asOf = rows.find((r) => r.asOf)?.asOf || null;
+  const by1d = [...rows].sort((a, b) => b.net1dYi - a.net1dYi);
+  const topBuy1d = by1d.filter((r) => r.net1dYi > 0).slice(0, 3).map(pickBriefItem);
+  const topSell1d = [...by1d]
+    .filter((r) => r.net1dYi < 0)
+    .sort((a, b) => a.net1dYi - b.net1dYi)
+    .slice(0, 3)
+    .map(pickBriefItem);
+
+  const prevBuyReview = [...rows]
+    .filter((r) => r.netPrev1dYi > 0)
+    .sort((a, b) => b.netPrev1dYi - a.netPrev1dYi)
+    .slice(0, 3)
+    .map((r) => ({
+      slug: r.slug,
+      title: r.title,
+      netPrev1dYi: r.netPrev1dYi,
+      avgChangePct: r.avgChangePct,
+    }));
+
+  const tideLeaders = rows
+    .filter((r) => r.state === 'inflow_accel')
+    .slice(0, 3)
+    .map((r) => ({
+      slug: r.slug,
+      title: r.title,
+      stateLabel: r.stateLabel,
+      net5dYi: r.net5dYi,
+    }));
+
+  const buyTxt = topBuy1d.length
+    ? topBuy1d.map((t) => `${t.title}（${fmtSigned(t.net1dYi)}億）`).join('、')
+    : '無明顯買超題材';
+  const sellTxt = topSell1d.length
+    ? topSell1d.map((t) => `${t.title}（${fmtSigned(t.net1dYi)}億）`).join('、')
+    : '無明顯賣超題材';
+  let reviewTxt = '';
+  if (prevBuyReview.length) {
+    const avg =
+      prevBuyReview
+        .map((p) => p.avgChangePct)
+        .filter((x): x is number => x != null)
+        .reduce((a, b, _, arr) => a + b / arr.length, 0) || null;
+    const best = [...prevBuyReview].sort(
+      (a, b) => (b.avgChangePct ?? -999) - (a.avgChangePct ?? -999),
+    )[0];
+    reviewTxt =
+      avg != null
+        ? `回顧：昨日法人買超較多的題材，今日成分均漲跌約 ${fmtSigned(avg)}%` +
+          (best?.avgChangePct != null
+            ? `（最佳 ${best.title} ${fmtSigned(best.avgChangePct)}%）`
+            : '') +
+          '。'
+        : '';
+  }
+  const leadTxt = tideLeaders.length
+    ? `近5日潮汐偏「漲潮」者含 ${tideLeaders.map((t) => t.title).join('、')}。`
+    : '';
+
+  const summary = [
+    `法人今日買超較集中：${buyTxt}；賣超較集中：${sellTxt}。`,
+    reviewTxt,
+    leadTxt,
+    '以上為公開籌碼與收盤價之統計描述，非投資建議。',
+  ]
+    .filter(Boolean)
+    .join('');
+
+  return {
+    asOf,
+    topBuy1d,
+    topSell1d,
+    prevBuyReview,
+    tideLeaders,
+    summary,
+  };
+}
+
+function fmtSigned(n: number): string {
+  const s = n >= 0 ? '+' : '';
+  return `${s}${Math.round(n * 100) / 100}`;
 }

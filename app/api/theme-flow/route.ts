@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getDataBundle } from '@/lib/data/source';
-import { buildThemeFlow, tideStateCounts } from '@/lib/data/theme-flow';
+import {
+  buildThemeFlow,
+  buildThemeFlowBrief,
+  tideStateCounts,
+} from '@/lib/data/theme-flow';
 import { parseThemeScope, type ThemeScope } from '@/lib/data/theme-scope';
 import { themeColor } from '@/lib/data/theme-colors';
 
@@ -25,6 +29,7 @@ export async function GET(req: Request) {
     }));
     return NextResponse.json({
       rows: withColor,
+      brief: buildThemeFlowBrief(rows),
       counts: tideStateCounts(rows),
       scope,
       meta: {
