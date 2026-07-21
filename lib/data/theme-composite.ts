@@ -94,18 +94,27 @@ function priceRaw(r: ThemeRsRow): number {
   return 0.55 * r.rsRatio + 0.45 * r.rsMomentum;
 }
 
-/** C50：百分位 0–100 → 中心在 0 的座標 −50～+50 */
-export const C50_AXIS_MIN = -50;
-export const C50_AXIS_MAX = 50;
+/** C100：百分位 0–100 → 中心在 0 的座標 −100～+100 */
+export const C100_AXIS_MIN = -100;
+export const C100_AXIS_MAX = 100;
+/** @deprecated 用 C100_AXIS_MIN */
+export const C50_AXIS_MIN = C100_AXIS_MIN;
+/** @deprecated 用 C100_AXIS_MAX */
+export const C50_AXIS_MAX = C100_AXIS_MAX;
 
-export function toC50(percentile0to100: number): number {
-  return round1(percentile0to100 - 50);
+export function toC100(percentile0to100: number): number {
+  return round1((percentile0to100 - 50) * 2);
 }
 
-/** 象限語意（相對中心 0,0；C50） */
-export function compositeZone(flowC50: number, priceC50: number): CompositeZone {
-  const f = flowC50 >= 0;
-  const p = priceC50 >= 0;
+/** @deprecated 用 toC100 */
+export function toC50(percentile0to100: number): number {
+  return toC100(percentile0to100);
+}
+
+/** 象限語意（相對中心 0,0；C100） */
+export function compositeZone(flow: number, price: number): CompositeZone {
+  const f = flow >= 0;
+  const p = price >= 0;
   if (f && p) return 'hot';
   if (!f && p) return 'watch';
   if (f && !p) return 'cool';
@@ -176,10 +185,10 @@ export const ZONE_META: Record<
   },
 };
 
-/** ECharts 四象限 markArea（C50：−50～+50，中心 0） */
+/** ECharts 四象限 markArea（C100：−100～+100，中心 0） */
 export function zoneMarkAreaData() {
-  const lo = C50_AXIS_MIN;
-  const hi = C50_AXIS_MAX;
+  const lo = C100_AXIS_MIN;
+  const hi = C100_AXIS_MAX;
   return [
     [
       {
@@ -293,8 +302,8 @@ export function buildCompositeRows(
     const quadrant = rs?.quadrant || null;
     const resonance =
       r.net5dYi > 0 && (quadrant === 'leading' || quadrant === 'improving');
-    const fs = toC50(fsPct);
-    const ps = psPct == null ? null : toC50(psPct);
+    const fs = toC100(fsPct);
+    const ps = psPct == null ? null : toC100(psPct);
     const pShow = ps == null ? 0 : ps;
     return {
       slug: r.slug,
@@ -324,7 +333,7 @@ export function buildCompositeRows(
 }
 
 /**
- * P1 回放：X/Y 為當日截面百分位再轉 C50（−50～+50，中心 0）
+ * P1 回放：X/Y 為當日截面百分位再轉 C100（−100～+100，中心 0）
  * Y＝當日短動能 → 可斜向／繞中心換象限
  */
 export function buildCompositeFrames(
@@ -345,11 +354,11 @@ export function buildCompositeFrames(
       const fsPct = fp[i] ?? 50;
       const psPct = sp[i] ?? 50;
       const scoreS = w.flow * fsPct + w.price * psPct;
-      const fs = toC50(fsPct);
-      const ps = toC50(psPct);
+      const fs = toC100(fsPct);
+      const ps = toC100(psPct);
       const zone = compositeZone(fs, ps);
-      // 原 0–100 的 ≥60 → C50 ≥ +10
-      const resonance = fs >= 10 && ps >= 10;
+      // 原 0–100 的 ≥60 → C100 ≥ +20
+      const resonance = fs >= 20 && ps >= 20;
       return {
         slug: p.slug,
         title: titleBySlug.get(p.slug) || p.title,
@@ -417,7 +426,7 @@ export function buildStaticGuide(rows: CompositeRow[]): string {
   const resTxt = res.length
     ? `共振★：${res.map((r) => r.title).join('、')}`
     : '';
-  return `${hotTxt}${resTxt ? `；${resTxt}` : ''}。中心 (0,0)＝普通（C50）；越右上越像「錢有進、價也相對強」。`;
+  return `${hotTxt}${resTxt ? `；${resTxt}` : ''}。中心 (0,0)＝普通（C100）；越右上越像「錢有進、價也相對強」。`;
 }
 
 export function parseWeightMode(raw: string | null | undefined): CompositeWeightMode {

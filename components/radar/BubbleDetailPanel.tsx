@@ -35,17 +35,17 @@ export function BubbleDetailPanel({
           <dd className="font-semibold tabular-nums text-slate-800">{row.scoreS.toFixed(1)}</dd>
         </div>
           <div className="text-xs text-slate-500">
-            籌碼 / 價動能為 C50（−50～+50，0＝中性）
+            籌碼 / 價動能為 C100（−100～+100，0＝中性）
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-slate-500">籌碼 C50</dt>
+            <dt className="text-slate-500">籌碼 C100</dt>
             <dd className="tabular-nums">
               {row.flowScore > 0 ? '+' : ''}
               {row.flowScore.toFixed(0)}
             </dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-slate-500">價動能 C50</dt>
+            <dt className="text-slate-500">價動能 C100</dt>
             <dd className="tabular-nums">
               {row.priceScore == null
                 ? '—'

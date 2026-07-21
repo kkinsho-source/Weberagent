@@ -5,8 +5,8 @@ import Link from 'next/link';
 import ReactECharts from 'echarts-for-react';
 import type { ECharts } from 'echarts';
 import {
-  C50_AXIS_MAX,
-  C50_AXIS_MIN,
+  C100_AXIS_MAX,
+  C100_AXIS_MIN,
   ZONE_META,
   zoneBubbleStyle,
   zoneMarkAreaData,
@@ -14,35 +14,40 @@ import {
   type CompositeFramePoint,
   type CompositeZone,
 } from '@/lib/data/theme-composite';
-import { themeColor } from '@/lib/data/theme-colors';
 import { shortThemeLabel } from '@/lib/data/theme-label';
 import type { ThemeFamily } from '@/lib/types';
 
 const ANIM_MS = 900;
 const BASE_STEP_MS = 1000;
 
-function fmtC50(n: number): string {
+/** 軌跡樣式：淡灰最不亂；四色跟象限；關 */
+type TrailStyle = 'soft' | 'zone' | 'off';
+
+function fmtC100(n: number): string {
   return `${n > 0 ? '+' : ''}${n.toFixed(0)}`;
 }
 
 export function CompositePlayback({
   frames,
-  familyBySlug,
+  familyBySlug: _familyBySlug,
 }: {
   frames: CompositeFrame[];
   familyBySlug: Record<string, ThemeFamily | undefined>;
 }) {
+  void _familyBySlug;
   const chartRef = useRef<ReactECharts>(null);
   const readyRef = useRef(false);
   const [idx, setIdx] = useState(() => Math.max(0, frames.length - 1));
   const [playing, setPlaying] = useState(false);
-  const [showTrail, setShowTrail] = useState(true);
+  const [trailStyle, setTrailStyle] = useState<TrailStyle>('soft');
   const [showLabels, setShowLabels] = useState(true);
   const [speed, setSpeed] = useState<1 | 1.5 | 2>(1);
   const [selected, setSelected] = useState<CompositeFramePoint | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   /** null = 全部顯示 */
   const [picked, setPicked] = useState<Set<string> | null>(null);
+  /** 軌跡只畫被點選／聚焦的一條（最不亂） */
+  const [trailFocusOnly, setTrailFocusOnly] = useState(true);
 
   useEffect(() => {
     setIdx(Math.max(0, frames.length - 1));
@@ -82,7 +87,7 @@ export function CompositePlayback({
   };
 
   const buildOption = useCallback(
-    (frameIdx: number, withTrail: boolean, labels: boolean) => {
+    (frameIdx: number, labels: boolean) => {
       const frame = frames[frameIdx] || frames[frames.length - 1];
       const ptsAll = frame?.points || [];
       const pts =
@@ -98,24 +103,30 @@ export function CompositePlayback({
         .map((slug) => {
           const r = bySlug.get(slug);
           if (!r) return null;
+          const isFocus = selected?.slug === slug;
           return {
             id: slug,
             name: r.title,
             value: [
               r.flowScore,
               r.priceScore,
-              Math.max(16, Math.min(52, Math.sqrt(Math.abs(r.net5dYi)) * 2.2 + 16)),
+              Math.max(
+                16,
+                Math.min(52, Math.sqrt(Math.abs(r.net5dYi)) * 2.2 + 16) +
+                  (isFocus ? 6 : 0),
+              ),
               r.scoreS,
             ],
             itemStyle: {
-              ...zoneBubbleStyle(r.zone, { resonance: r.resonance }),
+              ...zoneBubbleStyle(r.zone, { resonance: r.resonance || isFocus }),
+              opacity: isFocus || !selected ? 0.92 : 0.35,
             },
             label: {
               show: labels,
               formatter: () => shortThemeLabel(r.title),
               position: 'top' as const,
               distance: 5,
-              fontSize: 10,
+              fontSize: isFocus ? 11 : 10,
               fontWeight: 600,
               color: '#1e293b',
               textBorderColor: 'rgba(255,255,255,0.95)',
@@ -126,17 +137,34 @@ export function CompositePlayback({
         .filter(Boolean);
 
       const trailSeries: object[] = [];
-      if (withTrail && frameIdx > 0) {
-        for (const slug of order) {
+      if (trailStyle !== 'off' && frameIdx > 0) {
+        let trailSlugs = order;
+        // 預設：有選中就只畫那條軌跡；否則最多 6 條（S 最高）避免蜘蛛網
+        if (trailFocusOnly && selected) {
+          trailSlugs = order.filter((s) => s === selected.slug);
+        } else if (trailSlugs.length > 6) {
+          const ranked = [...pts].sort((a, b) => b.scoreS - a.scoreS).slice(0, 6);
+          const keep = new Set(ranked.map((p) => p.slug));
+          trailSlugs = trailSlugs.filter((s) => keep.has(s));
+        }
+
+        for (const slug of trailSlugs) {
           const line: number[][] = [];
           let title = slug;
+          let lastZone: CompositeZone = 'cold';
           for (let i = 0; i <= frameIdx; i++) {
             const p = frames[i]?.points.find((x) => x.slug === slug);
             if (!p) continue;
             title = p.title;
+            lastZone = p.zone;
             line.push([p.flowScore, p.priceScore]);
           }
           if (line.length < 2) continue;
+          const isFocus = selected?.slug === slug;
+          const color =
+            trailStyle === 'zone'
+              ? ZONE_META[lastZone].bubble
+              : '#94a3b8'; // soft slate
           trailSeries.push({
             type: 'line',
             id: `trail-${slug}`,
@@ -145,11 +173,12 @@ export function CompositePlayback({
             showSymbol: false,
             smooth: 0.35,
             lineStyle: {
-              width: 2,
-              opacity: 0.38,
-              color: themeColor(slug, familyBySlug[slug]),
+              width: isFocus ? 2.5 : 1.5,
+              opacity: isFocus ? 0.75 : trailStyle === 'soft' ? 0.28 : 0.35,
+              color,
+              type: isFocus ? 'solid' : 'solid',
             },
-            z: 1,
+            z: isFocus ? 2 : 1,
             silent: true,
             animation: false,
           });
@@ -177,8 +206,8 @@ export function CompositePlayback({
             return [
               `<b>${d.name}</b>`,
               z ? `${z.label}（${z.blurb}）` : '',
-              `S ${d.value[3].toFixed(1)} · 籌 ${fmtC50(d.value[0])} · 短動能 ${fmtC50(d.value[1])}`,
-              '<span style="opacity:.7">點擊看詳情</span>',
+              `S ${d.value[3].toFixed(1)} · 籌 ${fmtC100(d.value[0])} · 短動能 ${fmtC100(d.value[1])}`,
+              '<span style="opacity:.7">點擊聚焦軌跡</span>',
             ]
               .filter(Boolean)
               .join('<br/>');
@@ -186,9 +215,9 @@ export function CompositePlayback({
         },
         xAxis: {
           type: 'value' as const,
-          name: '籌碼強度 →（C50）',
-          min: C50_AXIS_MIN,
-          max: C50_AXIS_MAX,
+          name: '籌碼強度 →（C100）',
+          min: C100_AXIS_MIN,
+          max: C100_AXIS_MAX,
           nameGap: 28,
           nameLocation: 'middle' as const,
           splitLine: { show: false },
@@ -198,9 +227,9 @@ export function CompositePlayback({
         },
         yAxis: {
           type: 'value' as const,
-          name: '當日短動能 →（C50）',
-          min: C50_AXIS_MIN,
-          max: C50_AXIS_MAX,
+          name: '當日短動能 →（C100）',
+          min: C100_AXIS_MIN,
+          max: C100_AXIS_MAX,
           nameGap: 40,
           nameLocation: 'middle' as const,
           splitLine: { show: false },
@@ -252,14 +281,14 @@ export function CompositePlayback({
         ],
       };
     },
-    [frames, familyBySlug, picked],
+    [frames, picked, trailStyle, trailFocusOnly, selected],
   );
 
   const applyFrame = useCallback(
     (frameIdx: number, full = false) => {
       const chart = chartRef.current?.getEchartsInstance() as ECharts | undefined;
       if (!chart || !frames.length) return;
-      const opt = buildOption(frameIdx, showTrail, showLabels);
+      const opt = buildOption(frameIdx, showLabels);
       if (full || !readyRef.current) {
         chart.setOption(opt, { notMerge: true, lazyUpdate: false });
         readyRef.current = true;
@@ -271,12 +300,12 @@ export function CompositePlayback({
         });
       }
     },
-    [buildOption, frames.length, showTrail, showLabels],
+    [buildOption, frames.length, showLabels],
   );
 
   useEffect(() => {
     applyFrame(idx, true);
-  }, [frames, showTrail, showLabels, picked]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [frames, showLabels, picked, trailStyle, trailFocusOnly, selected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!readyRef.current) return;
@@ -322,7 +351,7 @@ export function CompositePlayback({
         <div>
           <h2 className="text-base font-semibold text-slate-800">綜合座標回放</h2>
           <p className="text-xs text-slate-400">
-            C50 中心 (0,0) · Y＝當日短動能 · 可挑選題材 · 平滑位移
+            C100 中心 (0,0) · 軌跡預設淡灰 · 點泡泡可聚焦單一路徑
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -335,14 +364,25 @@ export function CompositePlayback({
             />
             名稱
           </label>
+          <select
+            value={trailStyle}
+            onChange={(e) => setTrailStyle(e.target.value as TrailStyle)}
+            className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs text-slate-600"
+            title="軌跡樣式"
+          >
+            <option value="soft">軌跡·淡灰</option>
+            <option value="zone">軌跡·四色</option>
+            <option value="off">軌跡·關</option>
+          </select>
           <label className="flex items-center gap-1.5 text-xs text-slate-600">
             <input
               type="checkbox"
-              checked={showTrail}
-              onChange={(e) => setShowTrail(e.target.checked)}
+              checked={trailFocusOnly}
+              onChange={(e) => setTrailFocusOnly(e.target.checked)}
               className="rounded border-slate-300"
+              disabled={trailStyle === 'off'}
             />
-            軌跡
+            只畫聚焦
           </label>
           <select
             value={speed}
@@ -482,10 +522,16 @@ export function CompositePlayback({
                 const pt =
                   frame?.points.find((p) => p.slug === id) ||
                   frame?.points.find((p) => p.title === params?.data?.name);
-                if (pt) setSelected(pt);
+                if (pt) {
+                  // 再點同一顆取消聚焦
+                  setSelected((cur) => (cur?.slug === pt.slug ? null : pt));
+                }
               },
             }}
           />
+          <p className="mt-1 text-center text-[11px] text-slate-400">
+            點泡泡聚焦單題材軌跡 · 再點一次取消 · 未聚焦時最多顯示 6 條軌跡
+          </p>
         </div>
         {selected ? (
           <aside className="w-full shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-3 lg:w-64">
@@ -508,12 +554,12 @@ export function CompositePlayback({
                 <span className="font-semibold">{selected.scoreS.toFixed(1)}</span>
               </li>
               <li className="flex justify-between">
-                <span className="text-slate-500">籌碼 C50</span>
-                <span>{fmtC50(selected.flowScore)}</span>
+                <span className="text-slate-500">籌碼 C100</span>
+                <span>{fmtC100(selected.flowScore)}</span>
               </li>
               <li className="flex justify-between">
-                <span className="text-slate-500">短動能 C50</span>
-                <span>{fmtC50(selected.priceScore)}</span>
+                <span className="text-slate-500">短動能 C100</span>
+                <span>{fmtC100(selected.priceScore)}</span>
               </li>
               <li className="flex justify-between">
                 <span className="text-slate-500">近5日</span>
@@ -542,7 +588,7 @@ export function CompositePlayback({
       </div>
 
       <p className="mt-2 text-[11px] text-slate-400">
-        回放軸為 C50（−50～+50）；Y＝當日短動能（非主圖中期 RS）。相對位置，非買賣建議。
+        回放軸為 C100（−100～+100）；Y＝當日短動能（非主圖中期 RS）。相對位置，非買賣建議。
       </p>
     </div>
   );

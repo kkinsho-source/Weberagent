@@ -4,8 +4,8 @@ import { useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ReactECharts from 'echarts-for-react';
 import {
-  C50_AXIS_MAX,
-  C50_AXIS_MIN,
+  C100_AXIS_MAX,
+  C100_AXIS_MIN,
   COMPOSITE_WEIGHTS,
   ZONE_META,
   buildStaticGuide,
@@ -22,7 +22,7 @@ import { BubbleDetailPanel } from '@/components/radar/BubbleDetailPanel';
 
 const TOP_N = 8;
 
-function fmtC50(n: number | null | undefined): string {
+function fmtC100(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return '—';
   return `${n > 0 ? '+' : ''}${n.toFixed(0)}`;
 }
@@ -111,7 +111,7 @@ export function CompositeBubblePanel({
           return [
             `<b>${row.title}</b>`,
             `${z.corner} ${z.label}：${z.blurb}`,
-            `S ${row.scoreS.toFixed(1)} · 籌 ${fmtC50(row.flowScore)} · 價 ${fmtC50(row.priceScore)}`,
+            `S ${row.scoreS.toFixed(1)} · 籌 ${fmtC100(row.flowScore)} · 價 ${fmtC100(row.priceScore)}`,
             `近5日 ${row.net5dYi >= 0 ? '+' : ''}${row.net5dYi.toFixed(2)} 億 · ${row.tideLabel}`,
             row.resonance ? '★ 共振' : '',
             '<span style="opacity:.7">點擊泡泡看詳情</span>',
@@ -122,8 +122,8 @@ export function CompositeBubblePanel({
       },
       xAxis: {
         name: '籌碼強度 →（右＋／左−）',
-        min: C50_AXIS_MIN,
-        max: C50_AXIS_MAX,
+        min: C100_AXIS_MIN,
+        max: C100_AXIS_MAX,
         nameLocation: 'middle',
         nameGap: 30,
         splitLine: { show: false },
@@ -134,8 +134,8 @@ export function CompositeBubblePanel({
       },
       yAxis: {
         name: '價動能 →（上＋／下−）',
-        min: C50_AXIS_MIN,
-        max: C50_AXIS_MAX,
+        min: C100_AXIS_MIN,
+        max: C100_AXIS_MAX,
         nameLocation: 'middle',
         nameGap: 40,
         splitLine: { show: false },
@@ -194,7 +194,7 @@ export function CompositeBubblePanel({
             <RadarHowTo />
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            C50 中心 (0,0)＝普通 · 軸 −50～+50 · 右上熱 / 左上觀察 / 右下降溫 / 左下冷 · S（
+            C100 中心 (0,0)＝普通 · 軸 −100～+100 · 右上熱 / 左上觀察 / 右下降溫 / 左下冷 · S（
             {w.label}）· asOf {asOf || '—'}
           </p>
           <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700">
@@ -336,8 +336,8 @@ export function CompositeBubblePanel({
                     {ZONE_META[r.zone].label}
                   </span>
                 </td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{fmtC50(r.flowScore)}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{fmtC50(r.priceScore)}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{fmtC100(r.flowScore)}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{fmtC100(r.priceScore)}</td>
                 <td className="px-2 py-1.5">{r.resonance ? '★' : '—'}</td>
               </tr>
             ))}
@@ -346,7 +346,7 @@ export function CompositeBubblePanel({
       </div>
 
       <p className="text-[11px] leading-relaxed text-slate-400">
-        座標為 C50（百分位−50，中心 0）；S 仍為 0–100 綜合排序分。相對位置描述，非買賣點。
+        座標為 C100（(百分位−50)×2，中心 0，−100～+100）；S 仍為 0–100 綜合排序分。相對位置描述，非買賣點。
       </p>
     </section>
   );
