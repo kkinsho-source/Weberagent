@@ -6,6 +6,8 @@ import ReactECharts from 'echarts-for-react';
 import type { ECharts } from 'echarts';
 import {
   ZONE_META,
+  zoneBubbleStyle,
+  zoneMarkAreaData,
   type CompositeFrame,
   type CompositeFramePoint,
   type CompositeZone,
@@ -13,14 +15,6 @@ import {
 import { themeColor } from '@/lib/data/theme-colors';
 import { shortThemeLabel } from '@/lib/data/theme-label';
 import type { ThemeFamily } from '@/lib/types';
-
-function scoreColor(s: number): string {
-  if (s >= 70) return '#e11d48';
-  if (s >= 55) return '#f43f5e';
-  if (s >= 45) return '#f59e0b';
-  if (s >= 30) return '#64748b';
-  return '#334155';
-}
 
 const ANIM_MS = 900;
 const BASE_STEP_MS = 1000;
@@ -69,11 +63,7 @@ export function CompositePlayback({
               r.scoreS,
             ],
             itemStyle: {
-              color: scoreColor(r.scoreS),
-              borderColor: themeColor(slug, familyBySlug[slug]),
-              borderWidth: r.resonance ? 3 : 2,
-              shadowBlur: r.resonance ? 10 : 0,
-              shadowColor: 'rgba(225,29,72,0.3)',
+              ...zoneBubbleStyle(r.zone, { resonance: r.resonance }),
             },
             label: {
               show: labels,
@@ -179,68 +169,7 @@ export function CompositePlayback({
             z: 3,
             markArea: {
               silent: true,
-              data: [
-                [
-                  {
-                    xAxis: 0,
-                    yAxis: 50,
-                    itemStyle: { color: 'rgba(251, 191, 36, 0.07)' },
-                    label: {
-                      show: true,
-                      position: 'insideTopLeft',
-                      formatter: '觀察',
-                      color: '#b45309',
-                      fontSize: 10,
-                    },
-                  },
-                  { xAxis: 50, yAxis: 100 },
-                ],
-                [
-                  {
-                    xAxis: 50,
-                    yAxis: 50,
-                    itemStyle: { color: 'rgba(244, 63, 94, 0.06)' },
-                    label: {
-                      show: true,
-                      position: 'insideTopRight',
-                      formatter: '熱區',
-                      color: '#be123c',
-                      fontSize: 10,
-                    },
-                  },
-                  { xAxis: 100, yAxis: 100 },
-                ],
-                [
-                  {
-                    xAxis: 0,
-                    yAxis: 0,
-                    itemStyle: { color: 'rgba(100, 116, 139, 0.07)' },
-                    label: {
-                      show: true,
-                      position: 'insideBottomLeft',
-                      formatter: '冷區',
-                      color: '#475569',
-                      fontSize: 10,
-                    },
-                  },
-                  { xAxis: 50, yAxis: 50 },
-                ],
-                [
-                  {
-                    xAxis: 50,
-                    yAxis: 0,
-                    itemStyle: { color: 'rgba(139, 92, 246, 0.06)' },
-                    label: {
-                      show: true,
-                      position: 'insideBottomRight',
-                      formatter: '降溫',
-                      color: '#6d28d9',
-                      fontSize: 10,
-                    },
-                  },
-                  { xAxis: 100, yAxis: 50 },
-                ],
-              ],
+              data: zoneMarkAreaData() as unknown as object[],
             },
             markLine: {
               silent: true,

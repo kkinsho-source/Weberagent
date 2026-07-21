@@ -8,23 +8,16 @@ import {
   COMPOSITE_WEIGHTS,
   ZONE_META,
   buildStaticGuide,
+  zoneBubbleStyle,
+  zoneMarkAreaData,
   type CompositeRow,
   type CompositeWeightMode,
   type CompositeZone,
 } from '@/lib/data/theme-composite';
-import { themeColor } from '@/lib/data/theme-colors';
 import { shortThemeLabel } from '@/lib/data/theme-label';
 import type { ThemeFamily } from '@/lib/types';
 import { RadarHowTo } from '@/components/radar/RadarHowTo';
 import { BubbleDetailPanel } from '@/components/radar/BubbleDetailPanel';
-
-function scoreColor(s: number): string {
-  if (s >= 70) return '#e11d48';
-  if (s >= 55) return '#f43f5e';
-  if (s >= 45) return '#f59e0b';
-  if (s >= 30) return '#64748b';
-  return '#334155';
-}
 
 const TOP_N = 8;
 
@@ -77,12 +70,7 @@ export function CompositeBubblePanel({
         r.scoreS,
       ],
       itemStyle: {
-        color: scoreColor(r.scoreS),
-        borderColor: themeColor(r.slug, familyBySlug[r.slug]),
-        borderWidth: r.resonance ? 3 : 2,
-        shadowBlur: r.resonance ? 12 : 0,
-        shadowColor: r.resonance ? 'rgba(225,29,72,0.35)' : undefined,
-        opacity: r.hasPrice ? 0.92 : 0.5,
+        ...zoneBubbleStyle(r.zone, { resonance: r.resonance, muted: !r.hasPrice }),
       },
       label: {
         show: showLabels,
@@ -149,77 +137,7 @@ export function CompositeBubblePanel({
           data,
           markArea: {
             silent: true,
-            itemStyle: { color: 'transparent' },
-            data: [
-              [
-                {
-                  name: '觀察',
-                  xAxis: 0,
-                  yAxis: 50,
-                  itemStyle: { color: 'rgba(251, 191, 36, 0.08)' },
-                  label: {
-                    show: true,
-                    position: 'insideTopLeft',
-                    formatter: '觀察\n價強籌弱',
-                    color: '#b45309',
-                    fontSize: 11,
-                    fontWeight: 600,
-                  },
-                },
-                { xAxis: 50, yAxis: 100 },
-              ],
-              [
-                {
-                  name: '熱區',
-                  xAxis: 50,
-                  yAxis: 50,
-                  itemStyle: { color: 'rgba(244, 63, 94, 0.07)' },
-                  label: {
-                    show: true,
-                    position: 'insideTopRight',
-                    formatter: '熱區\n籌強價強',
-                    color: '#be123c',
-                    fontSize: 11,
-                    fontWeight: 600,
-                  },
-                },
-                { xAxis: 100, yAxis: 100 },
-              ],
-              [
-                {
-                  name: '冷區',
-                  xAxis: 0,
-                  yAxis: 0,
-                  itemStyle: { color: 'rgba(100, 116, 139, 0.08)' },
-                  label: {
-                    show: true,
-                    position: 'insideBottomLeft',
-                    formatter: '冷區\n雙弱',
-                    color: '#475569',
-                    fontSize: 11,
-                    fontWeight: 600,
-                  },
-                },
-                { xAxis: 50, yAxis: 50 },
-              ],
-              [
-                {
-                  name: '降溫',
-                  xAxis: 50,
-                  yAxis: 0,
-                  itemStyle: { color: 'rgba(139, 92, 246, 0.07)' },
-                  label: {
-                    show: true,
-                    position: 'insideBottomRight',
-                    formatter: '降溫\n籌在價軟',
-                    color: '#6d28d9',
-                    fontSize: 11,
-                    fontWeight: 600,
-                  },
-                },
-                { xAxis: 100, yAxis: 50 },
-              ],
-            ],
+            data: zoneMarkAreaData() as unknown as object[],
           },
           markLine: {
             silent: true,
@@ -269,6 +187,23 @@ export function CompositeBubblePanel({
           <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700">
             {guide}
           </p>
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            {(['hot', 'watch', 'cool', 'cold'] as CompositeZone[]).map((z) => (
+              <span
+                key={z}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200"
+              >
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: ZONE_META[z].bubble }}
+                />
+                <span style={{ color: ZONE_META[z].text }}>
+                  {ZONE_META[z].corner} {ZONE_META[z].label}
+                </span>
+              </span>
+            ))}
+          </div>
+
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
           <div className="inline-flex shrink-0 rounded-lg bg-slate-100 p-1">
@@ -378,11 +313,15 @@ export function CompositeBubblePanel({
                 <td className="px-2 py-1.5 font-medium text-slate-800">{r.title}</td>
                 <td
                   className="px-2 py-1.5 text-right tabular-nums font-semibold"
-                  style={{ color: scoreColor(r.scoreS) }}
+                  style={{ color: ZONE_META[r.zone].text }}
                 >
                   {r.scoreS.toFixed(1)}
                 </td>
-                <td className="px-2 py-1.5 text-xs text-slate-500">{ZONE_META[r.zone].label}</td>
+                <td className="px-2 py-1.5">
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${ZONE_META[r.zone].badgeBg}`}>
+                    {ZONE_META[r.zone].label}
+                  </span>
+                </td>
                 <td className="px-2 py-1.5 text-right tabular-nums">{r.flowScore.toFixed(0)}</td>
                 <td className="px-2 py-1.5 text-right tabular-nums">
                   {r.priceScore == null ? '—' : r.priceScore.toFixed(0)}
