@@ -60,7 +60,7 @@ type InstSnap = {
   source?: string;
 };
 
-function loadInstSnapshot(): InstSnap | null {
+function loadInstSnapshotFile(): InstSnap | null {
   try {
     const p = path.join(process.cwd(), 'lib', 'data', 'institutional_snapshot.json');
     if (!fs.existsSync(p)) return null;
@@ -68,6 +68,99 @@ function loadInstSnapshot(): InstSnap | null {
   } catch {
     return null;
   }
+}
+
+async function loadInstFromSupabase(lookbackDays = 45): Promise<InstSnap | null> {
+  try {
+    const { getSupabaseAdminClient, isSupabaseAdminConfigured } = await import(
+      '@/lib/supabase'
+    );
+    if (!isSupabaseAdminConfigured()) return null;
+    const sb = getSupabaseAdminClient();
+    if (!sb) return null;
+
+    const start = new Date();
+    start.setDate(start.getDate() - lookbackDays);
+    const startIso = start.toISOString().slice(0, 10);
+
+    const bySymbol: Record<string, Array<{ date: string; netShares: number }>> = {};
+    const daySet = new Set<string>();
+    let from = 0;
+    const page = 1000;
+    for (;;) {
+      const { data, error } = await sb
+        .from('stock_institutional_daily')
+        .select('symbol,trade_date,net_shares')
+        .gte('trade_date', startIso)
+        .order('trade_date', { ascending: true })
+        .range(from, from + page - 1);
+      if (error) {
+        // 表尚未建立時安靜 fallback
+        if (/relation|does not exist|schema cache/i.test(error.message)) return null;
+        console.error('[theme-flow] inst supabase', error.message);
+        return null;
+      }
+      if (!data?.length) break;
+      for (const r of data as Array<{
+        symbol: string;
+        trade_date: string;
+        net_shares: number;
+      }>) {
+        const sym = r.symbol;
+        const date = String(r.trade_date).slice(0, 10);
+        if (!bySymbol[sym]) bySymbol[sym] = [];
+        bySymbol[sym].push({ date, netShares: Number(r.net_shares) || 0 });
+        daySet.add(date);
+      }
+      if (data.length < page) break;
+      from += page;
+    }
+
+    const symbols = Object.keys(bySymbol);
+    if (!symbols.length) return null;
+    const days = Array.from(daySet).sort().reverse();
+    return {
+      asOf: days[0] || null || undefined,
+      days,
+      bySymbol,
+      source: 'supabase stock_institutional_daily',
+    };
+  } catch (e) {
+    console.error('[theme-flow] loadInstFromSupabase', e);
+    return null;
+  }
+}
+
+/** DB 優先，檔案補齊缺日／缺股 */
+async function loadInstData(): Promise<InstSnap | null> {
+  const file = loadInstSnapshotFile();
+  const db = await loadInstFromSupabase(50);
+  if (!db && !file) return null;
+  if (!db) return file;
+  if (!file) return db;
+
+  const bySymbol: Record<string, Array<{ date: string; netShares: number }>> = {
+    ...(file.bySymbol || {}),
+  };
+  for (const [sym, series] of Object.entries(db.bySymbol || {})) {
+    const map = new Map<string, number>();
+    for (const p of bySymbol[sym] || []) map.set(p.date, p.netShares);
+    for (const p of series) map.set(p.date, p.netShares); // db wins
+    bySymbol[sym] = Array.from(map.entries())
+      .map(([date, netShares]) => ({ date, netShares }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }
+  const daySet = new Set<string>();
+  for (const series of Object.values(bySymbol)) {
+    for (const p of series) daySet.add(p.date);
+  }
+  const days = Array.from(daySet).sort().reverse();
+  return {
+    asOf: days[0] || db.asOf || file.asOf,
+    days,
+    bySymbol,
+    source: `${file.source || 'file'}+${db.source || 'db'}`,
+  };
 }
 
 /** 股 → 億：shares * price / 1e8 */
@@ -90,11 +183,11 @@ function classify(net5: number, accel: number): { state: TideState; stateLabel: 
   return { state: 'outflow_accel', stateLabel: '退潮' };
 }
 
-export function buildThemeFlow(opts: {
+export async function buildThemeFlow(opts: {
   themes: Theme[];
   stocks: Stock[];
   scope?: ThemeScope;
-}): {
+}): Promise<{
   rows: ThemeFlowRow[];
   meta: {
     asOf: string | null;
@@ -103,10 +196,10 @@ export function buildThemeFlow(opts: {
     symbolCoverage: number;
     dataSource: 'snapshot' | 'empty';
   };
-} {
+}> {
   const scope = opts.scope ?? 'all';
   const themes = filterThemesByScope(opts.themes, scope).filter((t) => t.family !== 'benchmark');
-  const snap = loadInstSnapshot();
+  const snap = await loadInstData();
   const bySym = snap?.bySymbol || {};
   const priceBySym = new Map(opts.stocks.map((s) => [s.symbol, s.price || 0]));
   const stocksByTheme = new Map<string, Stock[]>();
@@ -320,17 +413,17 @@ export type ThemeFlowFrame = {
 };
 
 /** 回放用：每個交易日的泡泡座標（近5日淨額 × 加速度） */
-export function buildThemeFlowFrames(opts: {
+export async function buildThemeFlowFrames(opts: {
   themes: Theme[];
   stocks: Stock[];
   scope?: ThemeScope;
   /** 最多幾根 frame（從最舊到最新截尾） */
   maxFrames?: number;
-}): { frames: ThemeFlowFrame[]; meta: { dayCount: number; dataSource: 'snapshot' | 'empty' } } {
+}): Promise<{ frames: ThemeFlowFrame[]; meta: { dayCount: number; dataSource: 'snapshot' | 'empty' } }> {
   const scope = opts.scope ?? 'all';
   const maxFrames = opts.maxFrames ?? 20;
   const themes = filterThemesByScope(opts.themes, scope).filter((t) => t.family !== 'benchmark');
-  const snap = loadInstSnapshot();
+  const snap = await loadInstData();
   const bySym = snap?.bySymbol || {};
   if (!Object.keys(bySym).length) {
     return { frames: [], meta: { dayCount: 0, dataSource: 'empty' } };

@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const scope: ThemeScope = parseThemeScope(new URL(req.url).searchParams.get('scope'), 'all');
   try {
     const bundle = await getDataBundle();
-    const { rows, meta } = buildThemeFlow({
+    const { rows, meta } = await buildThemeFlow({
       themes: bundle.themes,
       stocks: bundle.stocks,
       scope,

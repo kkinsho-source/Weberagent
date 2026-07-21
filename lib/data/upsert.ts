@@ -130,3 +130,42 @@ export async function writeEtlLog(input: {
     finished_at: input.status === 'started' ? null : new Date().toISOString(),
   });
 }
+
+/** 三大法人日淨超 upsert */
+export async function upsertInstitutionalDaily(
+  rows: Array<{
+    symbol: string;
+    tradeDate: string;
+    netShares: number;
+    source?: string;
+    market?: string;
+  }>,
+): Promise<{ ok: boolean; count: number; error?: string }> {
+  if (!rows.length) return { ok: true, count: 0 };
+  if (!isSupabaseAdminConfigured()) {
+    return { ok: false, count: 0, error: 'admin not configured' };
+  }
+  const sb = getSupabaseAdminClient();
+  if (!sb) return { ok: false, count: 0, error: 'admin client null' };
+
+  const payload = rows.map((r) => ({
+    symbol: r.symbol,
+    market: r.market ?? 'tw',
+    trade_date: r.tradeDate,
+    net_shares: r.netShares,
+    source: r.source ?? null,
+  }));
+
+  let count = 0;
+  for (let i = 0; i < payload.length; i += 200) {
+    const chunk = payload.slice(i, i + 200);
+    const { error } = await sb.from('stock_institutional_daily').upsert(chunk, {
+      onConflict: 'symbol,market,trade_date',
+    });
+    if (error) {
+      return { ok: false, count, error: error.message };
+    }
+    count += chunk.length;
+  }
+  return { ok: true, count };
+}

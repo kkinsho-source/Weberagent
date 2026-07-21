@@ -104,6 +104,64 @@ async function run(req: Request) {
       }
     }
 
+    // 3b) 三大法人日更 → stock_institutional_daily（資金雷達）
+    let instCount = 0;
+    let instAsOf: string | undefined;
+    let instError: string | undefined;
+    const skipInst = searchParams.get('skipInst') === '1';
+    if (!skipInst && !dryRun) {
+      try {
+        const { fetchLatestInstitutionalDay } = await import('@/lib/etl/institutional');
+        const { upsertInstitutionalDaily } = await import('@/lib/data/upsert');
+        const coreSet = new Set(coreSymbols);
+        const inst = await withRetry(() => fetchLatestInstitutionalDay(coreSet, 6), {
+          retries: 2,
+          baseMs: 800,
+          label: 'fetchInstitutional',
+        });
+        if (inst?.rows?.length) {
+          instAsOf = inst.asOf;
+          const up = await upsertInstitutionalDaily(
+            inst.rows.map((r) => ({
+              symbol: r.symbol,
+              tradeDate: inst.asOf,
+              netShares: r.netShares,
+              source: `T86+TPEx`,
+            })),
+          );
+          if (up.ok) {
+            instCount = up.count;
+            await writeEtlLog({
+              jobName: 'institutional_daily_cron',
+              status: 'success',
+              source: 'T86+TPEx',
+              recordsCount: instCount,
+              message: `inst upserted ${instCount} asOf=${inst.asOf}`,
+              meta: { asOf: inst.asOf, twse: inst.twse, tpex: inst.tpex },
+            });
+          } else {
+            instError = up.error || 'upsert failed';
+            await writeEtlLog({
+              jobName: 'institutional_daily_cron',
+              status: 'failed',
+              source: 'T86+TPEx',
+              message: instError,
+            });
+          }
+        } else {
+          instError = 'no_inst_rows';
+        }
+      } catch (e) {
+        instError = e instanceof Error ? e.message : String(e);
+        await writeEtlLog({
+          jobName: 'institutional_daily_cron',
+          status: 'failed',
+          source: 'T86+TPEx',
+          message: instError,
+        }).catch(() => {});
+      }
+    }
+
     // 3) MOPS 日更
     let mopsCount = 0;
     let mopsError: string | undefined;
@@ -231,9 +289,9 @@ async function run(req: Request) {
     await writeEtlLog({
       jobName: 'twse_daily_cron',
       status: 'success',
-      source: 'TWSE+TPEX+MOPS',
+      source: 'TWSE+TPEX+MOPS+INST',
       recordsCount: result.stocks,
-      message: `cron ok stocks=${result.stocks} prices=${result.prices} otc=${otcFilled} mops=${mopsCount} histWarm=${histWarmed} asOf=${fetched.asOf} ${ms}ms`,
+      message: `cron ok stocks=${result.stocks} prices=${result.prices} otc=${otcFilled} mops=${mopsCount} inst=${instCount} histWarm=${histWarmed} asOf=${fetched.asOf} ${ms}ms`,
       meta: {
         asOf: fetched.asOf,
         marketCount: fetched.count,
@@ -243,6 +301,9 @@ async function run(req: Request) {
         otcSource,
         mopsCount,
         mopsError,
+        instCount,
+        instAsOf,
+        instError,
         histWarmed,
         coreOnly,
         ms,
@@ -259,6 +320,9 @@ async function run(req: Request) {
       otcSource,
       mopsCount,
       mopsError,
+      instCount,
+      instAsOf,
+      instError,
       histWarmed,
       coreOnly,
       ms,
