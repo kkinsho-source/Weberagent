@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "stocks": [
     {
       "symbol": "3443",
@@ -399,6 +399,349 @@
       "industry": "製程設備",
       "themeSlug": "semicon_equipment",
       "marketCap": 320
+    },
+    {
+      "symbol": "2881",
+      "name": "富邦金",
+      "industry": "金控",
+      "themeSlug": "financials",
+      "marketCap": 9000
+    },
+    {
+      "symbol": "2882",
+      "name": "國泰金",
+      "industry": "金控",
+      "themeSlug": "financials",
+      "marketCap": 8500
+    },
+    {
+      "symbol": "2891",
+      "name": "中信金",
+      "industry": "金控",
+      "themeSlug": "financials",
+      "marketCap": 7000
+    },
+    {
+      "symbol": "2886",
+      "name": "兆豐金",
+      "industry": "金控",
+      "themeSlug": "financials",
+      "marketCap": 5500
+    },
+    {
+      "symbol": "2884",
+      "name": "玉山金",
+      "industry": "金控",
+      "themeSlug": "financials",
+      "marketCap": 4800
+    },
+    {
+      "symbol": "2603",
+      "name": "長榮",
+      "industry": "航運",
+      "themeSlug": "shipping",
+      "marketCap": 4500
+    },
+    {
+      "symbol": "2609",
+      "name": "陽明",
+      "industry": "航運",
+      "themeSlug": "shipping",
+      "marketCap": 2800
+    },
+    {
+      "symbol": "2615",
+      "name": "萬海",
+      "industry": "航運",
+      "themeSlug": "shipping",
+      "marketCap": 2200
+    },
+    {
+      "symbol": "2605",
+      "name": "新興",
+      "industry": "航運",
+      "themeSlug": "shipping",
+      "marketCap": 400
+    },
+    {
+      "symbol": "1301",
+      "name": "台塑",
+      "industry": "塑膠",
+      "themeSlug": "plastics_chem",
+      "marketCap": 3200
+    },
+    {
+      "symbol": "1303",
+      "name": "南亞",
+      "industry": "塑膠",
+      "themeSlug": "plastics_chem",
+      "marketCap": 3500
+    },
+    {
+      "symbol": "1326",
+      "name": "台化",
+      "industry": "化學",
+      "themeSlug": "plastics_chem",
+      "marketCap": 2000
+    },
+    {
+      "symbol": "6505",
+      "name": "台塑化",
+      "industry": "油電燃氣",
+      "themeSlug": "plastics_chem",
+      "marketCap": 2800
+    },
+    {
+      "symbol": "2002",
+      "name": "中鋼",
+      "industry": "鋼鐵",
+      "themeSlug": "steel_cement",
+      "marketCap": 2800
+    },
+    {
+      "symbol": "2027",
+      "name": "大成鋼",
+      "industry": "鋼鐵",
+      "themeSlug": "steel_cement",
+      "marketCap": 900
+    },
+    {
+      "symbol": "1101",
+      "name": "台泥",
+      "industry": "水泥",
+      "themeSlug": "steel_cement",
+      "marketCap": 1800
+    },
+    {
+      "symbol": "1102",
+      "name": "亞泥",
+      "industry": "水泥",
+      "themeSlug": "steel_cement",
+      "marketCap": 1200
+    },
+    {
+      "symbol": "2501",
+      "name": "國建",
+      "industry": "建材營造",
+      "themeSlug": "construction",
+      "marketCap": 600
+    },
+    {
+      "symbol": "2542",
+      "name": "興富發",
+      "industry": "建材營造",
+      "themeSlug": "construction",
+      "marketCap": 800
+    },
+    {
+      "symbol": "2520",
+      "name": "冠德",
+      "industry": "建材營造",
+      "themeSlug": "construction",
+      "marketCap": 450
+    },
+    {
+      "symbol": "5508",
+      "name": "永信建",
+      "industry": "建材營造",
+      "themeSlug": "construction",
+      "marketCap": 200
+    },
+    {
+      "symbol": "4743",
+      "name": "合一",
+      "industry": "生技醫療",
+      "themeSlug": "biotech",
+      "marketCap": 400
+    },
+    {
+      "symbol": "6547",
+      "name": "高端疫苗",
+      "industry": "生技醫療",
+      "themeSlug": "biotech",
+      "marketCap": 350
+    },
+    {
+      "symbol": "6472",
+      "name": "保瑞",
+      "industry": "生技醫療",
+      "themeSlug": "biotech",
+      "marketCap": 900
+    },
+    {
+      "symbol": "1795",
+      "name": "美時",
+      "industry": "生技醫療",
+      "themeSlug": "biotech",
+      "marketCap": 500
+    },
+    {
+      "symbol": "1513",
+      "name": "中興電",
+      "industry": "電機機械",
+      "themeSlug": "energy_green",
+      "marketCap": 700
+    },
+    {
+      "symbol": "1519",
+      "name": "華城",
+      "industry": "電機機械",
+      "themeSlug": "energy_green",
+      "marketCap": 1200
+    },
+    {
+      "symbol": "1504",
+      "name": "東元",
+      "industry": "電機機械",
+      "themeSlug": "energy_green",
+      "marketCap": 1100
+    },
+    {
+      "symbol": "1514",
+      "name": "亞力",
+      "industry": "電機機械",
+      "themeSlug": "energy_green",
+      "marketCap": 250
+    },
+    {
+      "symbol": "2912",
+      "name": "統一超",
+      "industry": "貿易百貨",
+      "themeSlug": "consumer_retail",
+      "marketCap": 3500
+    },
+    {
+      "symbol": "1216",
+      "name": "統一",
+      "industry": "食品",
+      "themeSlug": "consumer_retail",
+      "marketCap": 2800
+    },
+    {
+      "symbol": "5904",
+      "name": "寶雅",
+      "industry": "貿易百貨",
+      "themeSlug": "consumer_retail",
+      "marketCap": 600
+    },
+    {
+      "symbol": "9904",
+      "name": "寶成",
+      "industry": "其他",
+      "themeSlug": "consumer_retail",
+      "marketCap": 1500
+    },
+    {
+      "symbol": "2412",
+      "name": "中華電",
+      "industry": "通信網路",
+      "themeSlug": "telecom",
+      "marketCap": 9000
+    },
+    {
+      "symbol": "3045",
+      "name": "台灣大",
+      "industry": "通信網路",
+      "themeSlug": "telecom",
+      "marketCap": 3500
+    },
+    {
+      "symbol": "4904",
+      "name": "遠傳",
+      "industry": "通信網路",
+      "themeSlug": "telecom",
+      "marketCap": 2800
+    },
+    {
+      "symbol": "2357",
+      "name": "華碩",
+      "industry": "電腦週邊",
+      "themeSlug": "electronics_ex_ai",
+      "marketCap": 2800
+    },
+    {
+      "symbol": "2327",
+      "name": "國巨",
+      "industry": "電子零組件",
+      "themeSlug": "electronics_ex_ai",
+      "marketCap": 4500
+    },
+    {
+      "symbol": "2474",
+      "name": "可成",
+      "industry": "其他電子",
+      "themeSlug": "electronics_ex_ai",
+      "marketCap": 1600
+    },
+    {
+      "symbol": "4938",
+      "name": "和碩",
+      "industry": "電腦週邊",
+      "themeSlug": "electronics_ex_ai",
+      "marketCap": 2200
+    },
+    {
+      "symbol": "2347",
+      "name": "聯強",
+      "industry": "電子通路",
+      "themeSlug": "electronics_ex_ai",
+      "marketCap": 900
+    },
+    {
+      "symbol": "2207",
+      "name": "和泰車",
+      "industry": "汽車工業",
+      "themeSlug": "auto_parts",
+      "marketCap": 4500
+    },
+    {
+      "symbol": "2105",
+      "name": "正新",
+      "industry": "橡膠工業",
+      "themeSlug": "auto_parts",
+      "marketCap": 1200
+    },
+    {
+      "symbol": "1319",
+      "name": "東陽",
+      "industry": "汽車工業",
+      "themeSlug": "auto_parts",
+      "marketCap": 400
+    },
+    {
+      "symbol": "1536",
+      "name": "和大",
+      "industry": "汽車工業",
+      "themeSlug": "auto_parts",
+      "marketCap": 350
+    },
+    {
+      "symbol": "2707",
+      "name": "晶華",
+      "industry": "觀光事業",
+      "themeSlug": "tourism_dining",
+      "marketCap": 350
+    },
+    {
+      "symbol": "2723",
+      "name": "美食-KY",
+      "industry": "觀光事業",
+      "themeSlug": "tourism_dining",
+      "marketCap": 400
+    },
+    {
+      "symbol": "2753",
+      "name": "八方雲集",
+      "industry": "觀光事業",
+      "themeSlug": "tourism_dining",
+      "marketCap": 280
+    },
+    {
+      "symbol": "2731",
+      "name": "雄獅",
+      "industry": "觀光事業",
+      "themeSlug": "tourism_dining",
+      "marketCap": 200
     }
   ]
 }

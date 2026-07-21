@@ -29,6 +29,10 @@ import httpx
 
 # 證交所 OpenAPI 端點（公開、無需授權；商業化前請確認授權規範）
 TWSE_STOCK_DAY_ALL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
+# 櫃買上櫃日收盤（補上市 OpenAPI 沒有的代號）
+TPEX_MAINBOARD_DAILY = (
+    "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes"
+)
 
 # snapshot 輸出位置：相對於 repo 根目錄
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -64,12 +68,12 @@ def parse_num(s: str) -> float:
 
 
 def fetch_snapshot(only_symbols: set[str] | None = None) -> dict:
-    """抓取並解析全市場每日行情，回傳 snapshot dict。"""
+    """抓取並解析上市 + 上櫃每日行情，回傳 snapshot dict。"""
     print(f"[etl] GET {TWSE_STOCK_DAY_ALL} ...", file=sys.stderr)
     resp = httpx.get(TWSE_STOCK_DAY_ALL, headers=HEADERS, timeout=60.0)
     resp.raise_for_status()
     rows = resp.json()
-    print(f"[etl] 收到 {len(rows)} 檔", file=sys.stderr)
+    print(f"[etl] TWSE 收到 {len(rows)} 檔", file=sys.stderr)
 
     quotes: dict[str, dict] = {}
     as_of = date.today().isoformat()
@@ -91,9 +95,44 @@ def fetch_snapshot(only_symbols: set[str] | None = None) -> dict:
         }
         as_of = roc_date_to_iso(r.get("Date", ""))
 
+    # 櫃買：不覆蓋已有上市報價；補 core 裡的上櫃股
+    tpex_added = 0
+    try:
+        print(f"[etl] GET {TPEX_MAINBOARD_DAILY} ...", file=sys.stderr)
+        tresp = httpx.get(TPEX_MAINBOARD_DAILY, headers=HEADERS, timeout=90.0)
+        tresp.raise_for_status()
+        trows = tresp.json()
+        print(f"[etl] TPEx 收到 {len(trows)} 檔", file=sys.stderr)
+        for r in trows:
+            code = (r.get("SecuritiesCompanyCode") or r.get("Code") or "").strip()
+            if not code:
+                continue
+            if only_symbols and code not in only_symbols:
+                continue
+            if code in quotes and quotes[code].get("price"):
+                continue
+            close = parse_num(r.get("Close"))
+            change = parse_num(r.get("Change"))
+            prev_close = close - change if close else 0.0
+            change_pct = (change / prev_close * 100.0) if prev_close else 0.0
+            if not close:
+                continue
+            quotes[code] = {
+                "name": (r.get("CompanyName") or r.get("Name") or "").strip(),
+                "price": close,
+                "changePct": round(change_pct, 2),
+            }
+            tpex_added += 1
+            d = roc_date_to_iso(r.get("Date", ""))
+            if d > as_of:
+                as_of = d
+        print(f"[etl] TPEx 新補 {tpex_added} 檔", file=sys.stderr)
+    except httpx.HTTPError as e:
+        print(f"[etl] WARN: 櫃買抓取失敗（仍保留上市）: {e}", file=sys.stderr)
+
     snapshot = {
         "asOf": as_of,
-        "source": "TWSE STOCK_DAY_ALL",
+        "source": "TWSE STOCK_DAY_ALL + TPEx mainboard daily",
         "count": len(quotes),
         "quotes": quotes,
     }

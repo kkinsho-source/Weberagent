@@ -67,6 +67,18 @@ export function buildRuleInsights(opts: {
     materials_wafer: '矽晶圓為先進製程上游關鍵材料，資本支出與稼動率敏感',
     memory_hbm: 'AI 訓練推論推升 HBM / 高速記憶體與控制器需求',
     semicon_equipment: '測試與製程設備承接先進製程擴產與良率驗證需求',
+    financials: '金融粗網：利率與避險流向觀察（非投顧建議）',
+    shipping: '航運粗網：運價與景氣循環資金輪動',
+    plastics_chem: '塑化粗網：油價／價差與傳產資金體量',
+    steel_cement: '鋼鐵水泥粗網：景氣與公共／民間工程週期',
+    construction: '營建粗網：利率與推案週期敏感',
+    biotech: '生技粗網：事件驅動、波動較高',
+    energy_green: '綠能與電力設備粗網：電網／重電需求',
+    consumer_retail: '消費通路粗網：內需與防禦性現金流',
+    telecom: '電信粗網：防禦與股息型資金常駐',
+    electronics_ex_ai: '其他電子：非 AI 主鏈之電子權值流向',
+    auto_parts: '汽車零組件粗網：車市與景氣連動',
+    tourism_dining: '觀光餐飲粗網：內需服務與旅遊週期',
   };
   if (themeMap[stock.themeSlug]) {
     bullets.push(themeMap[stock.themeSlug]);

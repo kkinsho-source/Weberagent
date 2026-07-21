@@ -5,6 +5,7 @@ import 'server-only';
 import type { Stock, Theme, SupplyEdge } from '../types';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../supabase/server';
 import type { DbEtlLog, DbStock, DbTheme, DbSupplyEdge } from '../supabase/types';
+import { normalizeTheme } from './theme-scope';
 
 export function canUseSupabase(): boolean {
   return isSupabaseConfigured();
@@ -53,14 +54,20 @@ export async function fetchThemesFromSupabase(): Promise<Theme[]> {
     console.error('[supabase] fetch themes failed:', error.message);
     return [];
   }
-  return ((data as DbTheme[] | null) ?? []).map((t) => ({
-    slug: t.slug,
-    title: t.title,
-    description: t.description ?? '',
-    market: t.market,
-    companyCount: t.company_count ?? 0,
-    verifiedAt: t.verified_at ?? '',
-  }));
+  return ((data as DbTheme[] | null) ?? []).map((t) =>
+    normalizeTheme({
+      slug: t.slug,
+      title: t.title,
+      description: t.description ?? '',
+      market: t.market,
+      companyCount: t.company_count ?? 0,
+      verifiedAt: t.verified_at ?? '',
+      // S1：DB 尚未加欄時走 normalize 預設 tier=1 / ai_chain
+      tier: t.tier ?? undefined,
+      family: t.family ?? undefined,
+      radarDefault: t.radar_default ?? undefined,
+    }),
+  );
 }
 
 export async function fetchEdgesFromSupabase(): Promise<SupplyEdge[]> {

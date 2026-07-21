@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDataBundle } from '@/lib/data/source';
+import { filterThemesByScope, parseThemeScope, type ThemeScope } from '@/lib/data/theme-scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,13 +8,17 @@ export const dynamic = 'force-dynamic';
  * GET /api/stocks
  * GET /api/stocks?symbol=2330
  * GET /api/stocks?theme=foundry
+ * GET /api/stocks?scope=ai|all|tier0|defensive|cyclical
  *
  * 統一走 getDataBundle（含 Q1 stock_prices 報價 overlay）
+ * scope：依題材 tier/family 過濾成分股（該 theme 下的 stocks）
  */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const symbol = searchParams.get('symbol') ?? undefined;
   const theme = searchParams.get('theme') ?? undefined;
+  const scopeParam = searchParams.get('scope');
+  const scope: ThemeScope | null = scopeParam ? parseThemeScope(scopeParam, 'all') : null;
 
   try {
     const bundle = await getDataBundle({ symbol, theme });
@@ -23,7 +28,7 @@ export async function GET(req: Request) {
       if (!stock) {
         return NextResponse.json(
           { error: 'not_found', dataSource: bundle.dataSource },
-          { status: 404 }
+          { status: 404 },
         );
       }
       return NextResponse.json({
@@ -34,17 +39,24 @@ export async function GET(req: Request) {
       });
     }
 
+    let stocks = bundle.stocks;
+    if (scope) {
+      const allowed = new Set(filterThemesByScope(bundle.themes, scope).map((t) => t.slug));
+      stocks = stocks.filter((s) => allowed.has(s.themeSlug));
+    }
+
     return NextResponse.json({
-      stocks: bundle.stocks,
+      stocks,
       dataSource: bundle.dataSource,
       meta: bundle.meta,
-      count: bundle.stocks.length,
+      count: stocks.length,
+      scope: scope ?? undefined,
     });
   } catch (e) {
     console.error('[api/stocks]', e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : String(e) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

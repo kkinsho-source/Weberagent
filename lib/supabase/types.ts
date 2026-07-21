@@ -66,6 +66,10 @@ export interface DbTheme {
   description: string | null;
   verified_at: string | null;
   company_count: number | null;
+  /** S1+ 可選；未 migrate 前 select * 可能無此欄，mapper 會 fallback */
+  tier?: number | null;
+  family?: string | null;
+  radar_default?: boolean | null;
 }
 
 export interface DbSupplyEdge {

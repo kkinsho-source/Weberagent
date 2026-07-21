@@ -9,7 +9,10 @@ create table if not exists public.themes (
   title         text not null,
   description   text,
   verified_at   date,
-  company_count int default 0
+  company_count int default 0,
+  tier          smallint not null default 1,
+  family        text not null default 'ai_chain',
+  radar_default boolean not null default true
 );
 
 create table if not exists public.supply_edges (
