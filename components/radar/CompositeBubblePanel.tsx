@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ReactECharts from 'echarts-for-react';
@@ -11,9 +11,9 @@ import {
 } from '@/lib/data/theme-composite';
 import { themeColor } from '@/lib/data/theme-colors';
 import type { ThemeFamily } from '@/lib/types';
+import { shortThemeLabel } from '@/lib/data/theme-label';
 
 function scoreColor(s: number): string {
-  // 0 slate → 50 amber → 100 rose
   if (s >= 70) return '#e11d48';
   if (s >= 55) return '#f43f5e';
   if (s >= 45) return '#f59e0b';
@@ -36,6 +36,7 @@ export function CompositeBubblePanel({
   const pathname = usePathname();
   const sp = useSearchParams();
   const w = COMPOSITE_WEIGHTS[mode];
+  const [showLabels, setShowLabels] = useState(true);
 
   const setMode = (m: CompositeWeightMode) => {
     const next = new URLSearchParams(sp.toString());
@@ -47,26 +48,38 @@ export function CompositeBubblePanel({
 
   const option = useMemo(() => {
     const data = rows.map((r) => ({
+      id: r.slug,
       name: r.title,
       value: [
         r.flowScore,
         r.priceScore ?? 50,
-        Math.max(10, Math.min(52, Math.sqrt(Math.abs(r.net20dYi)) * 3.5 + 10)),
+        Math.max(14, Math.min(56, Math.sqrt(Math.abs(r.net20dYi)) * 3.5 + 14)),
         r.scoreS,
       ],
       itemStyle: {
         color: scoreColor(r.scoreS),
         borderColor: themeColor(r.slug, familyBySlug[r.slug]),
         borderWidth: 2,
-        opacity: r.hasPrice ? 0.92 : 0.45,
+        opacity: r.hasPrice ? 0.92 : 0.5,
+      },
+      label: {
+        show: showLabels,
+        formatter: () => shortThemeLabel(r.title),
+        position: 'top',
+        distance: 4,
+        fontSize: 10,
+        fontWeight: 600,
+        color: '#334155',
+        textBorderColor: '#ffffff',
+        textBorderWidth: 2,
       },
     }));
     return {
-      grid: { left: 52, right: 24, top: 36, bottom: 44 },
+      animation: true,
+      animationDuration: 400,
+      grid: { left: 52, right: 28, top: 40, bottom: 48 },
       tooltip: {
-        formatter: (p: {
-          data?: { name?: string; value?: number[] };
-        }) => {
+        formatter: (p: { data?: { name?: string; value?: number[] } }) => {
           const d = p.data;
           if (!d?.value) return '';
           const row = rows.find((x) => x.title === d.name);
@@ -111,7 +124,7 @@ export function CompositeBubblePanel({
         },
       ],
     };
-  }, [rows, familyBySlug]);
+  }, [rows, familyBySlug, showLabels]);
 
   return (
     <section className="space-y-3 rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
@@ -124,27 +137,38 @@ export function CompositeBubblePanel({
             asOf {asOf || '—'}
           </p>
           <p className="mt-0.5 text-[11px] text-slate-400">
-            右上≈籌碼與價同向偏強；半透明=缺歷史價 RS。非預測、非投顧建議。
+            泡泡上方為題材簡稱；右上≈籌碼與價同向偏強；半透明=缺歷史價 RS。非預測、非投顧建議。
           </p>
         </div>
-        <div className="inline-flex shrink-0 rounded-lg bg-slate-100 p-1">
-          {(Object.keys(COMPOSITE_WEIGHTS) as CompositeWeightMode[]).map((m) => {
-            const meta = COMPOSITE_WEIGHTS[m];
-            const active = mode === m;
-            return (
-              <button
-                key={m}
-                type="button"
-                title={meta.hint}
-                onClick={() => setMode(m)}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
-                  active ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {meta.label}
-              </button>
-            );
-          })}
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <div className="inline-flex shrink-0 rounded-lg bg-slate-100 p-1">
+            {(Object.keys(COMPOSITE_WEIGHTS) as CompositeWeightMode[]).map((m) => {
+              const meta = COMPOSITE_WEIGHTS[m];
+              const active = mode === m;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  title={meta.hint}
+                  onClick={() => setMode(m)}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                    active ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {meta.label}
+                </button>
+              );
+            })}
+          </div>
+          <label className="flex items-center justify-end gap-1.5 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={showLabels}
+              onChange={(e) => setShowLabels(e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            顯示題材名稱
+          </label>
         </div>
       </div>
 
@@ -153,7 +177,7 @@ export function CompositeBubblePanel({
           尚無綜合資料
         </div>
       ) : (
-        <ReactECharts option={option} style={{ height: 420 }} opts={{ renderer: 'canvas' }} />
+        <ReactECharts option={option} style={{ height: 440 }} opts={{ renderer: 'canvas' }} />
       )}
 
       <div className="overflow-x-auto">
@@ -179,10 +203,15 @@ export function CompositeBubblePanel({
                     {r.title}
                   </Link>
                 </td>
-                <td className="px-2 py-1.5 text-right tabular-nums font-semibold" style={{ color: scoreColor(r.scoreS) }}>
+                <td
+                  className="px-2 py-1.5 text-right tabular-nums font-semibold"
+                  style={{ color: scoreColor(r.scoreS) }}
+                >
                   {r.scoreS.toFixed(1)}
                 </td>
-                <td className="px-2 py-1.5 text-right tabular-nums text-slate-600">{r.flowScore.toFixed(0)}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums text-slate-600">
+                  {r.flowScore.toFixed(0)}
+                </td>
                 <td className="px-2 py-1.5 text-right tabular-nums text-slate-600">
                   {r.priceScore == null ? '—' : r.priceScore.toFixed(0)}
                 </td>
