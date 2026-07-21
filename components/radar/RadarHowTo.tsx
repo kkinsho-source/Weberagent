@@ -51,7 +51,7 @@ export function RadarHowTo() {
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { t: '中心＝普通', d: '籌也不強、價也不特別' },
+          { t: '中心 (0,0)＝普通', d: 'C50：籌也不強、價也不特別' },
           { t: '右上＝熱區', d: '錢偏有進，價也相對強' },
           { t: '左上＝觀察', d: '價先動，籌還沒明顯' },
           { t: '右下／左下', d: '降溫或雙弱，偏冷敘事' },

@@ -34,14 +34,24 @@ export function BubbleDetailPanel({
           <dt className="text-slate-500">綜合分 S</dt>
           <dd className="font-semibold tabular-nums text-slate-800">{row.scoreS.toFixed(1)}</dd>
         </div>
-        <div className="flex justify-between gap-2">
-          <dt className="text-slate-500">籌碼分</dt>
-          <dd className="tabular-nums">{row.flowScore.toFixed(0)}</dd>
-        </div>
-        <div className="flex justify-between gap-2">
-          <dt className="text-slate-500">價動能分</dt>
-          <dd className="tabular-nums">{row.priceScore == null ? '—' : row.priceScore.toFixed(0)}</dd>
-        </div>
+          <div className="text-xs text-slate-500">
+            籌碼 / 價動能為 C50（−50～+50，0＝中性）
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-slate-500">籌碼 C50</dt>
+            <dd className="tabular-nums">
+              {row.flowScore > 0 ? '+' : ''}
+              {row.flowScore.toFixed(0)}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-slate-500">價動能 C50</dt>
+            <dd className="tabular-nums">
+              {row.priceScore == null
+                ? '—'
+                : `${row.priceScore > 0 ? '+' : ''}${row.priceScore.toFixed(0)}`}
+            </dd>
+          </div>
         <div className="flex justify-between gap-2">
           <dt className="text-slate-500">近5日法人</dt>
           <dd className={`tabular-nums ${row.net5dYi >= 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
