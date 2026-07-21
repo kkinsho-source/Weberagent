@@ -9,6 +9,7 @@ import { StockSearch } from '@/components/layout/StockSearch';
 const links = [
   { href: '/', label: '首頁' },
   { href: '/themes', label: '題材' },
+  { href: '/radar', label: '資金雷達' },
   { href: '/announcements', label: '重大訊息' },
   { href: '/favorites', label: '自選' },
 ];

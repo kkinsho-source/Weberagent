@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "etl:twse": "python3 scripts/etl/twse_daily.py",
+    "etl:inst": "python3 scripts/etl/institutional_daily.py",
     "etl:push": "python3 scripts/etl/push_to_supabase.py",
     "etl:push:dry": "python3 scripts/etl/push_to_supabase.py --dry-run",
     "etl:migrate": "echo Use: curl -X POST http://localhost:PORT/api/admin/migrate-snapshot",
