@@ -3,13 +3,16 @@ import { getDataBundle } from '@/lib/data/source';
 import {
   buildThemeFlow,
   buildThemeFlowBrief,
+  buildThemeFlowFrames,
   tideStateCounts,
 } from '@/lib/data/theme-flow';
 import { parseThemeScope, type ThemeScope } from '@/lib/data/theme-scope';
 import { themeColor } from '@/lib/data/theme-colors';
+import type { ThemeFamily } from '@/lib/types';
 import { ThemeScopeTabs } from '@/components/theme/ThemeScopeTabs';
 import { ThemeFlowRadar } from '@/components/radar/ThemeFlowRadar';
 import { RadarTodayBrief } from '@/components/radar/RadarTodayBrief';
+import { ThemeFlowPlayback } from '@/components/radar/ThemeFlowPlayback';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,17 +24,21 @@ export default async function RadarPage({
   const sp = await searchParams;
   const scope: ThemeScope = parseThemeScope(sp.scope, 'all');
   const bundle = await getDataBundle();
-  const { rows, meta } = buildThemeFlow({
+  const flowOpts = {
     themes: bundle.themes,
     stocks: bundle.stocks,
     scope,
-  });
+  };
+  const { rows, meta } = buildThemeFlow(flowOpts);
+  const { frames } = buildThemeFlowFrames({ ...flowOpts, maxFrames: 20 });
   const counts = tideStateCounts(rows);
   const brief = buildThemeFlowBrief(rows);
   const viewRows = rows.map((r) => ({
     ...r,
     color: themeColor(r.slug, r.family),
   }));
+  const familyBySlug: Record<string, ThemeFamily | undefined> = {};
+  for (const t of bundle.themes) familyBySlug[t.slug] = t.family;
 
   return (
     <div className="space-y-6">
@@ -58,6 +65,10 @@ export default async function RadarPage({
         counts={counts}
         meta={{ ...meta, stocksDataSource: bundle.dataSource }}
       />
+
+      {meta.dataSource !== 'empty' ? (
+        <ThemeFlowPlayback frames={frames} familyBySlug={familyBySlug} />
+      ) : null}
 
       <p className="text-[11px] leading-relaxed text-slate-400">
         資料來源：臺灣證券交易所 T86、櫃買三大法人明細（彙整快取）；股價 TWSE/TPEx。本頁不構成任何有價證券之分析意見或推介。

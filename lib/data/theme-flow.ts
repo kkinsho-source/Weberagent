@@ -303,3 +303,112 @@ function fmtSigned(n: number): string {
   const s = n >= 0 ? '+' : '';
   return `${s}${Math.round(n * 100) / 100}`;
 }
+
+export type ThemeFlowFramePoint = {
+  slug: string;
+  title: string;
+  net5dYi: number;
+  accelYi: number;
+  net20dYi: number;
+  state: TideState;
+  stateLabel: string;
+};
+
+export type ThemeFlowFrame = {
+  date: string;
+  points: ThemeFlowFramePoint[];
+};
+
+/** 回放用：每個交易日的泡泡座標（近5日淨額 × 加速度） */
+export function buildThemeFlowFrames(opts: {
+  themes: Theme[];
+  stocks: Stock[];
+  scope?: ThemeScope;
+  /** 最多幾根 frame（從最舊到最新截尾） */
+  maxFrames?: number;
+}): { frames: ThemeFlowFrame[]; meta: { dayCount: number; dataSource: 'snapshot' | 'empty' } } {
+  const scope = opts.scope ?? 'all';
+  const maxFrames = opts.maxFrames ?? 20;
+  const themes = filterThemesByScope(opts.themes, scope).filter((t) => t.family !== 'benchmark');
+  const snap = loadInstSnapshot();
+  const bySym = snap?.bySymbol || {};
+  if (!Object.keys(bySym).length) {
+    return { frames: [], meta: { dayCount: 0, dataSource: 'empty' } };
+  }
+
+  const priceBySym = new Map(opts.stocks.map((s) => [s.symbol, s.price || 0]));
+  const stocksByTheme = new Map<string, Stock[]>();
+  for (const s of opts.stocks) {
+    const list = stocksByTheme.get(s.themeSlug) || [];
+    list.push(s);
+    stocksByTheme.set(s.themeSlug, list);
+  }
+
+  // theme -> sorted day series of daily yi
+  const themeSeries = new Map<string, { title: string; days: string[]; yi: number[] }>();
+  const allDays = new Set<string>();
+
+  for (const th of themes) {
+    const members = stocksByTheme.get(th.slug) || [];
+    const dayNet = new Map<string, number>();
+    for (const st of members) {
+      const series = bySym[st.symbol];
+      if (!series?.length) continue;
+      const px = priceBySym.get(st.symbol) || 0;
+      for (const pt of series) {
+        dayNet.set(pt.date, (dayNet.get(pt.date) || 0) + sharesToYi(pt.netShares, px));
+        allDays.add(pt.date);
+      }
+    }
+    const days = Array.from(dayNet.keys()).sort();
+    themeSeries.set(th.slug, {
+      title: th.title,
+      days,
+      yi: days.map((d) => dayNet.get(d) || 0),
+    });
+  }
+
+  const axis = Array.from(allDays).sort();
+  const useAxis = axis.slice(Math.max(0, axis.length - maxFrames));
+
+  const frames: ThemeFlowFrame[] = useAxis.map((date) => {
+    const points: ThemeFlowFramePoint[] = [];
+    for (const th of themes) {
+      const ser = themeSeries.get(th.slug);
+      if (!ser || !ser.days.length) continue;
+      // index of date in this theme's series (or last known <= date)
+      let idx = ser.days.indexOf(date);
+      if (idx < 0) {
+        idx = -1;
+        for (let i = 0; i < ser.days.length; i++) {
+          if (ser.days[i] <= date) idx = i;
+        }
+        if (idx < 0) continue;
+      }
+      const slice = ser.yi.slice(0, idx + 1);
+      const net5dYi = sumLast(slice, 5);
+      const net20dYi = sumLast(slice, 20);
+      const n5 = Math.min(5, slice.length) || 1;
+      const n20 = Math.min(20, slice.length) || 1;
+      const avg5Yi = net5dYi / n5;
+      const avg20Yi = net20dYi / n20;
+      const accelYi = avg5Yi - avg20Yi;
+      const { state, stateLabel } = classify(net5dYi, accelYi);
+      points.push({
+        slug: th.slug,
+        title: ser.title,
+        net5dYi: round4(net5dYi),
+        accelYi: round4(accelYi),
+        net20dYi: round4(net20dYi),
+        state,
+        stateLabel,
+      });
+    }
+    return { date, points };
+  });
+
+  return {
+    frames,
+    meta: { dayCount: frames.length, dataSource: 'snapshot' },
+  };
+}
