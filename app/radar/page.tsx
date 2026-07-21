@@ -125,7 +125,8 @@ export default async function RadarPage({
       </AdvancedChartsAccordion>
 
       <p className="text-[11px] leading-relaxed text-slate-400">
-        綜合分 S 與座標為當日題材橫截面相對位置，隨 scope／權重改變；非報酬預測。資料：T86、櫃買法人、stock_prices。相對強弱為自算簡化模型。
+        【免責】綜合分與座標為當日／當 scope
+        下的相對位置，不是絕對好壞、也不是買賣點或報酬預測。資料彙整自公開法人與行情；相對強弱為自算簡化模型。
       </p>
     </div>
   );
