@@ -561,12 +561,12 @@ export function CompositePlayback({
             <p className="mt-1 text-xs text-slate-500">
               {ZONE_META[selected.zone as CompositeZone].label} · {frame?.date}
             </p>
-
+            <ul className="mt-2 space-y-1 text-sm text-slate-200">
               <li className="flex justify-between">
                 <span className="text-slate-500">S</span>
                 <span className="font-semibold">{selected.scoreS.toFixed(1)}</span>
               </li>
-              <li className="flex justify-between">
+
                 <span className="text-slate-500">籌碼 C100</span>
                 <span>{fmtC100(selected.flowScore)}</span>
               </li>
