@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { ThemeFamily } from '@/lib/types';
 import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
+import { symmetricAroundZero } from '@/lib/data/chart-axis';
 
 export type PlayFrame = {
   date: string;
@@ -64,6 +65,23 @@ export function ThemeFlowPlayback({
 
   const option = useMemo(() => {
     const pts = frame?.points || [];
+    // 全序列取範圍，回放時軸不跳；中心 (0,0) 固定
+    const allX: number[] = [];
+    const allY: number[] = [];
+    for (const f of frames) {
+      for (const p of f.points) {
+        allX.push(p.net5dYi);
+        allY.push(p.accelYi);
+      }
+    }
+    const rx = symmetricAroundZero(allX.length ? allX : [0], { minHalf: 0.5 });
+    const ry = symmetricAroundZero(allY.length ? allY : [0], { minHalf: 0.2 });
+    const half = Math.max(rx.max, ry.max);
+    const xMin = -half;
+    const xMax = half;
+    const yMin = -half;
+    const yMax = half;
+
     const scatter = pts.map((r) => {
       const st = (r as { state?: string }).state || '';
       const color = STATE_COLOR[st] || 'rgba(100, 116, 139, 0.6)';
@@ -88,7 +106,6 @@ export function ThemeFlowPlayback({
       for (const f of frames.slice(0, idx + 1)) {
         for (const p of f.points) slugs.add(p.slug);
       }
-      // 最多 8 條，避免全場蜘蛛網
       const limited = [...slugs].slice(0, 8);
       for (const slug of limited) {
         const line: number[][] = [];
@@ -114,7 +131,7 @@ export function ThemeFlowPlayback({
 
     return {
       animationDurationUpdate: 400,
-      grid: { left: 52, right: 20, top: 28, bottom: 44 },
+      grid: { left: 56, right: 28, top: 36, bottom: 48 },
       tooltip: {
         trigger: 'item',
         formatter: (p: {
@@ -131,12 +148,18 @@ export function ThemeFlowPlayback({
         name: '近5日淨額（億）',
         nameGap: 28,
         nameLocation: 'middle',
+        min: xMin,
+        max: xMax,
+        scale: false,
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
       },
       yAxis: {
         name: '加速度',
-        nameGap: 40,
+        nameGap: 42,
         nameLocation: 'middle',
+        min: yMin,
+        max: yMax,
+        scale: false,
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
       },
       series: [
@@ -149,8 +172,29 @@ export function ThemeFlowPlayback({
           markLine: {
             silent: true,
             symbol: 'none',
-            lineStyle: { color: '#cbd5e1' },
+            lineStyle: { color: '#64748b', width: 1.25 },
             data: [{ xAxis: 0 }, { yAxis: 0 }],
+            label: { show: false },
+          },
+          markPoint: {
+            silent: true,
+            data: [
+              {
+                coord: [0, 0],
+                symbol: 'circle',
+                symbolSize: 7,
+                itemStyle: { color: '#64748b', borderColor: '#fff', borderWidth: 2 },
+                label: {
+                  show: true,
+                  formatter: '中性',
+                  position: 'right',
+                  color: '#64748b',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  distance: 6,
+                },
+              },
+            ],
           },
         },
       ],

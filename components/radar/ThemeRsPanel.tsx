@@ -3,9 +3,9 @@
 import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import Link from 'next/link';
-import { themeColor } from '@/lib/data/theme-colors';
 import type { ThemeFamily } from '@/lib/types';
 import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
+import { symmetricAroundCenter } from '@/lib/data/chart-axis';
 
 export type RsViewRow = {
   slug: string;
@@ -63,11 +63,14 @@ export function ThemeRsPanel({
   const option = useMemo(() => {
     const xs = rows.map((r) => r.rsRatio);
     const ys = rows.map((r) => r.rsMomentum);
-    const pad = 8;
-    const xMin = Math.min(80, ...xs) - pad;
-    const xMax = Math.max(120, ...xs) + pad;
-    const yMin = Math.min(80, ...ys) - pad;
-    const yMax = Math.max(120, ...ys) + pad;
+    // 中心 (100,100) 固定正中
+    const rx = symmetricAroundCenter(100, xs, { minHalf: 12 });
+    const ry = symmetricAroundCenter(100, ys, { minHalf: 12 });
+    const half = Math.max(100 - rx.min, rx.max - 100, 100 - ry.min, ry.max - 100);
+    const xMin = 100 - half;
+    const xMax = 100 + half;
+    const yMin = 100 - half;
+    const yMax = 100 + half;
 
     const data = rows.map((r) => {
       const q = Q_META[r.quadrant] || Q_META.lagging;
@@ -83,7 +86,7 @@ export function ThemeRsPanel({
     });
 
     return {
-      grid: { left: 52, right: 20, top: 36, bottom: 44 },
+      grid: { left: 56, right: 28, top: 40, bottom: 48 },
       tooltip: {
         formatter: (p: { data?: { name?: string; value?: number[] } }) => {
           const d = p.data;
@@ -105,14 +108,16 @@ export function ThemeRsPanel({
         nameGap: 28,
         min: xMin,
         max: xMax,
+        scale: false,
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
       },
       yAxis: {
         name: '相對動量 →',
         nameLocation: 'middle',
-        nameGap: 40,
+        nameGap: 42,
         min: yMin,
         max: yMax,
+        scale: false,
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
       },
       series: [
@@ -123,43 +128,47 @@ export function ThemeRsPanel({
           markLine: {
             silent: true,
             symbol: 'none',
-            lineStyle: { color: '#94a3b8' },
+            lineStyle: { color: '#64748b', width: 1.25 },
             data: [{ xAxis: 100 }, { yAxis: 100 }],
+            label: { show: false },
           },
-          // B4 四象限底
+          markPoint: {
+            silent: true,
+            data: [
+              {
+                coord: [100, 100],
+                symbol: 'circle',
+                symbolSize: 7,
+                itemStyle: { color: '#64748b', borderColor: '#fff', borderWidth: 2 },
+                label: {
+                  show: true,
+                  formatter: '中性',
+                  position: 'right',
+                  color: '#64748b',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  distance: 6,
+                },
+              },
+            ],
+          },
           markArea: {
             silent: true,
             data: [
               [
-                {
-                  xAxis: 100,
-                  yAxis: 100,
-                  itemStyle: { color: Q_META.leading.area },
-                },
+                { xAxis: 100, yAxis: 100, itemStyle: { color: Q_META.leading.area } },
                 { xAxis: xMax, yAxis: yMax },
               ],
               [
-                {
-                  xAxis: xMin,
-                  yAxis: 100,
-                  itemStyle: { color: Q_META.improving.area },
-                },
+                { xAxis: xMin, yAxis: 100, itemStyle: { color: Q_META.improving.area } },
                 { xAxis: 100, yAxis: yMax },
               ],
               [
-                {
-                  xAxis: 100,
-                  yAxis: yMin,
-                  itemStyle: { color: Q_META.weakening.area },
-                },
+                { xAxis: 100, yAxis: yMin, itemStyle: { color: Q_META.weakening.area } },
                 { xAxis: xMax, yAxis: 100 },
               ],
               [
-                {
-                  xAxis: xMin,
-                  yAxis: yMin,
-                  itemStyle: { color: Q_META.lagging.area },
-                },
+                { xAxis: xMin, yAxis: yMin, itemStyle: { color: Q_META.lagging.area } },
                 { xAxis: 100, yAxis: 100 },
               ],
             ],

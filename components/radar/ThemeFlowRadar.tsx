@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import Link from 'next/link';
 import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
+import { symmetricAroundZero } from '@/lib/data/chart-axis';
 
 export type RadarRow = {
   slug: string;
@@ -90,6 +91,17 @@ export function ThemeFlowRadar({
   };
 }) {
   const option = useMemo(() => {
+    const xs = rows.map((r) => r.net5dYi);
+    const ys = rows.map((r) => r.accelYi);
+    // 中心 (0,0) 固定畫面正中：X/Y 各自對稱，再取較大半徑讓四象限方正感
+    const rx = symmetricAroundZero(xs, { minHalf: 0.5 });
+    const ry = symmetricAroundZero(ys, { minHalf: 0.2 });
+    const half = Math.max(rx.max, ry.max);
+    const xMin = -half;
+    const xMax = half;
+    const yMin = -half;
+    const yMax = half;
+
     const data = rows.map((r) => {
       const st = STATE_META[r.state] || STATE_META.outflow_accel;
       return {
@@ -108,7 +120,7 @@ export function ThemeFlowRadar({
       };
     });
     return {
-      grid: { left: 52, right: 24, top: 36, bottom: 44 },
+      grid: { left: 56, right: 28, top: 40, bottom: 48 },
       tooltip: {
         trigger: 'item',
         formatter: (p: { data?: { name?: string; value?: number[]; slug?: string } }) => {
@@ -130,13 +142,19 @@ export function ThemeFlowRadar({
         name: '近5日法人淨額（億）→',
         nameLocation: 'middle',
         nameGap: 28,
+        min: xMin,
+        max: xMax,
+        scale: false,
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
         axisLine: { lineStyle: { color: '#94a3b8' } },
       },
       yAxis: {
         name: '加速度 →',
         nameLocation: 'middle',
-        nameGap: 40,
+        nameGap: 42,
+        min: yMin,
+        max: yMax,
+        scale: false,
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
         axisLine: { lineStyle: { color: '#94a3b8' } },
       },
@@ -148,43 +166,47 @@ export function ThemeFlowRadar({
           markLine: {
             silent: true,
             symbol: 'none',
-            lineStyle: { color: '#cbd5e1', type: 'solid' },
+            lineStyle: { color: '#64748b', width: 1.25 },
             data: [{ xAxis: 0 }, { yAxis: 0 }],
+            label: { show: false },
+          },
+          markPoint: {
+            silent: true,
+            data: [
+              {
+                coord: [0, 0],
+                symbol: 'circle',
+                symbolSize: 7,
+                itemStyle: { color: '#64748b', borderColor: '#fff', borderWidth: 2 },
+                label: {
+                  show: true,
+                  formatter: '中性',
+                  position: 'right',
+                  color: '#64748b',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  distance: 6,
+                },
+              },
+            ],
           },
           markArea: {
             silent: true,
             data: [
               [
-                {
-                  name: '',
-                  xAxis: 0,
-                  yAxis: 0,
-                  itemStyle: { color: 'rgba(254, 226, 226, 0.35)' },
-                },
-                { xAxis: 'max', yAxis: 'max' },
+                { xAxis: 0, yAxis: 0, itemStyle: { color: 'rgba(254, 226, 226, 0.35)' } },
+                { xAxis: xMax, yAxis: yMax },
               ],
               [
-                {
-                  xAxis: 'min',
-                  yAxis: 0,
-                  itemStyle: { color: 'rgba(254, 243, 199, 0.3)' },
-                },
-                { xAxis: 0, yAxis: 'max' },
+                { xAxis: xMin, yAxis: 0, itemStyle: { color: 'rgba(254, 243, 199, 0.3)' } },
+                { xAxis: 0, yAxis: yMax },
               ],
               [
-                {
-                  xAxis: 0,
-                  yAxis: 'min',
-                  itemStyle: { color: 'rgba(224, 242, 254, 0.3)' },
-                },
-                { xAxis: 'max', yAxis: 0 },
+                { xAxis: 0, yAxis: yMin, itemStyle: { color: 'rgba(224, 242, 254, 0.3)' } },
+                { xAxis: xMax, yAxis: 0 },
               ],
               [
-                {
-                  xAxis: 'min',
-                  yAxis: 'min',
-                  itemStyle: { color: 'rgba(241, 245, 249, 0.5)' },
-                },
+                { xAxis: xMin, yAxis: yMin, itemStyle: { color: 'rgba(241, 245, 249, 0.5)' } },
                 { xAxis: 0, yAxis: 0 },
               ],
             ],
