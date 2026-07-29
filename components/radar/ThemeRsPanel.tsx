@@ -5,7 +5,11 @@ import ReactECharts from 'echarts-for-react';
 import Link from 'next/link';
 import type { ThemeFamily } from '@/lib/types';
 import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
-import { symmetricAroundCenter } from '@/lib/data/chart-axis';
+import {
+  SQUARE_GRID,
+  fixedCenterCrossSeries,
+  halfRangeAroundCenter,
+} from '@/lib/data/chart-axis';
 
 export type RsViewRow = {
   slug: string;
@@ -63,10 +67,10 @@ export function ThemeRsPanel({
   const option = useMemo(() => {
     const xs = rows.map((r) => r.rsRatio);
     const ys = rows.map((r) => r.rsMomentum);
-    // 中心 (100,100) 固定正中
-    const rx = symmetricAroundCenter(100, xs, { minHalf: 12 });
-    const ry = symmetricAroundCenter(100, ys, { minHalf: 12 });
-    const half = Math.max(100 - rx.min, rx.max - 100, 100 - ry.min, ry.max - 100);
+    const half = Math.max(
+      halfRangeAroundCenter(100, xs, { minHalf: 12 }),
+      halfRangeAroundCenter(100, ys, { minHalf: 12 }),
+    );
     const xMin = 100 - half;
     const xMax = 100 + half;
     const yMin = 100 - half;
@@ -86,9 +90,11 @@ export function ThemeRsPanel({
     });
 
     return {
-      grid: { left: 56, right: 28, top: 40, bottom: 48 },
+      animation: false,
+      grid: { ...SQUARE_GRID },
       tooltip: {
-        formatter: (p: { data?: { name?: string; value?: number[] } }) => {
+        formatter: (p: { seriesId?: string; data?: { name?: string; value?: number[] } }) => {
+          if (p.seriesId === 'fixed-center-cross') return '';
           const d = p.data;
           if (!d?.value) return '';
           const row = rows.find((x) => x.title === d.name);
@@ -103,57 +109,40 @@ export function ThemeRsPanel({
         },
       },
       xAxis: {
+        type: 'value',
         name: '相對強度 →（右＝比大盤強）',
         nameLocation: 'middle',
-        nameGap: 28,
+        nameGap: 30,
         min: xMin,
         max: xMax,
         scale: false,
+        boundaryGap: false,
+        splitNumber: 4,
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
       },
       yAxis: {
+        type: 'value',
         name: '相對動量 →',
         nameLocation: 'middle',
-        nameGap: 42,
+        nameGap: 40,
         min: yMin,
         max: yMax,
         scale: false,
+        boundaryGap: false,
+        splitNumber: 4,
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
       },
       series: [
         {
+          id: 'rs-bubbles',
           type: 'scatter',
           symbolSize: 16,
           data,
-          markLine: {
-            silent: true,
-            symbol: 'none',
-            lineStyle: { color: '#64748b', width: 1.25 },
-            data: [{ xAxis: 100 }, { yAxis: 100 }],
-            label: { show: false },
-          },
-          markPoint: {
-            silent: true,
-            data: [
-              {
-                coord: [100, 100],
-                symbol: 'circle',
-                symbolSize: 7,
-                itemStyle: { color: '#64748b', borderColor: '#fff', borderWidth: 2 },
-                label: {
-                  show: true,
-                  formatter: '中性',
-                  position: 'right',
-                  color: '#64748b',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  distance: 6,
-                },
-              },
-            ],
-          },
+          z: 3,
+          animation: false,
           markArea: {
             silent: true,
+            animation: false,
             data: [
               [
                 { xAxis: 100, yAxis: 100, itemStyle: { color: Q_META.leading.area } },
@@ -174,6 +163,7 @@ export function ThemeRsPanel({
             ],
           },
         },
+        fixedCenterCrossSeries([100, 100], '中性'),
       ],
     };
   }, [rows]);

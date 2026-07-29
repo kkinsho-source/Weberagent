@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { ThemeFamily } from '@/lib/types';
 import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
-import { symmetricAroundZero } from '@/lib/data/chart-axis';
+import {
+  SQUARE_GRID,
+  fixedCenterCrossSeries,
+  halfRangeAroundZero,
+} from '@/lib/data/chart-axis';
 
 export type PlayFrame = {
   date: string;
@@ -39,7 +43,6 @@ export function ThemeFlowPlayback({
   void _familyBySlug;
   const [idx, setIdx] = useState(() => Math.max(0, frames.length - 1));
   const [playing, setPlaying] = useState(false);
-  /** B2：預設淡灰軌跡，避免彩虹亂 */
   const [trailMode, setTrailMode] = useState<'off' | 'soft'>('soft');
 
   useEffect(() => {
@@ -63,9 +66,8 @@ export function ThemeFlowPlayback({
 
   const frame = frames[idx] || frames[frames.length - 1];
 
-  const option = useMemo(() => {
-    const pts = frame?.points || [];
-    // 全序列取範圍，回放時軸不跳；中心 (0,0) 固定
+  /** 軸只依全序列算一次 —— 播放時半軸長不變，中心永不跳 */
+  const half = useMemo(() => {
     const allX: number[] = [];
     const allY: number[] = [];
     for (const f of frames) {
@@ -74,16 +76,20 @@ export function ThemeFlowPlayback({
         allY.push(p.accelYi);
       }
     }
-    const rx = symmetricAroundZero(allX.length ? allX : [0], { minHalf: 0.5 });
-    const ry = symmetricAroundZero(allY.length ? allY : [0], { minHalf: 0.2 });
-    const half = Math.max(rx.max, ry.max);
-    const xMin = -half;
-    const xMax = half;
-    const yMin = -half;
-    const yMax = half;
+    if (!allX.length) return 1;
+    return Math.max(
+      halfRangeAroundZero(allX, { minHalf: 0.5 }),
+      halfRangeAroundZero(allY, { minHalf: 0.2 }),
+    );
+  }, [frames]);
+
+  const option = useMemo(() => {
+    const pts = frame?.points || [];
+    const lo = -half;
+    const hi = half;
 
     const scatter = pts.map((r) => {
-      const st = (r as { state?: string }).state || '';
+      const st = r.state || '';
       const color = STATE_COLOR[st] || 'rgba(100, 116, 139, 0.6)';
       return {
         name: r.title,
@@ -118,6 +124,7 @@ export function ThemeFlowPlayback({
         }
         if (line.length < 2) continue;
         trailSeries.push({
+          id: `trail-${slug}`,
           type: 'line',
           name: title,
           data: line,
@@ -125,81 +132,76 @@ export function ThemeFlowPlayback({
           lineStyle: { width: 1.25, color: SOFT_TRAIL },
           z: 1,
           silent: true,
+          animation: false,
+          clip: true,
         });
       }
     }
 
     return {
-      animationDurationUpdate: 400,
-      grid: { left: 56, right: 28, top: 36, bottom: 48 },
+      // 關閉全域更新動畫，避免軸／十字一起「飛」
+      animation: false,
+      animationDurationUpdate: 0,
+      grid: { ...SQUARE_GRID },
       tooltip: {
         trigger: 'item',
         formatter: (p: {
           seriesType?: string;
+          seriesId?: string;
           data?: { name?: string; value?: number[] };
         }) => {
-          if (p.seriesType === 'line') return '';
+          if (p.seriesType === 'line' || p.seriesId === 'fixed-center-cross') return '';
           const d = p.data;
           if (!d?.value) return '';
           return `${d.name}<br/>近5日 ${d.value[0].toFixed(2)} 億<br/>加速度 ${d.value[1].toFixed(2)}`;
         },
       },
       xAxis: {
+        id: 'flow-x',
+        type: 'value',
         name: '近5日淨額（億）',
-        nameGap: 28,
+        nameGap: 30,
         nameLocation: 'middle',
-        min: xMin,
-        max: xMax,
+        min: lo,
+        max: hi,
         scale: false,
+        boundaryGap: false,
+        splitNumber: 4,
+        animation: false,
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
+        axisLine: { show: true, lineStyle: { color: '#94a3b8' } },
       },
       yAxis: {
+        id: 'flow-y',
+        type: 'value',
         name: '加速度',
-        nameGap: 42,
+        nameGap: 40,
         nameLocation: 'middle',
-        min: yMin,
-        max: yMax,
+        min: lo,
+        max: hi,
         scale: false,
+        boundaryGap: false,
+        splitNumber: 4,
+        animation: false,
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
+        axisLine: { show: true, lineStyle: { color: '#94a3b8' } },
       },
       series: [
         ...trailSeries,
         {
+          id: 'flow-play-bubbles',
           type: 'scatter',
           symbolSize: (val: number[]) => val[2],
           data: scatter,
           z: 3,
-          markLine: {
-            silent: true,
-            symbol: 'none',
-            lineStyle: { color: '#64748b', width: 1.25 },
-            data: [{ xAxis: 0 }, { yAxis: 0 }],
-            label: { show: false },
-          },
-          markPoint: {
-            silent: true,
-            data: [
-              {
-                coord: [0, 0],
-                symbol: 'circle',
-                symbolSize: 7,
-                itemStyle: { color: '#64748b', borderColor: '#fff', borderWidth: 2 },
-                label: {
-                  show: true,
-                  formatter: '中性',
-                  position: 'right',
-                  color: '#64748b',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  distance: 6,
-                },
-              },
-            ],
-          },
+          animation: false,
+          clip: true,
         },
+        // 十字永遠獨立、不跟泡泡 series 重綁
+        fixedCenterCrossSeries([0, 0], '中性'),
       ],
     };
-  }, [frame, frames, idx, trailMode]);
+  }, [frame, frames, half, idx, trailMode]);
 
   const onPlay = useCallback(() => {
     if (idx >= frames.length - 1) setIdx(0);
@@ -227,7 +229,7 @@ export function ThemeFlowPlayback({
         </p>
         <h3 className="text-base font-semibold text-slate-800">資金軌跡回放</h3>
         <p className="mt-0.5 text-xs text-slate-400">
-          純法人座標逐日移動。若要看綜合座標（籌×價），請用上方主回放。
+          純法人座標逐日移動；十字中心固定。綜合座標請用上方主回放。
         </p>
       </div>
 
@@ -293,14 +295,18 @@ export function ThemeFlowPlayback({
           aria-label="回放進度"
         />
 
+        {/*
+          不用 notMerge：保留軸與十字 series id，只更新泡泡／軌跡 data，
+          避免每幀整圖重建導致中心「亂跑」。
+        */}
         <ReactECharts
           option={option}
-          style={{ height: 380 }}
+          style={{ height: 400 }}
           opts={{ renderer: 'canvas' }}
-          notMerge
+          lazyUpdate
         />
         <p className="mt-2 text-[11px] text-slate-400">
-          軌跡預設淡灰、最多 8 條；泡泡色依當日籌碼四態。
+          軸範圍取全期間固定；中心 (0,0) 鎖在圖正中。軌跡淡灰、最多 8 條。
         </p>
       </div>
     </section>
