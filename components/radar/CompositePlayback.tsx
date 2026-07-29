@@ -14,6 +14,8 @@ import {
   HUD,
   hudAxisCommon,
   hudDiamondStyle,
+  hudSonarRingSeries,
+  hudSonarTrailStyle,
   hudTooltipBase,
   hudZoneMarkAreaData,
 } from '@/lib/data/radar-hud';
@@ -25,8 +27,8 @@ import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
 const ANIM_MS = 900;
 const BASE_STEP_MS = 1000;
 
-/** 軌跡樣式：淡灰最不亂；四色跟象限；關 */
-type TrailStyle = 'soft' | 'zone' | 'off';
+/** 軌跡：聲納虛線（預設）｜四色｜關 */
+type TrailStyle = 'sonar' | 'zone' | 'off';
 
 function fmtC100(n: number): string {
   return `${n > 0 ? '+' : ''}${n.toFixed(0)}`;
@@ -44,7 +46,7 @@ export function CompositePlayback({
   const readyRef = useRef(false);
   const [idx, setIdx] = useState(() => Math.max(0, frames.length - 1));
   const [playing, setPlaying] = useState(false);
-  const [trailStyle, setTrailStyle] = useRadarPref<TrailStyle>('play-trail', 'soft');
+  const [trailStyle, setTrailStyle] = useRadarPref<TrailStyle>('play-trail', 'sonar');
   const [showLabels, setShowLabels] = useRadarPref('play-labels', true);
   const [speed, setSpeed] = useRadarPref<1 | 1.5 | 2>('play-speed', 1);
   const [selected, setSelected] = useState<CompositeFramePoint | null>(null);
@@ -168,26 +170,35 @@ export function CompositePlayback({
           }
           if (line.length < 2) continue;
           const isFocus = selected?.slug === slug;
-          const color =
-            trailStyle === 'zone'
-              ? ZONE_META[lastZone].bubble
-              : '#94a3b8'; // soft slate
+          const mode = trailStyle === 'zone' ? 'zone' : 'sonar';
+          const ls = hudSonarTrailStyle({
+            focus: isFocus,
+            zoneColor: ZONE_META[lastZone].bubble,
+            mode,
+          });
+
           trailSeries.push({
             type: 'line',
             id: `trail-${slug}`,
             name: title,
             data: line,
-            showSymbol: false,
-            smooth: 0.35,
-            lineStyle: {
-              width: isFocus ? 2.5 : 1.5,
-              opacity: isFocus ? 0.75 : trailStyle === 'soft' ? 0.28 : 0.35,
-              color,
-              type: isFocus ? 'solid' : 'solid',
-            },
+            // 焦點：末端小點像聲納回波
+            showSymbol: isFocus,
+            symbol: 'circle',
+            symbolSize: isFocus ? 5 : 0,
+            smooth: isFocus ? 0.25 : 0.15,
+            lineStyle: ls,
+            itemStyle: isFocus
+              ? {
+                  color: HUD.trailFocus,
+                  shadowBlur: 8,
+                  shadowColor: 'rgba(165,243,252,0.7)',
+                }
+              : undefined,
             z: isFocus ? 2 : 1,
             silent: true,
             animation: false,
+            clip: true,
           });
         }
       }
@@ -225,6 +236,7 @@ export function CompositePlayback({
         xAxis: { type: 'value' as const, ...hudAxisCommon('錢有沒有比較多進 →', 28) },
         yAxis: { type: 'value' as const, ...hudAxisCommon('價相對強弱（當日） →', 40) },
         series: [
+          ...hudSonarRingSeries(),
           ...trailSeries,
           {
             type: 'scatter',
@@ -344,9 +356,7 @@ export function CompositePlayback({
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold tracking-wide text-cyan-50">最近怎麼移動（回放）</h2>
-          <p className="text-xs text-slate-400">
-            按播放看泡泡如何換區。建議先點一顆泡泡再播，軌跡較清楚。
-          </p>
+          <p className="text-xs text-slate-400">距離環 + 聲納軌跡；資料語意不變。</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -374,32 +384,32 @@ export function CompositePlayback({
       </div>
 
       {showMore ? (
-        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-          <label className="flex items-center gap-1.5 text-xs text-slate-600">
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-cyan-500/15 bg-slate-900/50 px-3 py-2">
+          <label className="flex items-center gap-1.5 text-xs text-slate-300">
             <input
               type="checkbox"
               checked={showLabels}
               onChange={(e) => setShowLabels(e.target.checked)}
-              className="rounded border-slate-300"
+              className="rounded border-slate-600"
             />
             名稱
           </label>
           <select
-            value={trailStyle}
+            value={trailStyle === ('soft' as TrailStyle) ? 'sonar' : trailStyle}
             onChange={(e) => setTrailStyle(e.target.value as TrailStyle)}
-            className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs text-slate-600"
+            className="rounded-md border border-cyan-500/25 bg-slate-900 px-2 py-1 text-xs text-cyan-100"
             title="軌跡樣式"
           >
-            <option value="soft">軌跡·淡灰</option>
+            <option value="sonar">軌跡·聲納</option>
             <option value="zone">軌跡·四色</option>
             <option value="off">軌跡·關</option>
           </select>
-          <label className="flex items-center gap-1.5 text-xs text-slate-600">
+          <label className="flex items-center gap-1.5 text-xs text-slate-300">
             <input
               type="checkbox"
               checked={trailFocusOnly}
               onChange={(e) => setTrailFocusOnly(e.target.checked)}
-              className="rounded border-slate-300"
+              className="rounded border-slate-600"
               disabled={trailStyle === 'off'}
             />
             只畫聚焦
@@ -407,7 +417,7 @@ export function CompositePlayback({
           <select
             value={speed}
             onChange={(e) => setSpeed(Number(e.target.value) as 1 | 1.5 | 2)}
-            className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs text-slate-600"
+            className="rounded-md border border-cyan-500/25 bg-slate-900 px-2 py-1 text-xs text-cyan-100"
           >
             <option value={1}>1× 順暢</option>
             <option value={1.5}>1.5×</option>
@@ -416,7 +426,7 @@ export function CompositePlayback({
           <button
             type="button"
             onClick={() => setShowPicker((v) => !v)}
-            className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 hover:bg-white"
+            className="rounded-md border border-cyan-500/25 bg-slate-900 px-2.5 py-1 text-xs text-cyan-100 hover:bg-slate-800"
           >
             題材 {pickLabel}
           </button>

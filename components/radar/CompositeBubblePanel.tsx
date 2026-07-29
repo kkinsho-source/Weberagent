@@ -15,6 +15,7 @@ import {
   HUD,
   hudAxisCommon,
   hudDiamondStyle,
+  hudSonarRingSeries,
   hudTooltipBase,
   hudZoneMarkAreaData,
 } from '@/lib/data/radar-hud';
@@ -218,6 +219,7 @@ export function CompositeBubblePanel({
       xAxis: hudAxisCommon('錢有沒有比較多進 →', 30),
       yAxis: hudAxisCommon('價相對有沒有變強 →', 40),
       series: [
+        ...hudSonarRingSeries(),
         {
           type: 'scatter',
           symbol: 'diamond',
@@ -309,10 +311,10 @@ export function CompositeBubblePanel({
             <RadarHowTo />
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            中心＝普通 · 菱形＝題材 · 色＝所在區 · 資料日 {asOf || '—'}
+            中心＝普通 · 環＝離中心遠近 · 菱形＝題材 · 色＝區 · 資料日 {asOf || '—'}
           </p>
           <p className="mt-0.5 text-[11px] text-slate-500">
-            橫軸：錢相對有沒有比較多進 · 縱軸：價相對有沒有變強 · 換皮不換數據
+            橫軸：錢相對有沒有比較多進 · 縱軸：價相對有沒有變強 · 距離環：近／中／遠／外
           </p>
           {rows.length > 0 ? (
             <p className="mt-2 rounded-lg border border-cyan-500/15 bg-slate-900/80 px-3 py-2 text-sm leading-relaxed text-slate-200">
