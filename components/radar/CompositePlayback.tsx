@@ -367,7 +367,7 @@ export function CompositePlayback({
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold tracking-wide text-cyan-50">最近怎麼移動（回放）</h2>
-          <p className="text-xs text-slate-400">距離環 + 聲納軌跡；資料語意不變。</p>
+          <p className="text-xs text-slate-400">火球平滑滑移 · 軌跡漸隱延續 · 動畫對齊步長</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -561,7 +561,7 @@ export function CompositePlayback({
                 },
               }}
             />
-
+          </div>
           <p className="mt-1 text-center text-[11px] text-slate-500">
             點火球聚焦軌跡 · 再點取消 · 未聚焦時最多 6 條軌跡
           </p>
