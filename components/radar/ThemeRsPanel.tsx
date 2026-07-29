@@ -5,6 +5,7 @@ import ReactECharts from 'echarts-for-react';
 import Link from 'next/link';
 import { themeColor } from '@/lib/data/theme-colors';
 import type { ThemeFamily } from '@/lib/types';
+import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
 
 export type RsViewRow = {
   slug: string;
@@ -18,47 +19,100 @@ export type RsViewRow = {
   ret20d: number;
 };
 
-const Q_STYLE: Record<string, string> = {
-  leading: 'bg-rose-100 text-rose-800',
-  improving: 'bg-amber-100 text-amber-900',
-  weakening: 'bg-violet-100 text-violet-800',
-  lagging: 'bg-slate-200 text-slate-700',
+const Q_META: Record<
+  string,
+  { badge: string; bubble: string; border: string; area: string }
+> = {
+  leading: {
+    badge: 'bg-rose-100 text-rose-800',
+    bubble: 'rgba(225, 29, 72, 0.7)',
+    border: '#be123c',
+    area: 'rgba(254, 226, 226, 0.4)',
+  },
+  improving: {
+    badge: 'bg-amber-100 text-amber-900',
+    bubble: 'rgba(217, 119, 6, 0.65)',
+    border: '#b45309',
+    area: 'rgba(254, 243, 199, 0.35)',
+  },
+  weakening: {
+    badge: 'bg-violet-100 text-violet-800',
+    bubble: 'rgba(139, 92, 246, 0.55)',
+    border: '#7c3aed',
+    area: 'rgba(237, 233, 254, 0.4)',
+  },
+  lagging: {
+    badge: 'bg-slate-200 text-slate-700',
+    bubble: 'rgba(100, 116, 139, 0.55)',
+    border: '#475569',
+    area: 'rgba(241, 245, 249, 0.55)',
+  },
 };
 
 export function ThemeRsPanel({
   rows,
   meta,
-  familyBySlug,
+  familyBySlug: _familyBySlug,
 }: {
   rows: RsViewRow[];
   meta: { asOf?: string | null; dataSource?: string; symbolBars?: number };
   familyBySlug: Record<string, ThemeFamily | undefined>;
 }) {
+  void _familyBySlug;
+
   const option = useMemo(() => {
-    const data = rows.map((r) => ({
-      name: r.title,
-      value: [r.rsRatio, r.rsMomentum],
-      itemStyle: { color: themeColor(r.slug, familyBySlug[r.slug]) },
-    }));
+    const xs = rows.map((r) => r.rsRatio);
+    const ys = rows.map((r) => r.rsMomentum);
+    const pad = 8;
+    const xMin = Math.min(80, ...xs) - pad;
+    const xMax = Math.max(120, ...xs) + pad;
+    const yMin = Math.min(80, ...ys) - pad;
+    const yMax = Math.max(120, ...ys) + pad;
+
+    const data = rows.map((r) => {
+      const q = Q_META[r.quadrant] || Q_META.lagging;
+      return {
+        name: r.title,
+        value: [r.rsRatio, r.rsMomentum],
+        itemStyle: {
+          color: q.bubble,
+          borderColor: q.border,
+          borderWidth: 1.5,
+        },
+      };
+    });
+
     return {
-      grid: { left: 52, right: 20, top: 28, bottom: 40 },
+      grid: { left: 52, right: 20, top: 36, bottom: 44 },
       tooltip: {
         formatter: (p: { data?: { name?: string; value?: number[] } }) => {
           const d = p.data;
           if (!d?.value) return '';
-          return `${d.name}<br/>RS ${d.value[0].toFixed(1)} · 動量 ${d.value[1].toFixed(1)}`;
+          const row = rows.find((x) => x.title === d.name);
+          return [
+            `<b>${d.name}</b>`,
+            row ? row.quadrantLabel : '',
+            `相對強度 ${d.value[0].toFixed(1)}（100＝中性）`,
+            `相對動量 ${d.value[1].toFixed(1)}`,
+          ]
+            .filter(Boolean)
+            .join('<br/>');
         },
       },
       xAxis: {
-        name: '相對強度 RS（100=中性）',
+        name: '相對強度 →（右＝比大盤強）',
         nameLocation: 'middle',
         nameGap: 28,
+        min: xMin,
+        max: xMax,
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
       },
       yAxis: {
-        name: '相對動量',
+        name: '相對動量 →',
         nameLocation: 'middle',
-        nameGap: 36,
+        nameGap: 40,
+        min: yMin,
+        max: yMax,
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
       },
       series: [
@@ -72,68 +126,151 @@ export function ThemeRsPanel({
             lineStyle: { color: '#94a3b8' },
             data: [{ xAxis: 100 }, { yAxis: 100 }],
           },
+          // B4 四象限底
+          markArea: {
+            silent: true,
+            data: [
+              [
+                {
+                  xAxis: 100,
+                  yAxis: 100,
+                  itemStyle: { color: Q_META.leading.area },
+                },
+                { xAxis: xMax, yAxis: yMax },
+              ],
+              [
+                {
+                  xAxis: xMin,
+                  yAxis: 100,
+                  itemStyle: { color: Q_META.improving.area },
+                },
+                { xAxis: 100, yAxis: yMax },
+              ],
+              [
+                {
+                  xAxis: 100,
+                  yAxis: yMin,
+                  itemStyle: { color: Q_META.weakening.area },
+                },
+                { xAxis: xMax, yAxis: 100 },
+              ],
+              [
+                {
+                  xAxis: xMin,
+                  yAxis: yMin,
+                  itemStyle: { color: Q_META.lagging.area },
+                },
+                { xAxis: 100, yAxis: 100 },
+              ],
+            ],
+          },
         },
       ],
     };
-  }, [rows, familyBySlug]);
+  }, [rows]);
 
   if (!rows.length) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-        尚無足夠歷史股價做相對強弱（需 Supabase stock_prices）。
-      </div>
+      <section className="space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          二、純相對強弱
+        </p>
+        <RadarEmptyBlock title="相對強弱暫時無法計算">
+          需要足夠的歷史股價才能比較題材強弱。資料累積後會自動出現。
+        </RadarEmptyBlock>
+      </section>
     );
   }
 
   return (
-    <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h2 className="text-base font-semibold text-slate-800">價動能 · 相對強弱</h2>
-          <p className="text-xs text-slate-400">
-            右上=領先 · 左上=改善 · 右下=弱化 · 左下=落後（順時針輪動直覺）· asOf {meta.asOf || '—'} ·{' '}
-            {meta.symbolBars ?? 0} 檔有價
-          </p>
+    <section className="space-y-3">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          二、純相對強弱
+        </p>
+        <h3 className="text-base font-semibold text-slate-800">價動能象限</h3>
+        <p className="mt-0.5 text-xs text-slate-400">
+          只看價，不含法人。右上領先 · 左上改善 · 右下弱化 · 左下落後 · 中心 (100,100)＝中性
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-2 flex flex-wrap gap-2 text-[11px]">
+          {(
+            [
+              ['leading', '領先'],
+              ['improving', '改善'],
+              ['weakening', '弱化'],
+              ['lagging', '落後'],
+            ] as const
+          ).map(([k, lab]) => (
+            <span
+              key={k}
+              className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2 py-0.5 ring-1 ring-slate-200"
+            >
+              <span
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: Q_META[k].bubble }}
+              />
+              {lab}
+            </span>
+          ))}
+          <span className="ml-auto text-slate-400">
+            資料日 {meta.asOf || '—'}
+            {meta.symbolBars != null ? ` · ${meta.symbolBars} 檔有價` : ''}
+          </span>
+        </div>
+        <ReactECharts option={option} style={{ height: 380 }} opts={{ renderer: 'canvas' }} />
+        <div className="mt-3 overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs text-slate-500">
+              <tr>
+                <th className="px-2 py-1.5">題材</th>
+                <th className="px-2 py-1.5">象限</th>
+                <th className="px-2 py-1.5 text-right">強度</th>
+                <th className="px-2 py-1.5 text-right">動量</th>
+                <th className="px-2 py-1.5 text-right">20日%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const q = Q_META[r.quadrant];
+                return (
+                  <tr key={r.slug} className="border-t border-slate-100">
+                    <td className="px-2 py-1.5">
+                      <Link
+                        href={`/themes/${r.slug}?from=radar`}
+                        className="font-medium text-brand-700 hover:underline"
+                      >
+                        {r.title}
+                      </Link>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] ${q?.badge || ''}`}
+                      >
+                        {r.quadrantLabel}
+                      </span>
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {r.rsRatio.toFixed(1)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {r.rsMomentum.toFixed(1)}
+                    </td>
+                    <td
+                      className={`px-2 py-1.5 text-right tabular-nums ${r.ret20d >= 0 ? 'text-rose-600' : 'text-emerald-700'}`}
+                    >
+                      {r.ret20d >= 0 ? '+' : ''}
+                      {r.ret20d.toFixed(1)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
-      <ReactECharts option={option} style={{ height: 380 }} opts={{ renderer: 'canvas' }} />
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs text-slate-500">
-            <tr>
-              <th className="px-2 py-1.5">題材</th>
-              <th className="px-2 py-1.5">象限</th>
-              <th className="px-2 py-1.5 text-right">RS</th>
-              <th className="px-2 py-1.5 text-right">動量</th>
-              <th className="px-2 py-1.5 text-right">20日%</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.slug} className="border-t border-slate-100">
-                <td className="px-2 py-1.5">
-                  <Link href={`/themes/${r.slug}?from=radar`} className="font-medium text-brand-700 hover:underline">
-                    {r.title}
-                  </Link>
-                </td>
-                <td className="px-2 py-1.5">
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] ${Q_STYLE[r.quadrant] || ''}`}>
-                    {r.quadrantLabel}
-                  </span>
-                </td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{r.rsRatio.toFixed(1)}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{r.rsMomentum.toFixed(1)}</td>
-                <td
-                  className={`px-2 py-1.5 text-right tabular-nums ${r.ret20d >= 0 ? 'text-rose-600' : 'text-emerald-700'}`}
-                >
-                  {r.ret20d >= 0 ? '+' : ''}
-                  {r.ret20d.toFixed(1)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    </section>
   );
 }

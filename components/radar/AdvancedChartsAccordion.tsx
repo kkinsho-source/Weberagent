@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 
-/** G5：進階圖表摺疊 */
+/** 進階圖表摺疊：與主圖差在哪一句說清楚 */
 export function AdvancedChartsAccordion({
   children,
   defaultOpen = false,
@@ -16,12 +16,19 @@ export function AdvancedChartsAccordion({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50"
       >
-        <span>進階圖表（給想看細節的人：純籌碼、純相對強弱、舊版回放）</span>
-        <span className="text-slate-400">{open ? '收起 ▴' : '展開 ▾'}</span>
+        <span className="min-w-0">
+          <span className="block text-sm font-medium text-slate-700">進階圖表</span>
+          <span className="mt-0.5 block text-[11px] font-normal leading-relaxed text-slate-400">
+            主圖是籌碼×價綜合位置；這裡拆開看純法人、純相對強弱，以及舊版籌碼回放。
+          </span>
+        </span>
+        <span className="shrink-0 text-xs text-slate-400">{open ? '收起 ▴' : '展開 ▾'}</span>
       </button>
-      {open ? <div className="space-y-6 border-t border-slate-200 px-3 py-4 sm:px-4">{children}</div> : null}
+      {open ? (
+        <div className="space-y-8 border-t border-slate-200 px-3 py-4 sm:px-4">{children}</div>
+      ) : null}
     </div>
   );
 }
