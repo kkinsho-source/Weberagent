@@ -24,8 +24,15 @@ import type { ThemeFamily } from '@/lib/types';
 import { useRadarPref } from '@/components/radar/useRadarPref';
 import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
 
-const ANIM_MS = 900;
-const BASE_STEP_MS = 1000;
+const BASE_STEP_MS = 1250; // 1× 步長；動畫 ≈ 0.92×步長，銜接下幀
+
+function stepMsFor(speed: number) {
+  return Math.round(BASE_STEP_MS / speed);
+}
+
+function animMsFor(speed: number) {
+  return Math.round(stepMsFor(speed) * 0.92);
+}
 
 /** 軌跡：聲納虛線（預設）｜四色｜關 */
 type TrailStyle = 'sonar' | 'zone' | 'off';
@@ -96,7 +103,7 @@ export function CompositePlayback({
   };
 
   const buildOption = useCallback(
-    (frameIdx: number, labels: boolean) => {
+    (frameIdx: number, labels: boolean, animMs: number) => {
       const frame = frames[frameIdx] || frames[frames.length - 1];
       const ptsAll = frame?.points || [];
       const pts =
@@ -127,14 +134,17 @@ export function CompositePlayback({
               r.scoreS,
             ],
             itemStyle: {
-              ...hudFireballStyle(r.zone, { resonance: r.resonance || isFocus }),
-              opacity: isFocus || !selected ? 0.92 : 0.35,
+              ...hudFireballStyle(r.zone, {
+                resonance: r.resonance || isFocus,
+                focus: isFocus,
+              }),
+              opacity: isFocus || !selected ? 0.95 : 0.38,
             },
             label: {
               show: labels,
               formatter: () => shortThemeLabel(r.title),
               position: 'top' as const,
-              distance: 5,
+              distance: 6,
               fontSize: isFocus ? 11 : 10,
               fontWeight: 600,
               color: HUD.text,
@@ -148,7 +158,6 @@ export function CompositePlayback({
       const trailSeries: object[] = [];
       if (trailStyle !== 'off' && frameIdx > 0) {
         let trailSlugs = order;
-        // 預設：有選中就只畫那條軌跡；否則最多 6 條（S 最高）避免蜘蛛網
         if (trailFocusOnly && selected) {
           trailSlugs = order.filter((s) => s === selected.slug);
         } else if (trailSlugs.length > 6) {
@@ -186,20 +195,22 @@ export function CompositePlayback({
 
       return {
         animation: true,
-        animationThreshold: 2000,
-        animationDuration: ANIM_MS,
-        animationDurationUpdate: ANIM_MS,
-        animationEasing: 'cubicOut' as const,
-        animationEasingUpdate: 'cubicInOut' as const,
+        animationThreshold: 8000,
+        animationDuration: animMs,
+        animationDurationUpdate: animMs,
+        animationEasing: 'linear' as const,
+        animationEasingUpdate: 'linear' as const,
         grid: { left: 56, right: 28, top: 44, bottom: 48 },
         backgroundColor: 'transparent',
         tooltip: {
           ...hudTooltipBase(),
           formatter: (p: {
             seriesType?: string;
+            seriesId?: string;
             data?: { id?: string; name?: string; value?: number[] };
           }) => {
             if (p.seriesType === 'line') return '';
+            if (String(p.seriesId || '').startsWith('trail-')) return '';
             const d = p.data;
             if (!d?.value) return '';
             const pt = pts.find((x) => x.slug === d.id || x.title === d.name);
@@ -215,7 +226,10 @@ export function CompositePlayback({
           },
         },
         xAxis: { type: 'value' as const, ...hudAxisCommon('錢有沒有比較多進 →', 28) },
-        yAxis: { type: 'value' as const, ...hudAxisCommon('價相對強弱（當日） →', 40) },
+        yAxis: {
+          type: 'value' as const,
+          ...hudAxisCommon('價相對強弱（當日） →', 40),
+        },
         series: [
           ...hudSonarRingSeries(),
           ...trailSeries,
@@ -224,12 +238,17 @@ export function CompositePlayback({
             id: 'bubbles',
             name: '題材',
             symbol: 'circle',
-            universalTransition: { enabled: true, divideShape: 'clone' },
+            // 同 id 點位插值 → 火球平滑滑移
+            universalTransition: { enabled: false },
+            animation: true,
+            animationDurationUpdate: animMs,
+            animationEasingUpdate: 'linear',
             symbolSize: (val: number[]) => val[2],
             data: scatter,
             z: 3,
             markArea: {
               silent: true,
+              animation: false,
               data: hudZoneMarkAreaData() as unknown as object[],
             },
             markLine: {
@@ -241,6 +260,7 @@ export function CompositePlayback({
             },
             markPoint: {
               silent: true,
+              animation: false,
               data: [
                 {
                   coord: [0, 0],
@@ -275,19 +295,29 @@ export function CompositePlayback({
     (frameIdx: number, full = false) => {
       const chart = chartRef.current?.getEchartsInstance() as ECharts | undefined;
       if (!chart || !frames.length) return;
-      const opt = buildOption(frameIdx, showLabels);
+      const animMs = animMsFor(speed);
+      const opt = buildOption(frameIdx, showLabels, animMs);
       if (full || !readyRef.current) {
         chart.setOption(opt, { notMerge: true, lazyUpdate: false });
         readyRef.current = true;
-      } else {
-        chart.setOption(opt, {
-          notMerge: false,
-          lazyUpdate: false,
-          replaceMerge: ['series'],
-        });
+        return;
       }
+      // 只 merge 動態 series（火球 + 軌跡），軸／距離環不動 → 延續感
+      const dynSeries = (opt.series as { id?: string }[]).filter((s) => {
+        const id = String(s.id || '');
+        return id === 'bubbles' || id.startsWith('trail-');
+      });
+      chart.setOption(
+        {
+          animation: true,
+          animationDurationUpdate: animMs,
+          animationEasingUpdate: 'linear',
+          series: dynSeries,
+        },
+        { notMerge: false, lazyUpdate: false },
+      );
     },
-    [buildOption, frames.length, showLabels],
+    [buildOption, frames.length, showLabels, speed],
   );
 
   useEffect(() => {
@@ -301,7 +331,7 @@ export function CompositePlayback({
 
   useEffect(() => {
     if (!playing || frames.length < 2) return;
-    const ms = Math.round(BASE_STEP_MS / speed);
+    const ms = stepMsFor(speed);
     const t = setInterval(() => {
       setIdx((i) => {
         if (i >= frames.length - 1) {
@@ -518,10 +548,9 @@ export function CompositePlayback({
               onChartReady={() => applyFrame(idx, true)}
               style={{ height: 420 }}
               opts={{ renderer: 'canvas' }}
-              notMerge
               lazyUpdate
               onEvents={{
-                click: (params: { data?: { id?: string; name?: string } }) => {
+
                   const id = params?.data?.id;
                   const pt =
                     frame?.points.find((p) => p.slug === id) ||

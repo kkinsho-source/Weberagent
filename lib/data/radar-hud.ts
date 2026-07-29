@@ -151,9 +151,44 @@ function lightenHex(hex: string): string {
   return `#${ch(0)}${ch(2)}${ch(4)}`;
 }
 
+/** 固定段數 → series id 穩定，ECharts merge 才能平滑延續 */
+export const TRAIL_SEG_COUNT = 14;
+
+/** 折線重採樣成固定點數（含端點） */
+function resamplePolyline(line: number[][], count: number): number[][] {
+  if (line.length === 0) return [];
+  if (line.length === 1 || count <= 1) return [line[0]!.slice() as number[]];
+  // 累積弧長
+  const segLen: number[] = [0];
+  let total = 0;
+  for (let i = 1; i < line.length; i++) {
+    const dx = line[i]![0]! - line[i - 1]![0]!;
+    const dy = line[i]![1]! - line[i - 1]![1]!;
+    total += Math.hypot(dx, dy);
+    segLen.push(total);
+  }
+  if (total < 1e-9) {
+    return Array.from({ length: count }, () => line[line.length - 1]!.slice() as number[]);
+  }
+  const out: number[][] = [];
+  for (let k = 0; k < count; k++) {
+    const target = (total * k) / (count - 1);
+    let j = 1;
+    while (j < segLen.length && segLen[j]! < target) j++;
+    const j0 = Math.max(1, j);
+    const a = segLen[j0 - 1]!;
+    const b = segLen[j0]!;
+    const t = b - a < 1e-9 ? 0 : (target - a) / (b - a);
+    const p0 = line[j0 - 1]!;
+    const p1 = line[j0]!;
+    out.push([p0[0]! + (p1[0]! - p0[0]!) * t, p0[1]! + (p1[1]! - p0[1]!) * t]);
+  }
+  return out;
+}
+
 /**
- * 回放軌跡：分段漸隱（舊淡 → 新亮），像拖曳餘暉
- * 回傳多條 line series
+ * 回放軌跡：固定 14 段漸隱（舊淡→新亮）+ 端點
+ * id 永遠 trail-{slug}-s0..s13 / tip，方便 setOption merge 延續動畫
  */
 export function hudFadingTrailSeries(opts: {
   slug: string;
@@ -162,70 +197,73 @@ export function hudFadingTrailSeries(opts: {
   focus: boolean;
   mode: 'sonar' | 'zone';
   zoneColor?: string;
+  /** 無軌跡時仍輸出空 series 以保持 id（可選） */
+  alwaysSlots?: boolean;
 }): object[] {
   const { slug, title, line, focus, mode, zoneColor } = opts;
-  if (line.length < 2) return [];
-
   const baseColor =
     mode === 'zone' ? zoneColor || HUD.trail : focus ? HUD.trailFocus : HUD.trail;
   const segs: object[] = [];
-  const n = line.length - 1;
+  const nSeg = TRAIL_SEG_COUNT;
 
-  for (let i = 0; i < n; i++) {
-    // t: 0=最舊 … 1=最新
-    const t = n === 1 ? 1 : (i + 1) / n;
-    const fade = Math.pow(t, 1.35); // 尾巴更快消失
-    const opacity = focus
-      ? 0.08 + fade * 0.85
-      : 0.04 + fade * 0.42;
-    const width = focus
-      ? 1.1 + fade * 2.2
-      : 0.8 + fade * 1.4;
+  const pts =
+    line.length >= 2 ? resamplePolyline(line, nSeg + 1) : ([] as number[][]);
+
+  for (let i = 0; i < nSeg; i++) {
+    const t = (i + 1) / nSeg;
+    const fade = Math.pow(t, 1.25);
+    const has = pts.length > i + 1;
+    const opacity = has
+      ? focus
+        ? 0.06 + fade * 0.88
+        : 0.03 + fade * 0.48
+      : 0;
+    const width = has ? (focus ? 1.2 + fade * 2.4 : 0.85 + fade * 1.5) : 0;
 
     segs.push({
       type: 'line' as const,
       id: `trail-${slug}-s${i}`,
       name: title,
-      data: [line[i], line[i + 1]],
+      data: has ? [pts[i], pts[i + 1]] : [],
       showSymbol: false,
       silent: true,
       clip: true,
       z: focus ? 2 : 1,
-      animation: false,
+      animation: true,
+      animationDurationUpdate: 0, // 段本身瞬切；整體由點位 update 帶
       lineStyle: {
         color: baseColor,
         width,
         opacity,
-        type: focus && t > 0.85 ? ('solid' as const) : ('solid' as const),
-        shadowBlur: focus && t > 0.7 ? 10 : t > 0.85 ? 6 : 0,
+        type: 'solid' as const,
+        shadowBlur: focus && t > 0.65 ? 12 : t > 0.85 ? 6 : 0,
         shadowColor:
-          focus && t > 0.7
-            ? 'rgba(165,243,252,0.45)'
+          focus && t > 0.65
+            ? 'rgba(165,243,252,0.5)'
             : mode === 'sonar'
-              ? 'rgba(34,211,238,0.2)'
+              ? 'rgba(34,211,238,0.22)'
               : undefined,
       },
     });
   }
 
-  // 最新端：回波火點
-  const tip = line[line.length - 1];
+  const tip = pts.length ? pts[pts.length - 1] : line[line.length - 1];
   segs.push({
     type: 'scatter' as const,
     id: `trail-${slug}-tip`,
     name: title,
-    data: [{ value: tip }],
-    symbolSize: focus ? 9 : 5,
+    data: tip ? [{ value: tip }] : [],
+    symbolSize: focus ? 10 : 6,
     silent: true,
     z: focus ? 2.5 : 1.5,
-    animation: false,
+    animation: true,
     itemStyle: {
       color: focus ? HUD.trailFocus : baseColor,
-      shadowBlur: focus ? 16 : 8,
+      shadowBlur: focus ? 18 : 10,
       shadowColor: focus
-        ? 'rgba(165,243,252,0.8)'
-        : 'rgba(34,211,238,0.4)',
-      opacity: focus ? 0.95 : 0.55,
+        ? 'rgba(165,243,252,0.85)'
+        : 'rgba(34,211,238,0.45)',
+      opacity: tip ? (focus ? 0.95 : 0.55) : 0,
     },
   });
 
