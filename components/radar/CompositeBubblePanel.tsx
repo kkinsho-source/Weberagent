@@ -590,6 +590,6 @@ export function CompositeBubblePanel({
       <p className="text-[11px] leading-relaxed text-slate-400">
         圖上座標＝籌碼／價的相對位置（與權重無關）。表格 S＝權重加總後的排序分（0–100）。非買賣點。
       </p>
-
+    </section>
   );
 }
