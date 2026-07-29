@@ -55,6 +55,11 @@ export function CompositeBubblePanel({
   const [picked, setPicked] = useState<Set<string> | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [pickedReady, setPickedReady] = useState(false);
+  /** W2：切換權重後短暫提示「排序有變、泡泡位置不變」 */
+  const [rankNotice, setRankNotice] = useState<string | null>(null);
+  const [rankFlash, setRankFlash] = useState(false);
+  const prevOrderRef = useRef<string[]>([]);
+  const prevModeRef = useRef<CompositeWeightMode | null>(null);
 
   // R11：題材勾選持久化
   useEffect(() => {
@@ -101,9 +106,42 @@ export function CompositeBubblePanel({
     let list = rows;
     if (picked != null) list = list.filter((r) => picked.has(r.slug));
     if (onlyResonance) list = list.filter((r) => r.resonance);
+    // 排序以 S 為準（權重會改 S）
+    list = [...list].sort((a, b) => b.scoreS - a.scoreS);
     if (onlyTop) list = list.slice(0, TOP_N);
     return list;
   }, [rows, onlyTop, onlyResonance, picked]);
+
+  // W2：權重變更時比對排序
+  useEffect(() => {
+    const order = filtered.map((r) => r.slug);
+    const prevMode = prevModeRef.current;
+    const prevOrder = prevOrderRef.current;
+    if (prevMode != null && prevMode !== mode && prevOrder.length > 0) {
+      let moved = 0;
+      const n = Math.min(order.length, prevOrder.length);
+      for (let i = 0; i < n; i++) {
+        if (order[i] !== prevOrder[i]) moved += 1;
+      }
+      const top = filtered[0]?.title;
+      setRankNotice(
+        moved === 0
+          ? `權重改為「${w.label}」：前 ${n} 名順序不變（泡泡在圖上的位置本來就不會動）。`
+          : `權重改為「${w.label}」：綜合排序 S 有 ${moved} 個名次變動${top ? `，目前第 1 為「${top}」` : ''}。泡泡座標不變，只改排序／前 ${TOP_N} 名單。`,
+      );
+      setRankFlash(true);
+      const t = window.setTimeout(() => setRankFlash(false), 2200);
+      const t2 = window.setTimeout(() => setRankNotice(null), 6000);
+      prevOrderRef.current = order;
+      prevModeRef.current = mode;
+      return () => {
+        window.clearTimeout(t);
+        window.clearTimeout(t2);
+      };
+    }
+    prevOrderRef.current = order;
+    prevModeRef.current = mode;
+  }, [mode, filtered, w.label]);
 
   const guide = useMemo(
     () => buildStaticGuide(filtered.length ? filtered : rows),
@@ -305,6 +343,34 @@ export function CompositeBubblePanel({
           </div>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          {/* W1：權重三檔固定在主列 */}
+          <div className="flex flex-col items-end gap-1">
+            <div className="text-[11px] text-slate-500">
+              綜合排序權重
+              <span className="ml-1 text-slate-400">（只改 S／名次，不改泡泡位置）</span>
+            </div>
+            <div className="inline-flex rounded-lg bg-slate-100 p-0.5">
+              {(Object.keys(COMPOSITE_WEIGHTS) as CompositeWeightMode[]).map((m) => {
+                const meta = COMPOSITE_WEIGHTS[m];
+                const active = mode === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    title={`${meta.hint}（籌 ${Math.round(meta.flow * 100)}%／價 ${Math.round(meta.price * 100)}%）`}
+                    onClick={() => setMode(m)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                      active
+                        ? 'bg-brand-600 text-white shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {meta.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div className="flex flex-wrap justify-end gap-3 text-xs text-slate-600">
             <label className="flex items-center gap-1.5">
               <input
@@ -337,34 +403,10 @@ export function CompositeBubblePanel({
             onClick={() => setShowAdvanced((v) => !v)}
             className="self-end text-xs font-medium text-slate-500 hover:text-brand-600"
           >
-            {showAdvanced ? '收起進階選項 ▴' : '進階選項（權重／共振）▾'}
+            {showAdvanced ? '收起進階 ▴' : '進階（共振篩選）▾'}
           </button>
           {showAdvanced ? (
             <div className="w-full space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-2 sm:w-auto">
-              <div className="text-[11px] text-slate-500">
-                綜合排序權重（目前：{w.label}）
-              </div>
-              <div className="inline-flex rounded-lg bg-white p-0.5 ring-1 ring-slate-200">
-                {(Object.keys(COMPOSITE_WEIGHTS) as CompositeWeightMode[]).map((m) => {
-                  const meta = COMPOSITE_WEIGHTS[m];
-                  const active = mode === m;
-                  return (
-                    <button
-                      key={m}
-                      type="button"
-                      title={meta.hint}
-                      onClick={() => setMode(m)}
-                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
-                        active
-                          ? 'bg-brand-600 text-white shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
-                      {meta.label}
-                    </button>
-                  );
-                })}
-              </div>
               <label className="flex items-center gap-1.5 text-xs text-slate-600">
                 <input
                   type="checkbox"
@@ -378,6 +420,19 @@ export function CompositeBubblePanel({
           ) : null}
         </div>
       </div>
+
+      {rankNotice ? (
+        <div
+          className={`rounded-lg border px-3 py-2 text-xs leading-relaxed transition ${
+            rankFlash
+              ? 'border-brand-200 bg-brand-50 text-brand-900'
+              : 'border-slate-200 bg-slate-50 text-slate-600'
+          }`}
+          role="status"
+        >
+          {rankNotice}
+        </div>
+      ) : null}
 
       {showPicker ? (
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -472,13 +527,26 @@ export function CompositeBubblePanel({
       </div>
 
       {filtered.length > 0 ? (
-        <div className="overflow-x-auto">
+        <div
+          className={`overflow-x-auto rounded-xl transition ring-offset-2 ${
+            rankFlash ? 'ring-2 ring-brand-300' : ''
+          }`}
+        >
+          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2 px-0.5">
+            <h3 className="text-sm font-semibold text-slate-700">
+              綜合排序表
+              <span className="ml-1.5 text-xs font-normal text-slate-400">
+                S（{w.label}：籌 {Math.round(w.flow * 100)}%／價 {Math.round(w.price * 100)}%）
+              </span>
+            </h3>
+            <span className="text-[11px] text-slate-400">切換權重會改此表名次，圖上泡泡位置不變</span>
+          </div>
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
                 <th className="px-2 py-1.5">#</th>
                 <th className="px-2 py-1.5">題材</th>
-                <th className="px-2 py-1.5 text-right">S</th>
+                <th className="px-2 py-1.5 text-right">S·{w.label}</th>
                 <th className="px-2 py-1.5">區域</th>
                 <th className="px-2 py-1.5 text-right">籌</th>
                 <th className="px-2 py-1.5 text-right">價</th>
@@ -489,7 +557,9 @@ export function CompositeBubblePanel({
               {filtered.map((r, i) => (
                 <tr
                   key={r.slug}
-                  className="cursor-pointer border-t border-slate-100 hover:bg-slate-50"
+                  className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${
+                    rankFlash ? 'bg-brand-50/40' : ''
+                  }`}
                   onClick={() => setSelected(r)}
                 >
                   <td className="px-2 py-1.5 text-xs text-slate-400">{i + 1}</td>
@@ -518,8 +588,8 @@ export function CompositeBubblePanel({
       ) : null}
 
       <p className="text-[11px] leading-relaxed text-slate-400">
-        圖上是和其他題材比的相對位置；表格 S 分方便排序（0–100）。非買賣點。
+        圖上座標＝籌碼／價的相對位置（與權重無關）。表格 S＝權重加總後的排序分（0–100）。非買賣點。
       </p>
-    </section>
+
   );
 }
