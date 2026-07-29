@@ -11,7 +11,7 @@ export default function AnnouncementsPage() {
       <div>
         <h1 className="text-xl font-bold text-slate-800">重大訊息</h1>
         <p className="mt-1 text-sm text-slate-500">
-          資料來自證交所 OpenAPI（每日全市場）與 MOPS 公司年度列表。非投資建議。
+          公司公告與公開資訊彙整。僅供查閱，非投資建議。
         </p>
       </div>
       <MopsAnnouncementsPanel />

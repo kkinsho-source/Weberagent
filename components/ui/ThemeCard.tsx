@@ -53,7 +53,8 @@ export function ThemeCard({ theme }: { theme: Theme }) {
           </span>
         </div>
         <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-slate-500">{theme.description}</p>
-        <div className="mt-3 text-xs text-slate-400">核實於 {theme.verifiedAt}</div>
+        <div className="mt-3 text-xs text-brand-600">查看題材 →</div>
+        <div className="mt-1 text-xs text-slate-400">更新 {theme.verifiedAt}</div>
       </Card>
     </Link>
   );

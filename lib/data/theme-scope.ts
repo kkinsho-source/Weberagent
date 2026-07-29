@@ -8,11 +8,11 @@ export const THEME_SCOPE_OPTIONS: ReadonlyArray<{
   label: string;
   hint: string;
 }> = [
-  { key: 'ai', label: 'AI 供應鏈', hint: 'Tier-1 細題材（地圖預設）' },
-  { key: 'all', label: '全部', hint: 'Tier-0 粗網 + Tier-1（雷達預設）' },
-  { key: 'tier0', label: '全市場粗網', hint: '僅 Tier-0' },
-  { key: 'defensive', label: '防禦', hint: '金融／電信等' },
-  { key: 'cyclical', label: '循環', hint: '航運／塑化／營建等' },
+  { key: 'ai', label: 'AI 供應鏈', hint: 'AI 相關細分題材' },
+  { key: 'all', label: '全部', hint: '全市場粗網 + AI 細分' },
+  { key: 'tier0', label: '全市場粗網', hint: '金融、航運、傳產等粗分' },
+  { key: 'defensive', label: '防禦', hint: '金融、電信等' },
+  { key: 'cyclical', label: '循環', hint: '航運、塑化、營建等' },
 ];
 
 export function parseThemeScope(raw: string | null | undefined, fallback: ThemeScope = 'all'): ThemeScope {

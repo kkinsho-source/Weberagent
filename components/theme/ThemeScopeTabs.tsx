@@ -13,6 +13,7 @@ export function ThemeScopeTabs({
 }) {
   const sp = useSearchParams();
   const current = (sp.get('scope') as ThemeScope | null) || defaultScope;
+  const onRadar = basePath.startsWith('/radar');
 
   const hrefFor = (key: ThemeScope) => {
     const next = new URLSearchParams(sp.toString());
@@ -21,6 +22,8 @@ export function ThemeScopeTabs({
     const q = next.toString();
     return q ? `${basePath}?${q}` : basePath;
   };
+
+  const hint = THEME_SCOPE_OPTIONS.find((o) => o.key === current)?.hint ?? '';
 
   return (
     <div className="flex flex-col gap-1">
@@ -44,10 +47,14 @@ export function ThemeScopeTabs({
           );
         })}
       </div>
-      <p className="text-[11px] text-slate-400">
-        {THEME_SCOPE_OPTIONS.find((o) => o.key === current)?.hint ?? ''}
-        <span className="ml-1 text-slate-300">· 切換 scope 會保留權重等其他參數</span>
-      </p>
+      {hint ? (
+        <p className="text-[11px] text-slate-400">
+          {hint}
+          {onRadar ? (
+            <span className="ml-1 text-slate-300">· 切換範圍會保留權重等設定</span>
+          ) : null}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -37,16 +37,12 @@ export default async function HomePage({
       <section className="rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 p-6 text-white sm:p-8">
         <h1 className="text-xl font-bold sm:text-2xl">探索關鍵產業鏈</h1>
         <p className="mt-2 max-w-xl text-sm text-brand-100">
-          {SITE_NAME}：供應鏈節點圖、題材、財報與規則 AI 洞察。
+          {SITE_NAME}：從供應鏈關係、題材分類到個股財報與公告，串成一條可點可追的研究路徑。
         </p>
-        <div className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs">
-          資料源：
-          <strong className="font-semibold">{bundle.dataSource}</strong>
-          {bundle.meta?.asOf ? <span>· asOf {bundle.meta.asOf}</span> : null}
-          <span>
-            · 圖上 {mapStocks.length} 檔 · 題材 {themes.length}
-          </span>
-        </div>
+        <p className="mt-2 text-xs text-brand-100/80">
+          圖上 {mapStocks.length} 檔 · 此範圍 {themes.length} 個題材
+          {bundle.meta?.asOf ? ` · 行情 ${bundle.meta.asOf}` : ''}
+        </p>
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <MarketTabs />
           <Link
@@ -55,17 +51,31 @@ export default async function HomePage({
           >
             資金雷達 →
           </Link>
+          <Link
+            href="/themes"
+            className="inline-flex items-center justify-center rounded-xl border border-white/40 bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/20"
+          >
+            題材列表
+          </Link>
         </div>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-lg font-semibold text-slate-800">最新重大訊息</h2>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <h2 className="text-lg font-semibold text-slate-800">最新重大訊息</h2>
+          <Link href="/announcements" className="text-xs font-medium text-brand-600 hover:underline">
+            看全部 →
+          </Link>
+        </div>
         <MopsAnnouncementsPanel compact />
       </section>
 
       <section>
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <h2 className="text-lg font-semibold text-slate-800">供應鏈地圖</h2>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800">供應鏈地圖</h2>
+            <p className="mt-0.5 text-xs text-slate-400">點節點進個股；下方卡片進題材說明</p>
+          </div>
           <Suspense fallback={null}>
             <ThemeScopeTabs basePath="/" defaultScope="ai" />
           </Suspense>
