@@ -53,12 +53,9 @@ export default async function HomePage({
             href="/radar"
             className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-brand-50"
           >
-            資金雷達 · 30 秒看誰熱誰冷 →
+            資金雷達 →
           </Link>
         </div>
-        <p className="mt-2 text-xs text-brand-100/90">
-          新手友善：先看今日重點，再看題材落在熱區／冷區。
-        </p>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

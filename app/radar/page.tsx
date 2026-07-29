@@ -98,7 +98,7 @@ export default async function RadarPage({
         </div>
       </div>
 
-      {/* R3 三步怎麼用 */}
+      {/* 可選：本頁怎麼看 */}
       <Suspense fallback={null}>
         <RadarBeginnerSteps />
       </Suspense>
