@@ -16,6 +16,8 @@ import {
 } from '@/lib/data/theme-composite';
 import { shortThemeLabel } from '@/lib/data/theme-label';
 import type { ThemeFamily } from '@/lib/types';
+import { useRadarPref } from '@/components/radar/useRadarPref';
+import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
 
 const ANIM_MS = 900;
 const BASE_STEP_MS = 1000;
@@ -39,17 +41,17 @@ export function CompositePlayback({
   const readyRef = useRef(false);
   const [idx, setIdx] = useState(() => Math.max(0, frames.length - 1));
   const [playing, setPlaying] = useState(false);
-  const [trailStyle, setTrailStyle] = useState<TrailStyle>('soft');
-  const [showLabels, setShowLabels] = useState(true);
-  const [speed, setSpeed] = useState<1 | 1.5 | 2>(1);
+  const [trailStyle, setTrailStyle] = useRadarPref<TrailStyle>('play-trail', 'soft');
+  const [showLabels, setShowLabels] = useRadarPref('play-labels', true);
+  const [speed, setSpeed] = useRadarPref<1 | 1.5 | 2>('play-speed', 1);
   const [selected, setSelected] = useState<CompositeFramePoint | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   /** null = 全部顯示 */
   const [picked, setPicked] = useState<Set<string> | null>(null);
   /** 軌跡只畫被點選／聚焦的一條（最不亂） */
-  const [trailFocusOnly, setTrailFocusOnly] = useState(true);
+  const [trailFocusOnly, setTrailFocusOnly] = useRadarPref('play-focusOnly', true);
   /** R7：進階控制預設收合 */
-  const [showMore, setShowMore] = useState(false);
+  const [showMore, setShowMore] = useRadarPref('play-showMore', false);
 
   useEffect(() => {
     setIdx(Math.max(0, frames.length - 1));
@@ -338,9 +340,9 @@ export function CompositePlayback({
 
   if (!frames.length) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-        無綜合回放資料
-      </div>
+      <RadarEmptyBlock title="回放暫時沒有資料">
+        需要多個交易日的法人紀錄，才能播放題材怎麼移動。資料累積後會自動出現，無需設定。
+      </RadarEmptyBlock>
     );
   }
 

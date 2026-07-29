@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { getDataBundle } from '@/lib/data/source';
 import { ThemeCard } from '@/components/ui/ThemeCard';
@@ -17,12 +18,10 @@ export default async function HomePage({
   searchParams: Promise<{ scope?: string }>;
 }) {
   const sp = await searchParams;
-  // 地圖首頁預設 AI 鏈；?scope=all 可看全部題材卡（T0 灌入後才有差）
   const scope: ThemeScope = parseThemeScope(sp.scope, 'ai');
   const bundle = await getDataBundle();
   const themes = filterThemesByScope(bundle.themes, scope);
 
-  // 地圖節點：依 scope 過濾成分（目前僅 T1 有股，all/ai 同）
   const allowed = new Set(themes.map((t) => t.slug));
   const mapStocks =
     scope === 'all'
@@ -47,11 +46,19 @@ export default async function HomePage({
           <span>
             · 圖上 {mapStocks.length} 檔 · 題材 {themes.length}
           </span>
-          <span>· scope={scope}</span>
         </div>
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <MarketTabs />
+          <Link
+            href="/radar"
+            className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-brand-50"
+          >
+            資金雷達 · 30 秒看誰熱誰冷 →
+          </Link>
         </div>
+        <p className="mt-2 text-xs text-brand-100/90">
+          新手友善：先看今日重點，再看題材落在熱區／冷區。
+        </p>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -74,7 +81,7 @@ export default async function HomePage({
         </div>
         {themes.length === 0 ? (
           <p className="mt-4 text-center text-sm text-slate-500">
-            此 scope 尚無題材（Tier-0 待 S3 灌入）。
+            此範圍目前沒有題材可顯示，可切換上方範圍再試。
           </p>
         ) : null}
       </section>

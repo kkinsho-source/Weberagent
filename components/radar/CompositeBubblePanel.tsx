@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ReactECharts from 'echarts-for-react';
 import {
@@ -19,6 +19,8 @@ import { shortThemeLabel } from '@/lib/data/theme-label';
 import type { ThemeFamily } from '@/lib/types';
 import { RadarHowTo } from '@/components/radar/RadarHowTo';
 import { BubbleDetailPanel } from '@/components/radar/BubbleDetailPanel';
+import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
+import { useRadarPref } from '@/components/radar/useRadarPref';
 
 const TOP_N = 8;
 
@@ -44,12 +46,40 @@ export function CompositeBubblePanel({
   const sp = useSearchParams();
   const w = COMPOSITE_WEIGHTS[mode];
 
-  const [showLabels, setShowLabels] = useState(true);
-  const [onlyTop, setOnlyTop] = useState(true);
-  const [onlyResonance, setOnlyResonance] = useState(false);
+  const [showLabels, setShowLabels] = useRadarPref('bubble-labels', true);
+  const [onlyTop, setOnlyTop] = useRadarPref('bubble-onlyTop', true);
+  const [onlyResonance, setOnlyResonance] = useRadarPref('bubble-resonance', false);
+  const [showAdvanced, setShowAdvanced] = useRadarPref('bubble-advanced', false);
   const [selected, setSelected] = useState<CompositeRow | null>(null);
-  /** R6：權重／共振等進階預設收合 */
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  /** R10：null=全顯示；Set=只顯示勾選 */
+  const [picked, setPicked] = useState<Set<string> | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickedReady, setPickedReady] = useState(false);
+
+  // R11：題材勾選持久化
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('radar-pref-v1:bubble-picked');
+      if (raw) {
+        const arr = JSON.parse(raw) as string[] | null;
+        if (Array.isArray(arr)) setPicked(new Set(arr));
+        else setPicked(null);
+      }
+    } catch {
+      /* ignore */
+    }
+    setPickedReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!pickedReady) return;
+    try {
+      if (picked == null) localStorage.setItem('radar-pref-v1:bubble-picked', 'null');
+      else localStorage.setItem('radar-pref-v1:bubble-picked', JSON.stringify([...picked]));
+    } catch {
+      /* ignore */
+    }
+  }, [picked, pickedReady]);
 
   const setMode = (m: CompositeWeightMode) => {
     const next = new URLSearchParams(sp.toString());
@@ -59,17 +89,36 @@ export function CompositeBubblePanel({
     router.push(q ? `${pathname}?${q}` : pathname, { scroll: false });
   };
 
+  const allThemes = useMemo(
+    () =>
+      [...rows]
+        .map((r) => ({ slug: r.slug, title: r.title, scoreS: r.scoreS }))
+        .sort((a, b) => a.title.localeCompare(b.title, 'zh-Hant')),
+    [rows],
+  );
+
   const filtered = useMemo(() => {
     let list = rows;
+    if (picked != null) list = list.filter((r) => picked.has(r.slug));
     if (onlyResonance) list = list.filter((r) => r.resonance);
     if (onlyTop) list = list.slice(0, TOP_N);
     return list;
-  }, [rows, onlyTop, onlyResonance]);
+  }, [rows, onlyTop, onlyResonance, picked]);
 
   const guide = useMemo(
     () => buildStaticGuide(filtered.length ? filtered : rows),
     [filtered, rows],
   );
+
+  const toggleSlug = (slug: string) => {
+    setPicked((prev) => {
+      const base = prev ? new Set(prev) : new Set(allThemes.map((t) => t.slug));
+      if (base.has(slug)) base.delete(slug);
+      else base.add(slug);
+      if (base.size === allThemes.length) return null;
+      return base;
+    });
+  };
 
   const option = useMemo(() => {
     const data = filtered.map((r) => ({
@@ -187,6 +236,38 @@ export function CompositeBubblePanel({
     };
   }, [filtered, rows, showLabels]);
 
+  const pickLabel =
+    picked == null ? '全部' : `${picked.size}/${allThemes.length}`;
+
+  const emptyReason = (() => {
+    if (!rows.length) {
+      return {
+        title: '目前沒有可畫的題材資料',
+        body: '可能是盤後法人資料尚未更新，或這個範圍還沒有成分股。可稍後再試，或切換上方「看哪些題材範圍」。',
+        tone: 'warn' as const,
+      };
+    }
+    if (picked != null && picked.size === 0) {
+      return {
+        title: '你沒有勾選任何題材',
+        body: '請在「題材」裡勾選要看的題材，或按「全選」。',
+        tone: 'neutral' as const,
+      };
+    }
+    if (onlyResonance && !rows.some((r) => r.resonance)) {
+      return {
+        title: '目前沒有標成共振★的題材',
+        body: '可關閉進階選項裡的「只看共振★」，改看全部前幾名。',
+        tone: 'neutral' as const,
+      };
+    }
+    return {
+      title: '目前篩選下沒有題材',
+      body: '試試：關閉「只看前 8 名」、關閉「只看共振」、或在「題材」改勾選。',
+      tone: 'neutral' as const,
+    };
+  })();
+
   return (
     <section className="space-y-3 rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -201,9 +282,11 @@ export function CompositeBubblePanel({
           <p className="mt-0.5 text-[11px] text-slate-400">
             橫軸：錢相對有沒有比較多進 · 縱軸：價相對有沒有變強 · 顏色＝所在區域
           </p>
-          <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700">
-            {guide}
-          </p>
+          {rows.length > 0 ? (
+            <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700">
+              {guide}
+            </p>
+          ) : null}
           <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
             {(['hot', 'watch', 'cool', 'cold'] as CompositeZone[]).map((z) => (
               <span
@@ -241,6 +324,13 @@ export function CompositeBubblePanel({
               />
               只看前 {TOP_N} 名
             </label>
+            <button
+              type="button"
+              onClick={() => setShowPicker((v) => !v)}
+              className="rounded-md border border-slate-200 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-50"
+            >
+              題材 {pickLabel}
+            </button>
           </div>
           <button
             type="button"
@@ -289,12 +379,72 @@ export function CompositeBubblePanel({
         </div>
       </div>
 
+      {showPicker ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-slate-700">主圖顯示題材</span>
+            <button
+              type="button"
+              onClick={() => setPicked(null)}
+              className="rounded bg-white px-2 py-0.5 text-[11px] text-slate-600 ring-1 ring-slate-200"
+            >
+              全選
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const top = [...rows].sort((a, b) => b.scoreS - a.scoreS).slice(0, TOP_N);
+                setPicked(new Set(top.map((r) => r.slug)));
+              }}
+              className="rounded bg-white px-2 py-0.5 text-[11px] text-slate-600 ring-1 ring-slate-200"
+            >
+              Top{TOP_N}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPicked(new Set())}
+              className="rounded bg-white px-2 py-0.5 text-[11px] text-slate-600 ring-1 ring-slate-200"
+            >
+              清空
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowPicker(false)}
+              className="ml-auto text-[11px] text-brand-600"
+            >
+              收起
+            </button>
+          </div>
+          <div className="grid max-h-40 grid-cols-2 gap-1 overflow-y-auto sm:grid-cols-3 md:grid-cols-4">
+            {allThemes.map((th) => {
+              const on = picked == null || picked.has(th.slug);
+              return (
+                <label
+                  key={th.slug}
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs ${
+                    on ? 'bg-white text-slate-800 ring-1 ring-brand-200' : 'text-slate-400'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => toggleSlug(th.slug)}
+                    className="rounded border-slate-300"
+                  />
+                  <span className="truncate">{th.title}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       <div className="relative flex flex-col gap-3 lg:flex-row">
         <div className="min-w-0 flex-1">
           {!filtered.length ? (
-            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 py-10 text-center text-sm text-slate-500">
-              目前篩選沒有題材（試試關閉「只看共振」）
-            </div>
+            <RadarEmptyBlock title={emptyReason.title} tone={emptyReason.tone}>
+              {emptyReason.body}
+            </RadarEmptyBlock>
           ) : (
             <ReactECharts
               option={option}
@@ -312,7 +462,7 @@ export function CompositeBubblePanel({
             />
           )}
           <p className="mt-1 text-center text-[11px] text-slate-400">
-            顯示 {filtered.length}/{rows.length} 題材 · 點泡泡開啟詳情
+            顯示 {filtered.length}/{rows.length} 題材 · 點泡泡開啟詳情 · 勾選會記住
           </p>
         </div>
 
@@ -321,49 +471,51 @@ export function CompositeBubblePanel({
         ) : null}
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs text-slate-500">
-            <tr>
-              <th className="px-2 py-1.5">#</th>
-              <th className="px-2 py-1.5">題材</th>
-              <th className="px-2 py-1.5 text-right">S</th>
-              <th className="px-2 py-1.5">區域</th>
-              <th className="px-2 py-1.5 text-right">籌</th>
-              <th className="px-2 py-1.5 text-right">價</th>
-              <th className="px-2 py-1.5">共振</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r, i) => (
-              <tr
-                key={r.slug}
-                className="cursor-pointer border-t border-slate-100 hover:bg-slate-50"
-                onClick={() => setSelected(r)}
-              >
-                <td className="px-2 py-1.5 text-xs text-slate-400">{i + 1}</td>
-                <td className="px-2 py-1.5 font-medium text-slate-800">{r.title}</td>
-                <td
-                  className="px-2 py-1.5 text-right tabular-nums font-semibold"
-                  style={{ color: ZONE_META[r.zone].text }}
-                >
-                  {r.scoreS.toFixed(1)}
-                </td>
-                <td className="px-2 py-1.5">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${ZONE_META[r.zone].badgeBg}`}
-                  >
-                    {ZONE_META[r.zone].label}
-                  </span>
-                </td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{fmtC100(r.flowScore)}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{fmtC100(r.priceScore)}</td>
-                <td className="px-2 py-1.5">{r.resonance ? '★' : '—'}</td>
+      {filtered.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs text-slate-500">
+              <tr>
+                <th className="px-2 py-1.5">#</th>
+                <th className="px-2 py-1.5">題材</th>
+                <th className="px-2 py-1.5 text-right">S</th>
+                <th className="px-2 py-1.5">區域</th>
+                <th className="px-2 py-1.5 text-right">籌</th>
+                <th className="px-2 py-1.5 text-right">價</th>
+                <th className="px-2 py-1.5">共振</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtered.map((r, i) => (
+                <tr
+                  key={r.slug}
+                  className="cursor-pointer border-t border-slate-100 hover:bg-slate-50"
+                  onClick={() => setSelected(r)}
+                >
+                  <td className="px-2 py-1.5 text-xs text-slate-400">{i + 1}</td>
+                  <td className="px-2 py-1.5 font-medium text-slate-800">{r.title}</td>
+                  <td
+                    className="px-2 py-1.5 text-right tabular-nums font-semibold"
+                    style={{ color: ZONE_META[r.zone].text }}
+                  >
+                    {r.scoreS.toFixed(1)}
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${ZONE_META[r.zone].badgeBg}`}
+                    >
+                      {ZONE_META[r.zone].label}
+                    </span>
+                  </td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtC100(r.flowScore)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtC100(r.priceScore)}</td>
+                  <td className="px-2 py-1.5">{r.resonance ? '★' : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
 
       <p className="text-[11px] leading-relaxed text-slate-400">
         圖上是和其他題材比的相對位置；表格 S 分方便排序（0–100）。非買賣點。

@@ -25,6 +25,8 @@ import { CompositeBubblePanel } from '@/components/radar/CompositeBubblePanel';
 import { CompositePlayback } from '@/components/radar/CompositePlayback';
 import { AdvancedChartsAccordion } from '@/components/radar/AdvancedChartsAccordion';
 import { RadarBeginnerSteps } from '@/components/radar/RadarBeginnerSteps';
+import { RadarGlossary } from '@/components/radar/RadarGlossary';
+import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,12 +113,18 @@ export default async function RadarPage({
       {hasFlow ? (
         <RadarTodayBrief brief={brief} />
       ) : (
-        <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50/60 px-4 py-6 text-center text-sm text-amber-900/80">
-          今日盤後法人資料尚未齊全，今日重點暫時無法顯示。請稍後再看，或先瀏覽下方泡泡（若有歷史快取）。
-        </div>
+        <RadarEmptyBlock title="今日重點暫時無法顯示" tone="warn">
+          盤後法人資料可能尚未更新完成。請稍後再重新整理；若下方熱區圖仍有歷史資料，仍可先瀏覽。
+        </RadarEmptyBlock>
       )}
 
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-slate-100" />}>
+      <Suspense
+        fallback={
+          <RadarEmptyBlock title="熱區圖載入中…">
+            正在整理題材籌碼與價動能，通常幾秒內完成。
+          </RadarEmptyBlock>
+        }
+      >
         <CompositeBubblePanel
           rows={compositeRows}
           mode={weightMode}
@@ -129,7 +137,13 @@ export default async function RadarPage({
 
       {compositeFrames.length ? (
         <CompositePlayback frames={compositeFrames} familyBySlug={familyBySlug} />
-      ) : null}
+      ) : (
+        <RadarEmptyBlock title="回放暫時沒有資料">
+          需要多日法人歷史才能播放「最近怎麼移動」。資料累積後會自動出現。
+        </RadarEmptyBlock>
+      )}
+
+      <RadarGlossary />
 
       <AdvancedChartsAccordion>
         <ThemeFlowRadar
