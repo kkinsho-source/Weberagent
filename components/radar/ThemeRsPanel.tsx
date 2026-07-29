@@ -6,10 +6,12 @@ import Link from 'next/link';
 import type { ThemeFamily } from '@/lib/types';
 import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
 import {
-  SQUARE_GRID,
-  fixedCenterCrossSeries,
-  halfRangeAroundCenter,
-} from '@/lib/data/chart-axis';
+  C100_AXIS_MAX,
+  C100_AXIS_MIN,
+  percentileScores,
+  toC100,
+} from '@/lib/data/theme-composite';
+import { SQUARE_GRID, fixedCenterCrossSeries } from '@/lib/data/chart-axis';
 
 export type RsViewRow = {
   slug: string;
@@ -65,26 +67,35 @@ export function ThemeRsPanel({
   void _familyBySlug;
 
   const option = useMemo(() => {
-    const xs = rows.map((r) => r.rsRatio);
-    const ys = rows.map((r) => r.rsMomentum);
-    const half = Math.max(
-      halfRangeAroundCenter(100, xs, { minHalf: 12 }),
-      halfRangeAroundCenter(100, ys, { minHalf: 12 }),
-    );
-    const xMin = 100 - half;
-    const xMax = 100 + half;
-    const yMin = 100 - half;
-    const yMax = 100 + half;
+    /**
+     * 位置：題材間百分位 → C100，避免 RS 擠在 100 附近。
+     * 象限色／標籤仍用後端依原始 RS 判定的 quadrant。
+     * tooltip／表保留原始 RS、動量、20日%。
+     */
+    const xPct = percentileScores(rows.map((r) => r.rsRatio));
+    const yPct = percentileScores(rows.map((r) => r.rsMomentum));
 
-    const data = rows.map((r) => {
+    const data = rows.map((r, i) => {
       const q = Q_META[r.quadrant] || Q_META.lagging;
+      const x = toC100(xPct[i] ?? 50);
+      const y = toC100(yPct[i] ?? 50);
       return {
         name: r.title,
-        value: [r.rsRatio, r.rsMomentum],
+        value: [x, y, r.rsRatio, r.rsMomentum, r.ret20d],
         itemStyle: {
           color: q.bubble,
           borderColor: q.border,
           borderWidth: 1.5,
+        },
+        label: {
+          show: true,
+          formatter: () => (r.title.length > 5 ? r.title.slice(0, 4) + '…' : r.title),
+          position: 'top' as const,
+          distance: 4,
+          fontSize: 10,
+          color: '#334155',
+          textBorderColor: '#fff',
+          textBorderWidth: 2,
         },
       };
     });
@@ -93,7 +104,10 @@ export function ThemeRsPanel({
       animation: false,
       grid: { ...SQUARE_GRID },
       tooltip: {
-        formatter: (p: { seriesId?: string; data?: { name?: string; value?: number[] } }) => {
+        formatter: (p: {
+          seriesId?: string;
+          data?: { name?: string; value?: number[] };
+        }) => {
           if (p.seriesId === 'fixed-center-cross') return '';
           const d = p.data;
           if (!d?.value) return '';
@@ -101,8 +115,10 @@ export function ThemeRsPanel({
           return [
             `<b>${d.name}</b>`,
             row ? row.quadrantLabel : '',
-            `相對強度 ${d.value[0].toFixed(1)}（100＝中性）`,
-            `相對動量 ${d.value[1].toFixed(1)}`,
+            `相對強度 ${Number(d.value[2]).toFixed(1)}（原始，100≈中性）`,
+            `相對動量 ${Number(d.value[3]).toFixed(1)}`,
+            `20日報酬 ${Number(d.value[4]) >= 0 ? '+' : ''}${Number(d.value[4]).toFixed(1)}%`,
+            '圖上位置＝題材間相對排名（非原始 RS 刻度）',
           ]
             .filter(Boolean)
             .join('<br/>');
@@ -110,33 +126,39 @@ export function ThemeRsPanel({
       },
       xAxis: {
         type: 'value',
-        name: '相對強度 →（右＝比大盤強）',
+        name: '相對強度（題材間偏強 →）',
         nameLocation: 'middle',
         nameGap: 30,
-        min: xMin,
-        max: xMax,
+        min: C100_AXIS_MIN,
+        max: C100_AXIS_MAX,
         scale: false,
         boundaryGap: false,
         splitNumber: 4,
+        axisLabel: {
+          formatter: (v: number) => (v > 0 ? `+${v}` : `${v}`),
+        },
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
       },
       yAxis: {
         type: 'value',
-        name: '相對動量 →',
+        name: '相對動量（題材間 →）',
         nameLocation: 'middle',
         nameGap: 40,
-        min: yMin,
-        max: yMax,
+        min: C100_AXIS_MIN,
+        max: C100_AXIS_MAX,
         scale: false,
         boundaryGap: false,
         splitNumber: 4,
+        axisLabel: {
+          formatter: (v: number) => (v > 0 ? `+${v}` : `${v}`),
+        },
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
       },
       series: [
         {
           id: 'rs-bubbles',
           type: 'scatter',
-          symbolSize: 16,
+          symbolSize: 18,
           data,
           z: 3,
           animation: false,
@@ -145,25 +167,41 @@ export function ThemeRsPanel({
             animation: false,
             data: [
               [
-                { xAxis: 100, yAxis: 100, itemStyle: { color: Q_META.leading.area } },
-                { xAxis: xMax, yAxis: yMax },
+                {
+                  xAxis: 0,
+                  yAxis: 0,
+                  itemStyle: { color: Q_META.leading.area },
+                },
+                { xAxis: C100_AXIS_MAX, yAxis: C100_AXIS_MAX },
               ],
               [
-                { xAxis: xMin, yAxis: 100, itemStyle: { color: Q_META.improving.area } },
-                { xAxis: 100, yAxis: yMax },
+                {
+                  xAxis: C100_AXIS_MIN,
+                  yAxis: 0,
+                  itemStyle: { color: Q_META.improving.area },
+                },
+                { xAxis: 0, yAxis: C100_AXIS_MAX },
               ],
               [
-                { xAxis: 100, yAxis: yMin, itemStyle: { color: Q_META.weakening.area } },
-                { xAxis: xMax, yAxis: 100 },
+                {
+                  xAxis: 0,
+                  yAxis: C100_AXIS_MIN,
+                  itemStyle: { color: Q_META.weakening.area },
+                },
+                { xAxis: C100_AXIS_MAX, yAxis: 0 },
               ],
               [
-                { xAxis: xMin, yAxis: yMin, itemStyle: { color: Q_META.lagging.area } },
-                { xAxis: 100, yAxis: 100 },
+                {
+                  xAxis: C100_AXIS_MIN,
+                  yAxis: C100_AXIS_MIN,
+                  itemStyle: { color: Q_META.lagging.area },
+                },
+                { xAxis: 0, yAxis: 0 },
               ],
             ],
           },
         },
-        fixedCenterCrossSeries([100, 100], '中性'),
+        fixedCenterCrossSeries([0, 0], '中性'),
       ],
     };
   }, [rows]);
@@ -189,7 +227,7 @@ export function ThemeRsPanel({
         </p>
         <h3 className="text-base font-semibold text-slate-800">價動能象限</h3>
         <p className="mt-0.5 text-xs text-slate-400">
-          只看價，不含法人。右上領先 · 左上改善 · 右下弱化 · 左下落後 · 中心 (100,100)＝中性
+          只看價。圖上位置＝題材之間的相對排名（散開好讀）；原始 RS／動量見提示與表格。色點＝後端象限（領先／改善／弱化／落後）。
         </p>
       </div>
 
@@ -219,7 +257,7 @@ export function ThemeRsPanel({
             {meta.symbolBars != null ? ` · ${meta.symbolBars} 檔有價` : ''}
           </span>
         </div>
-        <ReactECharts option={option} style={{ height: 380 }} opts={{ renderer: 'canvas' }} />
+        <ReactECharts option={option} style={{ height: 440 }} opts={{ renderer: 'canvas' }} />
         <div className="mt-3 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500">
