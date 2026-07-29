@@ -566,7 +566,7 @@ export function CompositePlayback({
                 <span className="text-slate-500">S</span>
                 <span className="font-semibold">{selected.scoreS.toFixed(1)}</span>
               </li>
-
+              <li className="flex justify-between">
                 <span className="text-slate-500">籌碼 C100</span>
                 <span>{fmtC100(selected.flowScore)}</span>
               </li>
@@ -592,12 +592,12 @@ export function CompositePlayback({
             </ul>
             <Link
               href={`/themes/${selected.slug}?from=radar`}
-              className="mt-3 block rounded-lg bg-brand-600 py-1.5 text-center text-xs font-medium text-white"
+              className="mt-3 block rounded-lg bg-cyan-500 py-1.5 text-center text-xs font-medium text-slate-950"
             >
               題材頁
             </Link>
           </aside>
-        ) : null}
+
       </div>
 
       <p className="mt-2 text-[11px] text-slate-400">
