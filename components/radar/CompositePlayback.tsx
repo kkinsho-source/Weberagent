@@ -597,10 +597,10 @@ export function CompositePlayback({
               題材頁
             </Link>
           </aside>
-
+        ) : null}
       </div>
 
-      <p className="mt-2 text-[11px] text-slate-400">
+      <p className="mt-2 text-[11px] text-slate-500">
         回放縱軸用「當日短動能」方便看出換區；與主圖中期相對強弱略有不同。相對位置，非買賣建議。
       </p>
     </div>
