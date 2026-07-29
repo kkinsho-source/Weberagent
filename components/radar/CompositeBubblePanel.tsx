@@ -48,6 +48,8 @@ export function CompositeBubblePanel({
   const [onlyTop, setOnlyTop] = useState(true);
   const [onlyResonance, setOnlyResonance] = useState(false);
   const [selected, setSelected] = useState<CompositeRow | null>(null);
+  /** R6：權重／共振等進階預設收合 */
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const setMode = (m: CompositeWeightMode) => {
     const next = new URLSearchParams(sp.toString());
@@ -121,7 +123,7 @@ export function CompositeBubblePanel({
         },
       },
       xAxis: {
-        name: '籌碼強度 →（右＋／左−）',
+        name: '錢有沒有比較多進 →',
         min: C100_AXIS_MIN,
         max: C100_AXIS_MAX,
         nameLocation: 'middle',
@@ -133,7 +135,7 @@ export function CompositeBubblePanel({
         },
       },
       yAxis: {
-        name: '價動能 →（上＋／下−）',
+        name: '價相對有沒有變強 →',
         min: C100_AXIS_MIN,
         max: C100_AXIS_MAX,
         nameLocation: 'middle',
@@ -190,12 +192,14 @@ export function CompositeBubblePanel({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-semibold text-slate-800">綜合指標泡泡</h2>
+            <h2 className="text-lg font-semibold text-slate-800">題材熱區圖</h2>
             <RadarHowTo />
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            C100 中心 (0,0)＝普通 · 軸 −100～+100 · 右上熱 / 左上觀察 / 右下降溫 / 左下冷 · S（
-            {w.label}）· asOf {asOf || '—'}
+            中心＝普通 · 右上偏熱 · 左上觀察 · 右下可能降溫 · 左下偏冷 · 資料日 {asOf || '—'}
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-400">
+            橫軸：錢相對有沒有比較多進 · 縱軸：價相對有沒有變強 · 顏色＝所在區域
           </p>
           <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700">
             {guide}
@@ -218,25 +222,6 @@ export function CompositeBubblePanel({
           </div>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
-          <div className="inline-flex shrink-0 rounded-lg bg-slate-100 p-1">
-            {(Object.keys(COMPOSITE_WEIGHTS) as CompositeWeightMode[]).map((m) => {
-              const meta = COMPOSITE_WEIGHTS[m];
-              const active = mode === m;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  title={meta.hint}
-                  onClick={() => setMode(m)}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
-                    active ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  {meta.label}
-                </button>
-              );
-            })}
-          </div>
           <div className="flex flex-wrap justify-end gap-3 text-xs text-slate-600">
             <label className="flex items-center gap-1.5">
               <input
@@ -245,7 +230,7 @@ export function CompositeBubblePanel({
                 onChange={(e) => setShowLabels(e.target.checked)}
                 className="rounded border-slate-300"
               />
-              名稱
+              顯示名稱
             </label>
             <label className="flex items-center gap-1.5">
               <input
@@ -254,18 +239,53 @@ export function CompositeBubblePanel({
                 onChange={(e) => setOnlyTop(e.target.checked)}
                 className="rounded border-slate-300"
               />
-              只看 Top {TOP_N}
-            </label>
-            <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                checked={onlyResonance}
-                onChange={(e) => setOnlyResonance(e.target.checked)}
-                className="rounded border-slate-300"
-              />
-              只看共振★
+              只看前 {TOP_N} 名
             </label>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="self-end text-xs font-medium text-slate-500 hover:text-brand-600"
+          >
+            {showAdvanced ? '收起進階選項 ▴' : '進階選項（權重／共振）▾'}
+          </button>
+          {showAdvanced ? (
+            <div className="w-full space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-2 sm:w-auto">
+              <div className="text-[11px] text-slate-500">
+                綜合排序權重（目前：{w.label}）
+              </div>
+              <div className="inline-flex rounded-lg bg-white p-0.5 ring-1 ring-slate-200">
+                {(Object.keys(COMPOSITE_WEIGHTS) as CompositeWeightMode[]).map((m) => {
+                  const meta = COMPOSITE_WEIGHTS[m];
+                  const active = mode === m;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      title={meta.hint}
+                      onClick={() => setMode(m)}
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                        active
+                          ? 'bg-brand-600 text-white shadow-sm'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {meta.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={onlyResonance}
+                  onChange={(e) => setOnlyResonance(e.target.checked)}
+                  className="rounded border-slate-300"
+                />
+                只看共振★（錢有進且價偏強）
+              </label>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -346,7 +366,7 @@ export function CompositeBubblePanel({
       </div>
 
       <p className="text-[11px] leading-relaxed text-slate-400">
-        座標為 C100（(百分位−50)×2，中心 0，−100～+100）；S 仍為 0–100 綜合排序分。相對位置描述，非買賣點。
+        圖上是和其他題材比的相對位置；表格 S 分方便排序（0–100）。非買賣點。
       </p>
     </section>
   );

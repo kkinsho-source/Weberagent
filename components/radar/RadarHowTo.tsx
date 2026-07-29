@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-const KEY = 'radar-howto-dismissed-v1';
+const KEY = 'radar-howto-dismissed-v2';
 
-/** U6：首次 怎麼看（可關閉，localStorage） */
+/** 圖上怎麼看（與四區上色一致；v2 避免舊錯誤文案 localStorage） */
 export function RadarHowTo() {
   const [open, setOpen] = useState(false);
 
@@ -32,38 +32,40 @@ export function RadarHowTo() {
         onClick={() => setOpen(true)}
         className="text-xs font-medium text-brand-600 hover:underline"
       >
-        怎麼看這張圖？
+        圖例說明
       </button>
     );
   }
 
   return (
-    <div className="rounded-xl border border-brand-200 bg-brand-50/90 p-4 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">10 秒看懂資金雷達</h3>
+        <h3 className="text-sm font-semibold text-slate-800">泡泡圖怎麼讀</h3>
         <button
           type="button"
           onClick={dismiss}
           className="shrink-0 rounded-md px-2 py-0.5 text-xs text-slate-500 hover:bg-white"
         >
-          知道了
+          收起
         </button>
       </div>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
         {[
-          { t: '中心 (0,0)＝普通', d: 'C100：籌也不強、價也不特別' },
-          { t: '右上＝熱區', d: '錢偏有進，價也相對強' },
-          { t: '左上＝觀察', d: '價先動，籌還沒明顯' },
-          { t: '右下／左下', d: '降溫或雙弱，偏冷敘事' },
+          { t: '中心＝普通', d: '籌與價都不特別強也不特別弱' },
+          { t: '顏色＝所在區域', d: '紅熱／琥珀觀察／紫降溫／灰冷（不是越紅越好）' },
+          { t: '往右', d: '法人籌碼相對偏買（錢比較有進）' },
+          { t: '往上', d: '價相對偏強（短動能／相對強弱）' },
+          { t: '泡泡大小', d: '近幾日籌碼規模略大者較大' },
+          { t: '表格 S 分', d: '綜合排序分 0–100，方便排行，不是報酬預測' },
         ].map((c) => (
-          <div key={c.t} className="rounded-lg bg-white/90 px-3 py-2 text-xs">
+          <div key={c.t} className="rounded-lg bg-white px-2.5 py-2 text-xs ring-1 ring-slate-100">
             <div className="font-semibold text-slate-800">{c.t}</div>
             <div className="mt-0.5 text-slate-500">{c.d}</div>
           </div>
         ))}
       </div>
-      <p className="mt-2 text-[11px] text-slate-500">
-        顏色越偏紅＝綜合分 S 越高（在目前篩選下的相對位置）。這是描述統計，不是買賣點。
+      <p className="mt-2 text-[11px] text-slate-400">
+        僅供研究描述；非投資建議。
       </p>
     </div>
   );

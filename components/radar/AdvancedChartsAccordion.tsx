@@ -18,7 +18,7 @@ export function AdvancedChartsAccordion({
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
       >
-        <span>進階圖表（純籌碼泡泡 · 純相對強弱 · 舊版回放）</span>
+        <span>進階圖表（給想看細節的人：純籌碼、純相對強弱、舊版回放）</span>
         <span className="text-slate-400">{open ? '收起 ▴' : '展開 ▾'}</span>
       </button>
       {open ? <div className="space-y-6 border-t border-slate-200 px-3 py-4 sm:px-4">{children}</div> : null}

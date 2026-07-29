@@ -48,6 +48,8 @@ export function CompositePlayback({
   const [picked, setPicked] = useState<Set<string> | null>(null);
   /** 軌跡只畫被點選／聚焦的一條（最不亂） */
   const [trailFocusOnly, setTrailFocusOnly] = useState(true);
+  /** R7：進階控制預設收合 */
+  const [showMore, setShowMore] = useState(false);
 
   useEffect(() => {
     setIdx(Math.max(0, frames.length - 1));
@@ -215,7 +217,7 @@ export function CompositePlayback({
         },
         xAxis: {
           type: 'value' as const,
-          name: '籌碼強度 →（C100）',
+          name: '錢有沒有比較多進 →',
           min: C100_AXIS_MIN,
           max: C100_AXIS_MAX,
           nameGap: 28,
@@ -227,7 +229,7 @@ export function CompositePlayback({
         },
         yAxis: {
           type: 'value' as const,
-          name: '當日短動能 →（C100）',
+          name: '價相對強弱（當日） →',
           min: C100_AXIS_MIN,
           max: C100_AXIS_MAX,
           nameGap: 40,
@@ -349,12 +351,38 @@ export function CompositePlayback({
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-base font-semibold text-slate-800">綜合座標回放</h2>
+          <h2 className="text-base font-semibold text-slate-800">最近怎麼移動（回放）</h2>
           <p className="text-xs text-slate-400">
-            C100 中心 (0,0) · 軌跡預設淡灰 · 點泡泡可聚焦單一路徑
+            按播放看泡泡如何換區。建議先點一顆泡泡再播，軌跡較清楚。
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPlaying(false)}
+            className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50"
+          >
+            暫停
+          </button>
+          <button
+            type="button"
+            onClick={onPlay}
+            className="rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700"
+          >
+            {playing ? '播放中…' : '▶ 播放'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowMore((v) => !v)}
+            className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50"
+          >
+            {showMore ? '收起設定' : '更多設定'}
+          </button>
+        </div>
+      </div>
+
+      {showMore ? (
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
           <label className="flex items-center gap-1.5 text-xs text-slate-600">
             <input
               type="checkbox"
@@ -396,26 +424,12 @@ export function CompositePlayback({
           <button
             type="button"
             onClick={() => setShowPicker((v) => !v)}
-            className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50"
+            className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 hover:bg-white"
           >
             題材 {pickLabel}
           </button>
-          <button
-            type="button"
-            onClick={() => setPlaying(false)}
-            className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50"
-          >
-            暫停
-          </button>
-          <button
-            type="button"
-            onClick={onPlay}
-            className="rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700"
-          >
-            {playing ? '播放中…' : '▶ 播放'}
-          </button>
         </div>
-      </div>
+      ) : null}
 
       {showPicker ? (
         <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -588,7 +602,7 @@ export function CompositePlayback({
       </div>
 
       <p className="mt-2 text-[11px] text-slate-400">
-        回放軸為 C100（−100～+100）；Y＝當日短動能（非主圖中期 RS）。相對位置，非買賣建議。
+        回放縱軸用「當日短動能」方便看出換區；與主圖中期相對強弱略有不同。相對位置，非買賣建議。
       </p>
     </div>
   );
