@@ -14,7 +14,7 @@ import {
 import {
   HUD,
   hudAxisCommon,
-  hudDiamondStyle,
+  hudFireballStyle,
   hudSonarRingSeries,
   hudTooltipBase,
   hudZoneMarkAreaData,
@@ -172,9 +172,9 @@ export function CompositeBubblePanel({
         Math.max(16, Math.min(56, Math.sqrt(Math.abs(r.net20dYi)) * 3.5 + 16)),
         r.scoreS,
       ],
-      symbol: 'diamond',
+      symbol: 'circle',
       itemStyle: {
-        ...hudDiamondStyle(r.zone, { resonance: r.resonance, muted: !r.hasPrice }),
+        ...hudFireballStyle(r.zone, { resonance: r.resonance, muted: !r.hasPrice }),
       },
       label: {
         show: showLabels,
@@ -222,7 +222,7 @@ export function CompositeBubblePanel({
         ...hudSonarRingSeries(),
         {
           type: 'scatter',
-          symbol: 'diamond',
+          symbol: 'circle',
           symbolSize: (val: number[]) => val[2],
           data,
           markArea: {
@@ -311,7 +311,7 @@ export function CompositeBubblePanel({
             <RadarHowTo />
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            中心＝普通 · 環＝離中心遠近 · 菱形＝題材 · 色＝區 · 資料日 {asOf || '—'}
+            中心＝普通 · 環＝離中心遠近 · 火球＝題材 · 色＝區 · 資料日 {asOf || '—'}
           </p>
           <p className="mt-0.5 text-[11px] text-slate-500">
             橫軸：錢相對有沒有比較多進 · 縱軸：價相對有沒有變強 · 距離環：近／中／遠／外
@@ -530,7 +530,7 @@ export function CompositeBubblePanel({
             </div>
           )}
           <p className="mt-1 text-center text-[11px] text-slate-500">
-            顯示 {filtered.length}/{rows.length} 題材 · 點菱形標記看詳情 · 勾選會記住
+            顯示 {filtered.length}/{rows.length} 題材 · 點火球標記看詳情 · 勾選會記住
           </p>
         </div>
 
@@ -601,7 +601,7 @@ export function CompositeBubblePanel({
       ) : null}
 
       <p className="text-[11px] leading-relaxed text-slate-500">
-        圖上座標＝籌碼／價的相對位置（與權重無關）。菱形大小∝籌碼規模。表格 S＝排序分（0–100）。非買賣點。
+        圖上座標＝籌碼／價的相對位置（與權重無關）。光暈大小∝籌碼規模。表格 S＝排序分（0–100）。非買賣點。
       </p>
     </section>
   );

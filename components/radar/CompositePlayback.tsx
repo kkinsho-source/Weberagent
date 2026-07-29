@@ -13,9 +13,9 @@ import {
 import {
   HUD,
   hudAxisCommon,
-  hudDiamondStyle,
+  hudFadingTrailSeries,
+  hudFireballStyle,
   hudSonarRingSeries,
-  hudSonarTrailStyle,
   hudTooltipBase,
   hudZoneMarkAreaData,
 } from '@/lib/data/radar-hud';
@@ -127,7 +127,7 @@ export function CompositePlayback({
               r.scoreS,
             ],
             itemStyle: {
-              ...hudDiamondStyle(r.zone, { resonance: r.resonance || isFocus }),
+              ...hudFireballStyle(r.zone, { resonance: r.resonance || isFocus }),
               opacity: isFocus || !selected ? 0.92 : 0.35,
             },
             label: {
@@ -171,35 +171,16 @@ export function CompositePlayback({
           if (line.length < 2) continue;
           const isFocus = selected?.slug === slug;
           const mode = trailStyle === 'zone' ? 'zone' : 'sonar';
-          const ls = hudSonarTrailStyle({
-            focus: isFocus,
-            zoneColor: ZONE_META[lastZone].bubble,
-            mode,
-          });
-
-          trailSeries.push({
-            type: 'line',
-            id: `trail-${slug}`,
-            name: title,
-            data: line,
-            // 焦點：末端小點像聲納回波
-            showSymbol: isFocus,
-            symbol: 'circle',
-            symbolSize: isFocus ? 5 : 0,
-            smooth: isFocus ? 0.25 : 0.15,
-            lineStyle: ls,
-            itemStyle: isFocus
-              ? {
-                  color: HUD.trailFocus,
-                  shadowBlur: 8,
-                  shadowColor: 'rgba(165,243,252,0.7)',
-                }
-              : undefined,
-            z: isFocus ? 2 : 1,
-            silent: true,
-            animation: false,
-            clip: true,
-          });
+          trailSeries.push(
+            ...hudFadingTrailSeries({
+              slug,
+              title,
+              line,
+              focus: isFocus,
+              mode,
+              zoneColor: ZONE_META[lastZone].bubble,
+            }),
+          );
         }
       }
 
@@ -242,7 +223,7 @@ export function CompositePlayback({
             type: 'scatter',
             id: 'bubbles',
             name: '題材',
-            symbol: 'diamond',
+            symbol: 'circle',
             universalTransition: { enabled: true, divideShape: 'clone' },
             symbolSize: (val: number[]) => val[2],
             data: scatter,
@@ -553,7 +534,7 @@ export function CompositePlayback({
             />
           </div>
           <p className="mt-1 text-center text-[11px] text-slate-500">
-            點菱形聚焦軌跡 · 再點取消 · 未聚焦時最多 6 條軌跡
+            點火球聚焦軌跡 · 再點取消 · 未聚焦時最多 6 條軌跡
           </p>
         </div>
         {selected ? (

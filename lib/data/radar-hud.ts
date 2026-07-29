@@ -104,24 +104,171 @@ export function hudTooltipBase() {
   };
 }
 
-/** 菱形標記 */
-export function hudDiamondStyle(
+/** 火球光暈核心（取代菱形） */
+export function hudFireballStyle(
   zone: CompositeZone,
-  opts?: { resonance?: boolean; muted?: boolean },
+  opts?: { resonance?: boolean; muted?: boolean; focus?: boolean },
 ) {
   const z = ZONE_META[zone];
+  if (opts?.muted) {
+    return {
+      color: 'rgba(148,163,184,0.25)',
+      borderColor: 'rgba(148,163,184,0.35)',
+      borderWidth: 1,
+      shadowBlur: 8,
+      shadowColor: 'rgba(148,163,184,0.25)',
+    };
+  }
+  const core = opts?.resonance ? '#fde68a' : z.bubble;
+  const glow = opts?.resonance
+    ? 'rgba(253, 224, 71, 0.75)'
+    : hexToRgba(z.bubble, 0.65);
   return {
-    color: opts?.muted ? 'rgba(148,163,184,0.35)' : z.bubble,
-    borderColor: opts?.resonance ? '#fde68a' : z.border,
-    borderWidth: opts?.resonance ? 2.5 : 1.5,
-    shadowBlur: opts?.resonance ? 12 : 6,
-    shadowColor: opts?.resonance
-      ? 'rgba(253, 224, 71, 0.55)'
-      : `${z.bubble}99`,
+    color: core,
+    borderColor: opts?.resonance ? '#fff7ed' : lightenHex(z.bubble),
+    borderWidth: opts?.focus || opts?.resonance ? 2.5 : 1.5,
+    shadowBlur: opts?.focus || opts?.resonance ? 28 : 18,
+    shadowColor: glow,
   };
 }
 
-/** 聲納距離環：C100 平面上以原點為心的同心圓 */
+function hexToRgba(hex: string, a: number): string {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return `rgba(56,189,248,${a})`;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function lightenHex(hex: string): string {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return '#e0f2fe';
+  const ch = (i: number) =>
+    Math.min(255, Math.round(parseInt(h.slice(i, i + 2), 16) * 0.45 + 255 * 0.55))
+      .toString(16)
+      .padStart(2, '0');
+  return `#${ch(0)}${ch(2)}${ch(4)}`;
+}
+
+/**
+ * 回放軌跡：分段漸隱（舊淡 → 新亮），像拖曳餘暉
+ * 回傳多條 line series
+ */
+export function hudFadingTrailSeries(opts: {
+  slug: string;
+  title: string;
+  line: number[][];
+  focus: boolean;
+  mode: 'sonar' | 'zone';
+  zoneColor?: string;
+}): object[] {
+  const { slug, title, line, focus, mode, zoneColor } = opts;
+  if (line.length < 2) return [];
+
+  const baseColor =
+    mode === 'zone' ? zoneColor || HUD.trail : focus ? HUD.trailFocus : HUD.trail;
+  const segs: object[] = [];
+  const n = line.length - 1;
+
+  for (let i = 0; i < n; i++) {
+    // t: 0=最舊 … 1=最新
+    const t = n === 1 ? 1 : (i + 1) / n;
+    const fade = Math.pow(t, 1.35); // 尾巴更快消失
+    const opacity = focus
+      ? 0.08 + fade * 0.85
+      : 0.04 + fade * 0.42;
+    const width = focus
+      ? 1.1 + fade * 2.2
+      : 0.8 + fade * 1.4;
+
+    segs.push({
+      type: 'line' as const,
+      id: `trail-${slug}-s${i}`,
+      name: title,
+      data: [line[i], line[i + 1]],
+      showSymbol: false,
+      silent: true,
+      clip: true,
+      z: focus ? 2 : 1,
+      animation: false,
+      lineStyle: {
+        color: baseColor,
+        width,
+        opacity,
+        type: focus && t > 0.85 ? ('solid' as const) : ('solid' as const),
+        shadowBlur: focus && t > 0.7 ? 10 : t > 0.85 ? 6 : 0,
+        shadowColor:
+          focus && t > 0.7
+            ? 'rgba(165,243,252,0.45)'
+            : mode === 'sonar'
+              ? 'rgba(34,211,238,0.2)'
+              : undefined,
+      },
+    });
+  }
+
+  // 最新端：回波火點
+  const tip = line[line.length - 1];
+  segs.push({
+    type: 'scatter' as const,
+    id: `trail-${slug}-tip`,
+    name: title,
+    data: [{ value: tip }],
+    symbolSize: focus ? 9 : 5,
+    silent: true,
+    z: focus ? 2.5 : 1.5,
+    animation: false,
+    itemStyle: {
+      color: focus ? HUD.trailFocus : baseColor,
+      shadowBlur: focus ? 16 : 8,
+      shadowColor: focus
+        ? 'rgba(165,243,252,0.8)'
+        : 'rgba(34,211,238,0.4)',
+      opacity: focus ? 0.95 : 0.55,
+    },
+  });
+
+  return segs;
+}
+
+/** @deprecated 單一段樣式；新軌跡請用 hudFadingTrailSeries */
+export function hudSonarTrailStyle(opts: {
+  focus: boolean;
+  zoneColor?: string;
+  mode: 'sonar' | 'zone' | 'off';
+}) {
+  if (opts.mode === 'off') return null;
+  if (opts.mode === 'zone') {
+    return {
+      width: opts.focus ? 2.6 : 1.4,
+      opacity: opts.focus ? 0.8 : 0.32,
+      color: opts.zoneColor || HUD.trail,
+      type: 'solid' as const,
+      shadowBlur: opts.focus ? 8 : 0,
+      shadowColor: opts.focus ? 'rgba(253,224,71,0.35)' : undefined,
+    };
+  }
+  return {
+    width: opts.focus ? 2.4 : 1.35,
+    opacity: opts.focus ? 0.9 : 0.4,
+    color: opts.focus ? HUD.trailFocus : HUD.trail,
+    type: (opts.focus ? 'solid' : 'dashed') as 'solid' | 'dashed',
+    shadowBlur: opts.focus ? 10 : 4,
+    shadowColor: opts.focus
+      ? 'rgba(165, 243, 252, 0.55)'
+      : 'rgba(34, 211, 238, 0.25)',
+  };
+}
+
+/** 相容舊 import */
+export function hudDiamondStyle(
+  zone: CompositeZone,
+  opts?: { resonance?: boolean; muted?: boolean; focus?: boolean },
+) {
+  return hudFireballStyle(zone, opts);
+}
+
 function circlePolyline(radius: number, steps = 72): number[][] {
   const pts: number[][] = [];
   for (let i = 0; i <= steps; i++) {
@@ -131,7 +278,6 @@ function circlePolyline(radius: number, steps = 72): number[][] {
   return pts;
 }
 
-/** 環半徑（C100 距離）與短標 */
 export const SONAR_RINGS: ReadonlyArray<{ r: number; label: string }> = [
   { r: 25, label: '近' },
   { r: 50, label: '中' },
@@ -139,10 +285,7 @@ export const SONAR_RINGS: ReadonlyArray<{ r: number; label: string }> = [
   { r: 100, label: '外' },
 ];
 
-/**
- * 獨立 series：距離環 + 環標（z 最低）
- * 語意：離 (0,0) 越遠＝越極端
- */
+/** 聲納距離環 series */
 export function hudSonarRingSeries(): object[] {
   return SONAR_RINGS.map(({ r, label }, idx) => ({
     type: 'line' as const,
@@ -182,33 +325,4 @@ export function hudSonarRingSeries(): object[] {
       ],
     },
   }));
-}
-
-/** 回放軌跡：聲納樣式 */
-export function hudSonarTrailStyle(opts: {
-  focus: boolean;
-  zoneColor?: string;
-  mode: 'sonar' | 'zone' | 'off';
-}) {
-  if (opts.mode === 'off') return null;
-  if (opts.mode === 'zone') {
-    return {
-      width: opts.focus ? 2.6 : 1.4,
-      opacity: opts.focus ? 0.8 : 0.32,
-      color: opts.zoneColor || HUD.trail,
-      type: 'solid' as const,
-      shadowBlur: opts.focus ? 8 : 0,
-      shadowColor: opts.focus ? 'rgba(253,224,71,0.35)' : undefined,
-    };
-  }
-  return {
-    width: opts.focus ? 2.4 : 1.35,
-    opacity: opts.focus ? 0.9 : 0.4,
-    color: opts.focus ? HUD.trailFocus : HUD.trail,
-    type: (opts.focus ? 'solid' : 'dashed') as 'solid' | 'dashed',
-    shadowBlur: opts.focus ? 10 : 4,
-    shadowColor: opts.focus
-      ? 'rgba(165, 243, 252, 0.55)'
-      : 'rgba(34, 211, 238, 0.25)',
-  };
 }
