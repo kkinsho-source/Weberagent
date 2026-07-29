@@ -101,7 +101,7 @@ export function RadarTodayBrief({ brief }: { brief: ThemeFlowBrief }) {
                     <>
                       ，最佳{' '}
                       <Link
-                        href={`/themes/${reviewBest.slug}`}
+                        href={`/themes/${reviewBest.slug}?from=radar`}
                         className="font-medium text-brand-700 hover:underline"
                       >
                         {reviewBest.title}
@@ -123,7 +123,7 @@ export function RadarTodayBrief({ brief }: { brief: ThemeFlowBrief }) {
                   {brief.tideLeaders.map((t) => (
                     <Link
                       key={t.slug}
-                      href={`/themes/${t.slug}`}
+                      href={`/themes/${t.slug}?from=radar`}
                       className="inline-flex items-center rounded-full bg-white px-2 py-0.5 font-medium text-rose-700 ring-1 ring-rose-100 hover:bg-rose-50"
                     >
                       {t.title}
@@ -192,7 +192,7 @@ function BriefCol({
             {items.map((it, i) => (
               <li key={it.slug}>
                 <Link
-                  href={`/themes/${it.slug}`}
+                  href={`/themes/${it.slug}?from=radar`}
                   className="flex items-center gap-2 rounded-lg px-2 py-2 transition hover:bg-slate-50"
                 >
                   <span

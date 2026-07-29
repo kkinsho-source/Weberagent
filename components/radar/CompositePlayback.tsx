@@ -594,7 +594,7 @@ export function CompositePlayback({
               </li>
             </ul>
             <Link
-              href={`/themes/${selected.slug}`}
+              href={`/themes/${selected.slug}?from=radar`}
               className="mt-3 block rounded-lg bg-brand-600 py-1.5 text-center text-xs font-medium text-white"
             >
               題材頁

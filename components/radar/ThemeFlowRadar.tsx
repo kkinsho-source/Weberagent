@@ -154,7 +154,7 @@ export function ThemeFlowRadar({
             {rows.map((r) => (
               <tr key={r.slug} className="border-t border-slate-100 hover:bg-slate-50/80">
                 <td className="px-3 py-2">
-                  <Link href={`/themes/${r.slug}`} className="font-medium text-brand-700 hover:underline">
+                  <Link href={`/themes/${r.slug}?from=radar`} className="font-medium text-brand-700 hover:underline">
                     <span
                       className="mr-1.5 inline-block h-2 w-2 rounded-full"
                       style={{ backgroundColor: r.color || '#94a3b8' }}

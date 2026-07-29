@@ -74,7 +74,7 @@ export function BubbleDetailPanel({
         </div>
       </dl>
       <Link
-        href={`/themes/${row.slug}`}
+        href={`/themes/${row.slug}?from=radar`}
         className="mt-4 block rounded-lg bg-brand-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-brand-700"
       >
         題材說明與成分股 →

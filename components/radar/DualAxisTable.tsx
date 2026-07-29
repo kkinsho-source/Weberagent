@@ -58,7 +58,7 @@ export function DualAxisTable({ rows }: { rows: DualRow[] }) {
                   <tr key={r.slug} className="border-t border-slate-100">
                     <td className="px-2 py-1.5">
                       <Link
-                        href={`/themes/${r.slug}`}
+                        href={`/themes/${r.slug}?from=radar`}
                         className="font-medium text-brand-700 hover:underline"
                       >
                         {r.title}
