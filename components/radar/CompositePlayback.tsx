@@ -550,7 +550,7 @@ export function CompositePlayback({
               opts={{ renderer: 'canvas' }}
               lazyUpdate
               onEvents={{
-
+                click: (params: { data?: { id?: string; name?: string } }) => {
                   const id = params?.data?.id;
                   const pt =
                     frame?.points.find((p) => p.slug === id) ||
@@ -561,7 +561,7 @@ export function CompositePlayback({
                 },
               }}
             />
-          </div>
+
           <p className="mt-1 text-center text-[11px] text-slate-500">
             點火球聚焦軌跡 · 再點取消 · 未聚焦時最多 6 條軌跡
           </p>
