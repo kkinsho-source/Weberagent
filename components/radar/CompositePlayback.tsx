@@ -139,7 +139,7 @@ export function CompositePlayback({
               textBorderColor: 'rgba(7,11,20,0.92)',
               textBorderWidth: 3,
             },
-
+          };
         })
         .filter(Boolean);
 
@@ -557,11 +557,11 @@ export function CompositePlayback({
               >
                 關閉
               </button>
-
+            </div>
             <p className="mt-1 text-xs text-slate-500">
               {ZONE_META[selected.zone as CompositeZone].label} · {frame?.date}
             </p>
-            <ul className="mt-2 space-y-1 text-sm">
+
               <li className="flex justify-between">
                 <span className="text-slate-500">S</span>
                 <span className="font-semibold">{selected.scoreS.toFixed(1)}</span>
