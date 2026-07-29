@@ -21,7 +21,7 @@ export function AdvancedChartsAccordion({
         <span className="min-w-0">
           <span className="block text-sm font-medium text-slate-700">進階圖表</span>
           <span className="mt-0.5 block text-[11px] font-normal leading-relaxed text-slate-400">
-            主圖是籌碼×價綜合位置；這裡拆開看純法人、純相對強弱，以及舊版籌碼回放。
+            主圖是籌碼×價綜合位置；這裡可拆開看純法人與純相對強弱。
           </span>
         </span>
         <span className="shrink-0 text-xs text-slate-400">{open ? '收起 ▴' : '展開 ▾'}</span>

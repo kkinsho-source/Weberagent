@@ -5,9 +5,14 @@ import ReactECharts from 'echarts-for-react';
 import Link from 'next/link';
 import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
 import {
+  C100_AXIS_MAX,
+  C100_AXIS_MIN,
+  percentileScores,
+  toC100,
+} from '@/lib/data/theme-composite';
+import {
   SQUARE_GRID,
   fixedCenterCrossSeries,
-  halfRangeAroundZero,
 } from '@/lib/data/chart-axis';
 
 export type RadarRow = {
@@ -25,7 +30,7 @@ export type RadarRow = {
   color?: string;
 };
 
-/** 漲潮／輪動／觀望／退潮 — 四態色（B1） */
+/** 漲潮／輪動／觀望／退潮 — 四態色 */
 const STATE_META: Record<
   string,
   { label: string; sub: string; badge: string; bubble: string; border: string }
@@ -95,30 +100,41 @@ export function ThemeFlowRadar({
   };
 }) {
   const option = useMemo(() => {
-    const xs = rows.map((r) => r.net5dYi);
-    const ys = rows.map((r) => r.accelYi);
-    // 同一半軸長 → (0,0) 在繪圖區正中
-    const half = Math.max(
-      halfRangeAroundZero(xs, { minHalf: 0.5 }),
-      halfRangeAroundZero(ys, { minHalf: 0.2 }),
-    );
-    const lo = -half;
-    const hi = half;
+    /**
+     * 位置用「題材間百分位 → C100」，避免少數極端億元把大家都擠在中心。
+     * 實際億元仍在 tooltip／表格。
+     */
+    const xPct = percentileScores(rows.map((r) => r.net5dYi));
+    const yPct = percentileScores(rows.map((r) => r.accelYi));
 
-    const data = rows.map((r) => {
+    const data = rows.map((r, i) => {
       const st = STATE_META[r.state] || STATE_META.outflow_accel;
+      const x = toC100(xPct[i] ?? 50);
+      const y = toC100(yPct[i] ?? 50);
       return {
         name: r.title,
         value: [
+          x,
+          y,
+          Math.max(12, Math.min(52, Math.sqrt(Math.abs(r.net20dYi)) * 3.2 + 12)),
           r.net5dYi,
           r.accelYi,
-          Math.max(8, Math.min(60, Math.sqrt(Math.abs(r.net20dYi)) * 4 + 8)),
         ],
         slug: r.slug,
         itemStyle: {
           color: st.bubble,
           borderColor: st.border,
           borderWidth: 1.5,
+        },
+        label: {
+          show: true,
+          formatter: () => (r.title.length > 5 ? r.title.slice(0, 4) + '…' : r.title),
+          position: 'top' as const,
+          distance: 4,
+          fontSize: 10,
+          color: '#334155',
+          textBorderColor: '#fff',
+          textBorderWidth: 2,
         },
       };
     });
@@ -140,8 +156,9 @@ export function ThemeFlowRadar({
           return [
             `<b>${d.name}</b>`,
             st ? `${st.label}（${st.sub}）` : '',
-            `近5日 ${fmtYi(d.value[0])} 億`,
-            `加速度 ${fmtYi(d.value[1])} 億/日`,
+            `近5日 ${fmtYi(d.value[3] ?? 0)} 億`,
+            `加速度 ${fmtYi(d.value[4] ?? 0)} 億/日`,
+            `圖上位置＝題材間相對排名（非絕對億）`,
           ]
             .filter(Boolean)
             .join('<br/>');
@@ -149,31 +166,35 @@ export function ThemeFlowRadar({
       },
       xAxis: {
         type: 'value',
-        name: '近5日法人淨額（億）→',
+        name: '近5日淨額（相對偏多 →）',
         nameLocation: 'middle',
         nameGap: 30,
-        min: lo,
-        max: hi,
+        min: C100_AXIS_MIN,
+        max: C100_AXIS_MAX,
         scale: false,
         boundaryGap: false,
         splitNumber: 4,
+        axisLabel: {
+          formatter: (v: number) => (v > 0 ? `+${v}` : `${v}`),
+        },
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
         axisLine: { show: true, lineStyle: { color: '#94a3b8' } },
-        axisTick: { show: true },
       },
       yAxis: {
         type: 'value',
-        name: '加速度 →',
+        name: '加速度（相對 →）',
         nameLocation: 'middle',
         nameGap: 40,
-        min: lo,
-        max: hi,
+        min: C100_AXIS_MIN,
+        max: C100_AXIS_MAX,
         scale: false,
         boundaryGap: false,
         splitNumber: 4,
+        axisLabel: {
+          formatter: (v: number) => (v > 0 ? `+${v}` : `${v}`),
+        },
         splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } },
         axisLine: { show: true, lineStyle: { color: '#94a3b8' } },
-        axisTick: { show: true },
       },
       series: [
         {
@@ -188,19 +209,35 @@ export function ThemeFlowRadar({
             animation: false,
             data: [
               [
-                { xAxis: 0, yAxis: 0, itemStyle: { color: 'rgba(254, 226, 226, 0.35)' } },
-                { xAxis: hi, yAxis: hi },
+                {
+                  xAxis: 0,
+                  yAxis: 0,
+                  itemStyle: { color: 'rgba(254, 226, 226, 0.35)' },
+                },
+                { xAxis: C100_AXIS_MAX, yAxis: C100_AXIS_MAX },
               ],
               [
-                { xAxis: lo, yAxis: 0, itemStyle: { color: 'rgba(254, 243, 199, 0.3)' } },
-                { xAxis: 0, yAxis: hi },
+                {
+                  xAxis: C100_AXIS_MIN,
+                  yAxis: 0,
+                  itemStyle: { color: 'rgba(254, 243, 199, 0.3)' },
+                },
+                { xAxis: 0, yAxis: C100_AXIS_MAX },
               ],
               [
-                { xAxis: 0, yAxis: lo, itemStyle: { color: 'rgba(224, 242, 254, 0.3)' } },
-                { xAxis: hi, yAxis: 0 },
+                {
+                  xAxis: 0,
+                  yAxis: C100_AXIS_MIN,
+                  itemStyle: { color: 'rgba(224, 242, 254, 0.3)' },
+                },
+                { xAxis: C100_AXIS_MAX, yAxis: 0 },
               ],
               [
-                { xAxis: lo, yAxis: lo, itemStyle: { color: 'rgba(241, 245, 249, 0.5)' } },
+                {
+                  xAxis: C100_AXIS_MIN,
+                  yAxis: C100_AXIS_MIN,
+                  itemStyle: { color: 'rgba(241, 245, 249, 0.5)' },
+                },
                 { xAxis: 0, yAxis: 0 },
               ],
             ],
@@ -221,7 +258,7 @@ export function ThemeFlowRadar({
         </p>
         <h3 className="text-base font-semibold text-slate-800">題材資金泡泡</h3>
         <p className="mt-0.5 text-xs text-slate-400">
-          只看法人進出，不含股價相對強弱。顏色＝四態（漲潮／輪動／觀望／退潮），不是綜合熱區圖那套。
+          只看法人。圖上位置＝題材之間的相對排名（避免極端值把大家都擠在中間）；實際億元見提示與表格。
         </p>
       </div>
 
@@ -253,7 +290,7 @@ export function ThemeFlowRadar({
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
           <p className="text-xs text-slate-400">
-            右＝近5日買超多 · 上＝流入加速 · 泡泡越大＝近20日絕對額越大
+            右＝近5日相對偏買 · 上＝相對加速 · 中心＝中性 · 色＝四態
           </p>
           <p className="text-[11px] tabular-nums text-slate-400">
             資料日 {meta.asOf || '—'}
@@ -266,7 +303,7 @@ export function ThemeFlowRadar({
             盤後資料可能尚未齊全。請稍後重新整理；若主圖熱區仍有資料，可先看主圖。
           </RadarEmptyBlock>
         ) : (
-          <ReactECharts option={option} style={{ height: 420 }} opts={{ renderer: 'canvas' }} />
+          <ReactECharts option={option} style={{ height: 440 }} opts={{ renderer: 'canvas' }} />
         )}
       </div>
 

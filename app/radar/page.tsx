@@ -18,7 +18,6 @@ import type { ThemeFamily } from '@/lib/types';
 import { ThemeScopeTabs } from '@/components/theme/ThemeScopeTabs';
 import { ThemeFlowRadar } from '@/components/radar/ThemeFlowRadar';
 import { RadarTodayBrief } from '@/components/radar/RadarTodayBrief';
-import { ThemeFlowPlayback } from '@/components/radar/ThemeFlowPlayback';
 import { ThemeRsPanel } from '@/components/radar/ThemeRsPanel';
 import { DualAxisTable } from '@/components/radar/DualAxisTable';
 import { CompositeBubblePanel } from '@/components/radar/CompositeBubblePanel';
@@ -152,9 +151,6 @@ export default async function RadarPage({
           meta={{ ...meta, stocksDataSource: bundle.dataSource }}
         />
         <ThemeRsPanel rows={rsBundle.rows} meta={rsBundle.meta} familyBySlug={familyBySlug} />
-        {hasFlow ? (
-          <ThemeFlowPlayback frames={frames} familyBySlug={familyBySlug} />
-        ) : null}
       </AdvancedChartsAccordion>
 
       <p className="text-[11px] leading-relaxed text-slate-400">
