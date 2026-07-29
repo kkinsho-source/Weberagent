@@ -51,6 +51,15 @@ const config: Config = {
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
       },
+      keyframes: {
+        radarScan: {
+          '0%': { transform: 'translateY(-40%)' },
+          '100%': { transform: 'translateY(420%)' },
+        },
+      },
+      animation: {
+        radarScan: 'radarScan 5.5s linear infinite',
+      },
     },
   },
   plugins: [],

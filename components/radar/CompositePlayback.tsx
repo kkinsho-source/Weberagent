@@ -5,15 +5,18 @@ import Link from 'next/link';
 import ReactECharts from 'echarts-for-react';
 import type { ECharts } from 'echarts';
 import {
-  C100_AXIS_MAX,
-  C100_AXIS_MIN,
   ZONE_META,
-  zoneBubbleStyle,
-  zoneMarkAreaData,
   type CompositeFrame,
   type CompositeFramePoint,
   type CompositeZone,
 } from '@/lib/data/theme-composite';
+import {
+  HUD,
+  hudAxisCommon,
+  hudDiamondStyle,
+  hudTooltipBase,
+  hudZoneMarkAreaData,
+} from '@/lib/data/radar-hud';
 import { shortThemeLabel } from '@/lib/data/theme-label';
 import type { ThemeFamily } from '@/lib/types';
 import { useRadarPref } from '@/components/radar/useRadarPref';
@@ -122,7 +125,7 @@ export function CompositePlayback({
               r.scoreS,
             ],
             itemStyle: {
-              ...zoneBubbleStyle(r.zone, { resonance: r.resonance || isFocus }),
+              ...hudDiamondStyle(r.zone, { resonance: r.resonance || isFocus }),
               opacity: isFocus || !selected ? 0.92 : 0.35,
             },
             label: {
@@ -132,11 +135,11 @@ export function CompositePlayback({
               distance: 5,
               fontSize: isFocus ? 11 : 10,
               fontWeight: 600,
-              color: '#1e293b',
-              textBorderColor: 'rgba(255,255,255,0.95)',
+              color: HUD.text,
+              textBorderColor: 'rgba(7,11,20,0.92)',
               textBorderWidth: 3,
             },
-          };
+
         })
         .filter(Boolean);
 
@@ -197,7 +200,9 @@ export function CompositePlayback({
         animationEasing: 'cubicOut' as const,
         animationEasingUpdate: 'cubicInOut' as const,
         grid: { left: 56, right: 28, top: 44, bottom: 48 },
+        backgroundColor: 'transparent',
         tooltip: {
+          ...hudTooltipBase(),
           formatter: (p: {
             seriesType?: string;
             data?: { id?: string; name?: string; value?: number[] };
@@ -217,51 +222,28 @@ export function CompositePlayback({
               .join('<br/>');
           },
         },
-        xAxis: {
-          type: 'value' as const,
-          name: '錢有沒有比較多進 →',
-          min: C100_AXIS_MIN,
-          max: C100_AXIS_MAX,
-          scale: false,
-          nameGap: 28,
-          nameLocation: 'middle' as const,
-          splitLine: { show: false },
-          axisLabel: {
-            formatter: (v: number) => (v > 0 ? `+${v}` : `${v}`),
-          },
-        },
-        yAxis: {
-          type: 'value' as const,
-          name: '價相對強弱（當日） →',
-          min: C100_AXIS_MIN,
-          max: C100_AXIS_MAX,
-          scale: false,
-          nameGap: 40,
-          nameLocation: 'middle' as const,
-          splitLine: { show: false },
-          axisLabel: {
-            formatter: (v: number) => (v > 0 ? `+${v}` : `${v}`),
-          },
-        },
+        xAxis: { type: 'value' as const, ...hudAxisCommon('錢有沒有比較多進 →', 28) },
+        yAxis: { type: 'value' as const, ...hudAxisCommon('價相對強弱（當日） →', 40) },
         series: [
           ...trailSeries,
           {
             type: 'scatter',
             id: 'bubbles',
             name: '題材',
+            symbol: 'diamond',
             universalTransition: { enabled: true, divideShape: 'clone' },
             symbolSize: (val: number[]) => val[2],
             data: scatter,
             z: 3,
             markArea: {
               silent: true,
-              data: zoneMarkAreaData() as unknown as object[],
+              data: hudZoneMarkAreaData() as unknown as object[],
             },
             markLine: {
               silent: true,
               symbol: 'none',
               animation: false,
-              lineStyle: { color: '#94a3b8' },
+              lineStyle: { color: HUD.cross, width: 1.25 },
               data: [{ xAxis: 0 }, { yAxis: 0 }],
             },
             markPoint: {
@@ -270,13 +252,19 @@ export function CompositePlayback({
                 {
                   coord: [0, 0],
                   symbol: 'circle',
-                  symbolSize: 7,
-                  itemStyle: { color: '#64748b', borderColor: '#fff', borderWidth: 2 },
+                  symbolSize: 8,
+                  itemStyle: {
+                    color: HUD.crossCore,
+                    borderColor: '#0b1220',
+                    borderWidth: 2,
+                    shadowBlur: 10,
+                    shadowColor: 'rgba(125,211,252,0.7)',
+                  },
                   label: {
                     show: true,
                     formatter: '普通',
                     position: 'right',
-                    color: '#64748b',
+                    color: HUD.crossCore,
                     fontSize: 10,
                     fontWeight: 600,
                   },
@@ -352,10 +340,10 @@ export function CompositePlayback({
     picked == null ? '全部' : `${picked.size}/${allThemes.length}`;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-cyan-500/25 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-4 shadow-[0_0_30px_rgba(56,189,248,0.06)]">
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-base font-semibold text-slate-800">最近怎麼移動（回放）</h2>
+          <h2 className="text-base font-semibold tracking-wide text-cyan-50">最近怎麼移動（回放）</h2>
           <p className="text-xs text-slate-400">
             按播放看泡泡如何換區。建議先點一顆泡泡再播，軌跡較清楚。
           </p>
@@ -526,43 +514,50 @@ export function CompositePlayback({
 
       <div className="flex flex-col gap-3 lg:flex-row">
         <div className="min-w-0 flex-1">
-          <ReactECharts
-            ref={chartRef}
-            option={{}}
-            onChartReady={() => applyFrame(idx, true)}
-            style={{ height: 420 }}
-            opts={{ renderer: 'canvas' }}
-            notMerge
-            lazyUpdate
-            onEvents={{
-              click: (params: { data?: { id?: string; name?: string } }) => {
-                const id = params?.data?.id;
-                const pt =
-                  frame?.points.find((p) => p.slug === id) ||
-                  frame?.points.find((p) => p.title === params?.data?.name);
-                if (pt) {
-                  // 再點同一顆取消聚焦
-                  setSelected((cur) => (cur?.slug === pt.slug ? null : pt));
-                }
-              },
-            }}
-          />
-          <p className="mt-1 text-center text-[11px] text-slate-400">
-            點泡泡聚焦單題材軌跡 · 再點一次取消 · 未聚焦時最多顯示 6 條軌跡
+          <div className="relative overflow-hidden rounded-xl border border-cyan-500/20 bg-[#070b14]">
+            <div
+              className="pointer-events-none absolute inset-0 z-10 overflow-hidden opacity-30"
+              aria-hidden
+            >
+              <div className="absolute inset-x-0 h-14 animate-radarScan bg-gradient-to-b from-transparent via-cyan-400/15 to-transparent" />
+            </div>
+            <ReactECharts
+              ref={chartRef}
+              option={{}}
+              onChartReady={() => applyFrame(idx, true)}
+              style={{ height: 420 }}
+              opts={{ renderer: 'canvas' }}
+              notMerge
+              lazyUpdate
+              onEvents={{
+                click: (params: { data?: { id?: string; name?: string } }) => {
+                  const id = params?.data?.id;
+                  const pt =
+                    frame?.points.find((p) => p.slug === id) ||
+                    frame?.points.find((p) => p.title === params?.data?.name);
+                  if (pt) {
+                    setSelected((cur) => (cur?.slug === pt.slug ? null : pt));
+                  }
+                },
+              }}
+            />
+          </div>
+          <p className="mt-1 text-center text-[11px] text-slate-500">
+            點菱形聚焦軌跡 · 再點取消 · 未聚焦時最多 6 條軌跡
           </p>
         </div>
         {selected ? (
-          <aside className="w-full shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-3 lg:w-64">
+          <aside className="w-full shrink-0 rounded-xl border border-cyan-500/20 bg-slate-900/80 p-3 lg:w-64">
             <div className="flex justify-between gap-2">
-              <h4 className="font-semibold text-slate-800">{selected.title}</h4>
+              <h4 className="font-semibold text-cyan-50">{selected.title}</h4>
               <button
                 type="button"
-                className="text-xs text-slate-500"
+                className="text-xs text-slate-400"
                 onClick={() => setSelected(null)}
               >
                 關閉
               </button>
-            </div>
+
             <p className="mt-1 text-xs text-slate-500">
               {ZONE_META[selected.zone as CompositeZone].label} · {frame?.date}
             </p>
