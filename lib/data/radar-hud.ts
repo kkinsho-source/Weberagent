@@ -232,10 +232,10 @@ export function trailDashForSlug(
 
 /**
  * 回放軌跡：固定 14 段 id（merge 延續）
- * - dual (TD 預設)：區色 + slug 虛實 + 強漸隱尾巴
- * - comet：頭亮尾淡、偏青白
+ * - zone (TA 預設)：區色 + 強漸隱尾巴（實線彗星感）
+ * - dual (TD)：區色 + slug 虛實 + 強漸隱
+ * - comet：青白彗星
  * - soft / sonar：淡跡
- * - zone：四色區色實線
  */
 export function hudFadingTrailSeries(opts: {
   slug: string;
@@ -244,14 +244,17 @@ export function hudFadingTrailSeries(opts: {
   focus: boolean;
   mode: HudTrailMode;
   zoneColor?: string;
-  /** 無軌跡時仍輸出空 series 以保持 id（可選） */
+  /** 減亂 P4：整體再淡／細一點（0.7≈淡 30%） */
+  intensity?: number;
   alwaysSlots?: boolean;
 }): object[] {
   const { slug, title, line, focus, mode, zoneColor } = opts;
+  const intensity = Math.min(1.2, Math.max(0.4, opts.intensity ?? 1));
   const isDual = mode === 'dual';
   const isComet = mode === 'comet';
-  const isZone = mode === 'zone' || isDual;
-  const baseColor = isZone
+  const isZoneTa = mode === 'zone'; // TA
+  const isZoneColor = isZoneTa || isDual;
+  const baseColor = isZoneColor
     ? zoneColor || HUD.trail
     : isComet
       ? focus
@@ -263,31 +266,34 @@ export function hudFadingTrailSeries(opts: {
   const dashType = isDual ? trailDashForSlug(slug) : ('solid' as const);
   const segs: object[] = [];
   const nSeg = TRAIL_SEG_COUNT;
+  const strongFade = isDual || isComet || isZoneTa;
 
   const pts =
     line.length >= 2 ? resamplePolyline(line, nSeg + 1) : ([] as number[][]);
 
   for (let i = 0; i < nSeg; i++) {
     const t = (i + 1) / nSeg;
-    // dual/comet：更陡頭亮尾淡（舊段幾乎消失）；淡跡較平
-    const fade =
-      isDual || isComet ? Math.pow(t, 1.75) : Math.pow(t, 1.25);
+    const fade = strongFade ? Math.pow(t, 1.8) : Math.pow(t, 1.25);
     const has = pts.length > i + 1;
     let opacity = 0;
     let width = 0;
     if (has) {
-      if (isDual) {
-        opacity = focus ? 0.03 + fade * 0.9 : 0.025 + fade * 0.68;
-        width = focus ? 0.65 + fade * 2.5 : 0.5 + fade * 1.85;
+      if (isZoneTa) {
+        // TA：區色彗星 + P4 偏淡偏細
+        opacity = (focus ? 0.025 + fade * 0.72 : 0.018 + fade * 0.48) * intensity;
+        width = (focus ? 0.5 + fade * 1.85 : 0.4 + fade * 1.35) * intensity;
+      } else if (isDual) {
+        opacity = (focus ? 0.03 + fade * 0.9 : 0.025 + fade * 0.68) * intensity;
+        width = (focus ? 0.65 + fade * 2.5 : 0.5 + fade * 1.85) * intensity;
       } else if (isComet) {
-        opacity = focus ? 0.04 + fade * 0.92 : 0.03 + fade * 0.62;
-        width = focus ? 0.7 + fade * 2.8 : 0.55 + fade * 2.0;
+        opacity = (focus ? 0.04 + fade * 0.92 : 0.03 + fade * 0.62) * intensity;
+        width = (focus ? 0.7 + fade * 2.8 : 0.55 + fade * 2.0) * intensity;
       } else if (focus) {
-        opacity = 0.06 + fade * 0.88;
-        width = 1.2 + fade * 2.4;
+        opacity = (0.06 + fade * 0.88) * intensity;
+        width = (1.2 + fade * 2.4) * intensity;
       } else {
-        opacity = 0.03 + fade * 0.48;
-        width = 0.85 + fade * 1.5;
+        opacity = (0.03 + fade * 0.48) * intensity;
+        width = (0.85 + fade * 1.5) * intensity;
       }
     }
 
@@ -307,38 +313,36 @@ export function hudFadingTrailSeries(opts: {
         width,
         opacity,
         type: dashType,
-        shadowBlur:
-          isDual || isComet
+        shadowBlur: strongFade
+          ? focus && t > 0.6
+            ? 10
+            : t > 0.85
+              ? 5
+              : 0
+          : focus && t > 0.65
+            ? 12
+            : t > 0.85
+              ? 6
+              : 0,
+        shadowColor: isZoneColor
+          ? focus && t > 0.6
+            ? hexToRgba(typeof baseColor === 'string' ? baseColor : '#7dd3fc', 0.4)
+            : hexToRgba(typeof baseColor === 'string' ? baseColor : '#7dd3fc', 0.18)
+          : isComet
             ? focus && t > 0.55
-              ? 12
-              : t > 0.82
-                ? 7
-                : 0
+              ? 'rgba(224,242,254,0.55)'
+              : 'rgba(125,211,252,0.28)'
             : focus && t > 0.65
-              ? 12
-              : t > 0.85
-                ? 6
-                : 0,
-        shadowColor:
-          isDual
-            ? focus && t > 0.55
-              ? hexToRgba(typeof baseColor === 'string' ? baseColor : '#7dd3fc', 0.45)
-              : hexToRgba(typeof baseColor === 'string' ? baseColor : '#7dd3fc', 0.22)
-            : isComet
-              ? focus && t > 0.55
-                ? 'rgba(224,242,254,0.55)'
-                : 'rgba(125,211,252,0.28)'
-              : focus && t > 0.65
-                ? 'rgba(165,243,252,0.5)'
-                : mode === 'sonar' || mode === 'soft'
-                  ? 'rgba(34,211,238,0.22)'
-                  : undefined,
+              ? 'rgba(165,243,252,0.5)'
+              : mode === 'sonar' || mode === 'soft'
+                ? 'rgba(34,211,238,0.22)'
+                : undefined,
       },
     });
   }
 
   const tip = pts.length ? pts[pts.length - 1] : line[line.length - 1];
-  const tipColor = isDual
+  const tipColor = isZoneColor
     ? focus
       ? '#f8fafc'
       : baseColor
@@ -354,23 +358,23 @@ export function hudFadingTrailSeries(opts: {
     id: `trail-${slug}-tip`,
     name: title,
     data: tip ? [{ value: tip }] : [],
-    symbolSize: isDual || isComet ? (focus ? 11 : 7) : focus ? 10 : 6,
+    symbolSize: strongFade ? (focus ? 10 : 6.5) : focus ? 10 : 6,
     silent: true,
     z: focus ? 2.5 : 1.5,
     animation: true,
     itemStyle: {
       color: tipColor,
-      borderColor: isDual ? baseColor : undefined,
-      borderWidth: isDual ? 1.2 : 0,
-      shadowBlur: isDual || isComet ? (focus ? 20 : 12) : focus ? 18 : 10,
-      shadowColor: isDual
-        ? hexToRgba(typeof baseColor === 'string' ? baseColor : '#7dd3fc', 0.55)
+      borderColor: isZoneColor ? baseColor : undefined,
+      borderWidth: isZoneColor ? 1.1 : 0,
+      shadowBlur: strongFade ? (focus ? 16 : 10) : focus ? 18 : 10,
+      shadowColor: isZoneColor
+        ? hexToRgba(typeof baseColor === 'string' ? baseColor : '#7dd3fc', 0.5)
         : isComet
           ? 'rgba(207,250,254,0.9)'
           : focus
             ? 'rgba(165,243,252,0.85)'
             : 'rgba(34,211,238,0.45)',
-      opacity: tip ? (focus ? 0.98 : isDual || isComet ? 0.78 : 0.55) : 0,
+      opacity: tip ? (focus ? 0.96 : strongFade ? 0.7 : 0.55) : 0,
     },
   });
 

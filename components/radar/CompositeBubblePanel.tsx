@@ -26,7 +26,10 @@ import { BubbleDetailPanel } from '@/components/radar/BubbleDetailPanel';
 import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
 import { useRadarPref } from '@/components/radar/useRadarPref';
 
-const TOP_N = 8;
+const TOP_N = 6; // D1 減亂：預設 Top6
+const TOP_N_FULL = 12; // 完整模式表列可稍多
+
+type RadarDensity = 'compact' | 'full';
 
 function fmtC100(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return '—';
@@ -50,6 +53,10 @@ export function CompositeBubblePanel({
   const sp = useSearchParams();
   const w = COMPOSITE_WEIGHTS[mode];
 
+  /** I2：簡潔／完整（與回放共用 key） */
+  const [density, setDensity] = useRadarPref<RadarDensity>('radar-density-v1', 'compact');
+  const compact = density === 'compact';
+
   const [showLabels, setShowLabels] = useRadarPref('bubble-labels', true);
   const [onlyTop, setOnlyTop] = useRadarPref('bubble-onlyTop', true);
   const [onlyResonance, setOnlyResonance] = useRadarPref('bubble-resonance', false);
@@ -64,6 +71,11 @@ export function CompositeBubblePanel({
   const [rankFlash, setRankFlash] = useState(false);
   const prevOrderRef = useRef<string[]>([]);
   const prevModeRef = useRef<CompositeWeightMode | null>(null);
+
+  // I2：切簡潔時對齊 onlyTop
+  useEffect(() => {
+    if (compact) setOnlyTop(true);
+  }, [compact, setOnlyTop]);
 
   // R11：題材勾選持久化
   useEffect(() => {
@@ -106,15 +118,26 @@ export function CompositeBubblePanel({
     [rows],
   );
 
+  const topLimit = compact ? TOP_N : TOP_N_FULL;
+
+  const rankedAll = useMemo(
+    () => [...rows].sort((a, b) => b.scoreS - a.scoreS),
+    [rows],
+  );
+  const topSlugSet = useMemo(
+    () => new Set(rankedAll.slice(0, TOP_N).map((r) => r.slug)),
+    [rankedAll],
+  );
+
   const filtered = useMemo(() => {
     let list = rows;
     if (picked != null) list = list.filter((r) => picked.has(r.slug));
     if (onlyResonance) list = list.filter((r) => r.resonance);
-    // 排序以 S 為準（權重會改 S）
     list = [...list].sort((a, b) => b.scoreS - a.scoreS);
-    if (onlyTop) list = list.slice(0, TOP_N);
+    // 簡潔：只 Top6；完整：可看更多但仍可 onlyTop
+    if (onlyTop || compact) list = list.slice(0, topLimit);
     return list;
-  }, [rows, onlyTop, onlyResonance, picked]);
+  }, [rows, onlyTop, onlyResonance, picked, compact, topLimit]);
 
   // W2：權重變更時比對排序
   useEffect(() => {
@@ -163,31 +186,44 @@ export function CompositeBubblePanel({
   };
 
   const option = useMemo(() => {
-    const data = filtered.map((r) => ({
+    const data = filtered.map((r) => {
+      const isFocus = selected?.slug === r.slug;
+      const isTop = topSlugSet.has(r.slug);
+      // D3：非 Top／非聚焦 → 縮小 + 半透明（完整模式較明顯）
+      const baseSize = Math.max(16, Math.min(56, Math.sqrt(Math.abs(r.net20dYi)) * 3.5 + 16));
+      const size = isFocus ? baseSize + 4 : isTop ? baseSize : Math.max(10, baseSize * 0.62);
+      const dim = !isFocus && !isTop;
+      return {
       id: r.slug,
       name: r.title,
       value: [
         r.flowScore,
         r.priceScore ?? 0,
-        Math.max(16, Math.min(56, Math.sqrt(Math.abs(r.net20dYi)) * 3.5 + 16)),
+        size,
         r.scoreS,
       ],
       symbol: 'circle',
       itemStyle: {
-        ...hudSoftDiscStyle(r.zone, { resonance: r.resonance, muted: !r.hasPrice }),
+        ...hudSoftDiscStyle(r.zone, {
+          resonance: r.resonance || isFocus,
+          muted: !r.hasPrice || dim,
+          focus: isFocus,
+        }),
+        opacity: isFocus ? 0.98 : dim ? 0.32 : 0.92,
       },
       label: {
-        show: showLabels,
+        show: showLabels && (isTop || isFocus || compact),
         formatter: () => shortThemeLabel(r.title),
         position: 'top' as const,
         distance: 6,
-        fontSize: 11,
+        fontSize: isFocus ? 12 : 11,
         fontWeight: 600,
         color: HUD.text,
         textBorderColor: 'rgba(7, 11, 20, 0.92)',
         textBorderWidth: 3,
       },
-    }));
+    };
+    });
 
     return {
       backgroundColor: 'transparent',
@@ -268,7 +304,7 @@ export function CompositeBubblePanel({
         },
       ],
     };
-  }, [filtered, rows, showLabels]);
+  }, [filtered, rows, showLabels, selected, topSlugSet, compact]);
 
   const pickLabel =
     picked == null ? '全部' : `${picked.size}/${allThemes.length}`;
@@ -297,7 +333,7 @@ export function CompositeBubblePanel({
     }
     return {
       title: '目前篩選下沒有題材',
-      body: '試試：關閉「只看前 8 名」、關閉「只看共振」、或在「題材」改勾選。',
+      body: '試試：關閉「只看前幾名」、關閉「只看共振」、或在「題材」改勾選。',
       tone: 'neutral' as const,
     };
   })();
@@ -339,6 +375,34 @@ export function CompositeBubblePanel({
           </div>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          {/* I2：簡潔／完整 */}
+          <div className="inline-flex rounded-lg border border-cyan-500/20 bg-slate-900/90 p-0.5">
+            <button
+              type="button"
+              onClick={() => setDensity('compact')}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                compact
+                  ? 'bg-cyan-600 text-slate-950 shadow-sm shadow-cyan-500/20'
+                  : 'text-slate-400 hover:text-cyan-100'
+              }`}
+            >
+              簡潔
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDensity('full');
+                setOnlyTop(false);
+              }}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                !compact
+                  ? 'bg-cyan-600 text-slate-950 shadow-sm shadow-cyan-500/20'
+                  : 'text-slate-400 hover:text-cyan-100'
+              }`}
+            >
+              完整
+            </button>
+          </div>
           {/* W1：權重三檔固定在主列 */}
           <div className="flex flex-col items-end gap-1">
             <div className="text-[11px] text-slate-400">
@@ -377,14 +441,15 @@ export function CompositeBubblePanel({
               />
               顯示名稱
             </label>
-            <label className="flex items-center gap-1.5">
+            <label className={`flex items-center gap-1.5 ${compact ? 'opacity-50' : ''}`}>
               <input
                 type="checkbox"
-                checked={onlyTop}
+                checked={onlyTop || compact}
+                disabled={compact}
                 onChange={(e) => setOnlyTop(e.target.checked)}
                 className="rounded border-slate-300"
               />
-              只看前 {TOP_N} 名
+              只看前 {topLimit} 名{compact ? '（簡潔）' : ''}
             </label>
             <button
               type="button"

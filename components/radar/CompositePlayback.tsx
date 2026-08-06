@@ -35,8 +35,8 @@ function animMsFor(speed: number) {
   return Math.round(stepMsFor(speed) * 0.92);
 }
 
-/** 軌跡：TD 雙重編碼（預設）｜彗星｜淡跡｜四色｜關 */
-type TrailStyle = 'dual' | 'comet' | 'soft' | 'zone' | 'off';
+/** 軌跡：TA 區色彗星（預設）｜雙重編碼｜青白彗星｜淡跡｜關 */
+type TrailStyle = 'zone' | 'dual' | 'comet' | 'soft' | 'off';
 
 function normalizeTrailStyle(v: string | null | undefined): TrailStyle {
   if (
@@ -47,9 +47,9 @@ function normalizeTrailStyle(v: string | null | undefined): TrailStyle {
     v === 'dual'
   )
     return v;
-  // 舊 pref → 新預設 TD
-  if (v === 'sonar') return 'dual';
-  return 'dual';
+  // 舊 pref → TA
+  if (v === 'sonar') return 'zone';
+  return 'zone';
 }
 
 function trailModeOf(style: TrailStyle): HudTrailMode {
@@ -57,7 +57,7 @@ function trailModeOf(style: TrailStyle): HudTrailMode {
   if (style === 'soft') return 'soft';
   if (style === 'comet') return 'comet';
   if (style === 'dual') return 'dual';
-  return 'dual';
+  return 'zone';
 }
 
 function fmtC100(n: number): string {
@@ -76,7 +76,9 @@ export function CompositePlayback({
   const readyRef = useRef(false);
   const [idx, setIdx] = useState(() => Math.max(0, frames.length - 1));
   const [playing, setPlaying] = useState(false);
-  const [trailStyle, setTrailStyle] = useRadarPref<TrailStyle>('play-trail-v3', 'dual');
+  const [trailStyle, setTrailStyle] = useRadarPref<TrailStyle>('play-trail-v4', 'zone');
+  const [density] = useRadarPref<'compact' | 'full'>('radar-density-v1', 'compact');
+  const compact = density === 'compact';
   const [showLabels, setShowLabels] = useRadarPref('play-labels', true);
   const [speed, setSpeed] = useRadarPref<1 | 1.5 | 2>('play-speed', 1);
   const [selected, setSelected] = useState<CompositeFramePoint | null>(null);
@@ -183,10 +185,15 @@ export function CompositePlayback({
         let trailSlugs = order;
         if (trailFocusOnly && selected) {
           trailSlugs = order.filter((s) => s === selected.slug);
-        } else if (trailSlugs.length > 6) {
-          const ranked = [...pts].sort((a, b) => b.scoreS - a.scoreS).slice(0, 6);
-          const keep = new Set(ranked.map((p) => p.slug));
-          trailSlugs = trailSlugs.filter((s) => keep.has(s));
+        } else {
+          const maxTrails = compact ? 3 : 6; // P1 簡潔最多 3 條
+          if (trailSlugs.length > maxTrails) {
+            const ranked = [...pts]
+              .sort((a, b) => b.scoreS - a.scoreS)
+              .slice(0, maxTrails);
+            const keep = new Set(ranked.map((p) => p.slug));
+            trailSlugs = trailSlugs.filter((s) => keep.has(s));
+          }
         }
 
         for (const slug of trailSlugs) {
@@ -211,6 +218,8 @@ export function CompositePlayback({
               focus: isFocus,
               mode,
               zoneColor: ZONE_META[lastZone].bubble,
+              // P4：簡潔再淡細；完整稍亮
+              intensity: compact ? 0.72 : 0.9,
             }),
           );
         }
@@ -314,7 +323,7 @@ export function CompositePlayback({
         ],
       };
     },
-    [frames, picked, trailStyle, trailFocusOnly, selected],
+    [frames, picked, trailStyle, trailFocusOnly, selected, compact],
   );
 
   const applyFrame = useCallback(
@@ -410,7 +419,7 @@ export function CompositePlayback({
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold tracking-wide text-cyan-50">最近怎麼移動（回放）</h2>
-          <p className="text-xs text-slate-400">柔光圓平滑滑移 · 區色＋虛實軌跡 · 尾巴漸隱</p>
+          <p className="text-xs text-slate-400">柔光圓平滑滑移 · 區色彗星軌跡 · 尾巴漸隱</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -454,10 +463,10 @@ export function CompositePlayback({
             className="rounded-md border border-cyan-500/25 bg-slate-900 px-2 py-1 text-xs text-cyan-100"
             title="軌跡樣式"
           >
+            <option value="zone">軌跡·區色彗星</option>
             <option value="dual">軌跡·區色虛實</option>
-            <option value="comet">軌跡·彗星</option>
+            <option value="comet">軌跡·青白彗星</option>
             <option value="soft">軌跡·淡跡</option>
-            <option value="zone">軌跡·四色實線</option>
             <option value="off">軌跡·關</option>
           </select>
           <label className="flex items-center gap-1.5 text-xs text-slate-300">
