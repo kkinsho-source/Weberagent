@@ -82,18 +82,18 @@ export default async function RadarPage({
   const hasFlow = meta.dataSource !== 'empty';
 
   return (
-    <div className="space-y-6">
+    <div className="-mx-4 space-y-6 bg-[#05070d] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
       {/* R1 白話頁首 */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">資金雷達</h1>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
+          <h1 className="text-xl font-bold text-cyan-50">資金雷達</h1>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
             用一張圖看題材資金與價的相對位置：
-            <strong className="font-semibold text-slate-800">誰比較熱、誰在降溫</strong>
-            。先看今日重點，再看泡泡落在哪一區即可。
+            <strong className="font-semibold text-slate-200">誰比較熱、誰在降溫</strong>
+            。先看今日重點，再看圓點落在哪一區即可。
           </p>
         </div>
-        <div className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium tabular-nums text-slate-600">
+        <div className="shrink-0 rounded-full border border-cyan-500/20 bg-slate-900 px-3 py-1 text-xs font-medium tabular-nums text-cyan-200/90">
           資料日 {asOf}
         </div>
       </div>
@@ -156,7 +156,7 @@ export default async function RadarPage({
         <ThemeRsPanel rows={rsBundle.rows} meta={rsBundle.meta} familyBySlug={familyBySlug} />
       </AdvancedChartsAccordion>
 
-      <p className="text-[11px] leading-relaxed text-slate-400">
+      <p className="text-[11px] leading-relaxed text-slate-500">
         【免責】圖上位置是和其他題材比較後的相對結果，不是絕對好壞，也不是買賣點或報酬預測。資料來自公開法人與行情彙整。
       </p>
     </div>

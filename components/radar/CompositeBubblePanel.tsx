@@ -14,7 +14,7 @@ import {
 import {
   HUD,
   hudAxisCommon,
-  hudFireballStyle,
+  hudSoftDiscStyle,
   hudSonarRingSeries,
   hudTooltipBase,
   hudZoneMarkAreaData,
@@ -174,7 +174,7 @@ export function CompositeBubblePanel({
       ],
       symbol: 'circle',
       itemStyle: {
-        ...hudFireballStyle(r.zone, { resonance: r.resonance, muted: !r.hasPrice }),
+        ...hudSoftDiscStyle(r.zone, { resonance: r.resonance, muted: !r.hasPrice }),
       },
       label: {
         show: showLabels,
@@ -308,13 +308,10 @@ export function CompositeBubblePanel({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-semibold tracking-wide text-cyan-50">題材熱區圖</h2>
-            <span className="rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-cyan-300/90">
-              HUD
-            </span>
             <RadarHowTo />
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            中心＝普通 · 環＝離中心遠近 · 火球＝題材 · 色＝區 · 資料日 {asOf || '—'}
+            中心＝普通 · 環＝遠近 · 圓點＝題材 · 色＝區 · 資料日 {asOf || '—'}
           </p>
           <p className="mt-0.5 text-[11px] text-slate-500">
             橫軸：錢相對有沒有比較多進 · 縱軸：價相對有沒有變強 · 距離環：近／中／遠／外
@@ -331,7 +328,7 @@ export function CompositeBubblePanel({
                 className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-2 py-0.5"
               >
                 <span
-                  className="h-2.5 w-2.5 rotate-45"
+                  className="h-2.5 w-2.5 rounded-full"
                   style={{ backgroundColor: ZONE_META[z].bubble }}
                 />
                 <span style={{ color: ZONE_META[z].bubble }}>
@@ -360,8 +357,8 @@ export function CompositeBubblePanel({
                     onClick={() => setMode(m)}
                     className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
                       active
-                        ? 'bg-brand-600 text-white shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
+                        ? 'bg-cyan-600 text-slate-950 shadow-sm shadow-cyan-500/20'
+                        : 'text-slate-400 hover:text-cyan-100'
                     }`}
                   >
                     {meta.label}
@@ -501,21 +498,6 @@ export function CompositeBubblePanel({
             </RadarEmptyBlock>
           ) : (
             <div className="relative overflow-hidden rounded-xl border border-cyan-500/20 bg-[#070b14] shadow-inner">
-              <div
-                className="pointer-events-none absolute inset-0 z-10 overflow-hidden opacity-40"
-                aria-hidden
-              >
-                <div className="absolute inset-x-0 h-16 animate-radarScan bg-gradient-to-b from-transparent via-cyan-400/15 to-transparent" />
-              </div>
-              <div
-                className="pointer-events-none absolute inset-0 z-[5] opacity-[0.07]"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(rgba(56,189,248,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.5) 1px, transparent 1px)',
-                  backgroundSize: '28px 28px',
-                }}
-                aria-hidden
-              />
               <ReactECharts
                 option={option}
                 style={{ height: 460 }}
@@ -533,7 +515,7 @@ export function CompositeBubblePanel({
             </div>
           )}
           <p className="mt-1 text-center text-[11px] text-slate-500">
-            顯示 {filtered.length}/{rows.length} 題材 · 點火球標記看詳情 · 勾選會記住
+            顯示 {filtered.length}/{rows.length} 題材 · 點圓點看詳情 · 勾選會記住
           </p>
         </div>
 

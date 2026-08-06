@@ -1,6 +1,7 @@
 /**
- * V-穩 + V-聲納：雷達主圖 HUD
- * 深色面板 + 菱形 + 霓虹區 + 掃描線 + 距離環 + 聲納軌跡
+ * 雷達 HUD SSOT（③ 精煉 · 2026-08）
+ * 深色面板 + 柔霧象限 + 距離環
+ * 標記預設 M1 柔光圓；軌跡預設 T2 彗星尾；無掃描線
  */
 
 import {
@@ -28,12 +29,12 @@ export const HUD = {
   tooltipBorder: 'rgba(56, 189, 248, 0.35)',
 } as const;
 
-/** 深色底上較亮的象限填充（聲納環要透出來，略淡） */
+/** 柔霧象限（③：比硬色塊更淡，讓環／點透出來） */
 export const HUD_ZONE_AREA: Record<CompositeZone, string> = {
-  hot: 'rgba(244, 63, 94, 0.11)',
-  watch: 'rgba(251, 191, 36, 0.1)',
-  cool: 'rgba(167, 139, 250, 0.1)',
-  cold: 'rgba(71, 85, 105, 0.16)',
+  hot: 'rgba(244, 63, 94, 0.08)',
+  watch: 'rgba(251, 191, 36, 0.07)',
+  cool: 'rgba(167, 139, 250, 0.07)',
+  cold: 'rgba(71, 85, 105, 0.12)',
 };
 
 export function hudZoneMarkAreaData() {
@@ -104,32 +105,45 @@ export function hudTooltipBase() {
   };
 }
 
-/** 火球光暈核心（取代菱形） */
-export function hudFireballStyle(
+/**
+ * M1 柔光圓（預設標記）
+ * 區色實心 + 克制外暈；非遊戲感火球
+ */
+export function hudSoftDiscStyle(
   zone: CompositeZone,
   opts?: { resonance?: boolean; muted?: boolean; focus?: boolean },
 ) {
   const z = ZONE_META[zone];
   if (opts?.muted) {
     return {
-      color: 'rgba(148,163,184,0.25)',
-      borderColor: 'rgba(148,163,184,0.35)',
+      color: 'rgba(148,163,184,0.22)',
+      borderColor: 'rgba(148,163,184,0.32)',
       borderWidth: 1,
-      shadowBlur: 8,
-      shadowColor: 'rgba(148,163,184,0.25)',
+      shadowBlur: 6,
+      shadowColor: 'rgba(148,163,184,0.2)',
     };
   }
   const core = opts?.resonance ? '#fde68a' : z.bubble;
   const glow = opts?.resonance
-    ? 'rgba(253, 224, 71, 0.75)'
-    : hexToRgba(z.bubble, 0.65);
+    ? 'rgba(253, 224, 71, 0.45)'
+    : hexToRgba(z.bubble, 0.32);
   return {
     color: core,
-    borderColor: opts?.resonance ? '#fff7ed' : lightenHex(z.bubble),
-    borderWidth: opts?.focus || opts?.resonance ? 2.5 : 1.5,
-    shadowBlur: opts?.focus || opts?.resonance ? 28 : 18,
+    borderColor: opts?.resonance
+      ? 'rgba(255,247,237,0.85)'
+      : 'rgba(255,255,255,0.42)',
+    borderWidth: opts?.focus || opts?.resonance ? 1.75 : 1.15,
+    shadowBlur: opts?.focus || opts?.resonance ? 16 : 10,
     shadowColor: glow,
   };
+}
+
+/** @deprecated 別名 → M1 柔光圓（舊火球已退役） */
+export function hudFireballStyle(
+  zone: CompositeZone,
+  opts?: { resonance?: boolean; muted?: boolean; focus?: boolean },
+) {
+  return hudSoftDiscStyle(zone, opts);
 }
 
 function hexToRgba(hex: string, a: number): string {
@@ -139,16 +153,6 @@ function hexToRgba(hex: string, a: number): string {
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
   return `rgba(${r},${g},${b},${a})`;
-}
-
-function lightenHex(hex: string): string {
-  const h = hex.replace('#', '');
-  if (h.length !== 6) return '#e0f2fe';
-  const ch = (i: number) =>
-    Math.min(255, Math.round(parseInt(h.slice(i, i + 2), 16) * 0.45 + 255 * 0.55))
-      .toString(16)
-      .padStart(2, '0');
-  return `#${ch(0)}${ch(2)}${ch(4)}`;
 }
 
 /** 固定段數 → series id 穩定，ECharts merge 才能平滑延續 */
@@ -205,23 +209,36 @@ function resamplePolyline(line: number[][], count: number): number[][] {
   return out;
 }
 
+export type HudTrailMode = 'comet' | 'soft' | 'sonar' | 'zone';
+
 /**
- * 回放軌跡：固定 14 段漸隱（舊淡→新亮）+ 端點
- * id 永遠 trail-{slug}-s0..s13 / tip，方便 setOption merge 延續動畫
+ * 回放軌跡：固定 14 段 id（merge 延續）
+ * - comet (T2 預設)：頭亮尾淡、偏青白
+ * - soft / sonar：淡跡
+ * - zone：四色區色
  */
 export function hudFadingTrailSeries(opts: {
   slug: string;
   title: string;
   line: number[][];
   focus: boolean;
-  mode: 'sonar' | 'zone';
+  mode: HudTrailMode;
   zoneColor?: string;
   /** 無軌跡時仍輸出空 series 以保持 id（可選） */
   alwaysSlots?: boolean;
 }): object[] {
   const { slug, title, line, focus, mode, zoneColor } = opts;
-  const baseColor =
-    mode === 'zone' ? zoneColor || HUD.trail : focus ? HUD.trailFocus : HUD.trail;
+  const isComet = mode === 'comet';
+  const isZone = mode === 'zone';
+  const baseColor = isZone
+    ? zoneColor || HUD.trail
+    : isComet
+      ? focus
+        ? '#ecfeff'
+        : 'rgba(165,243,252,0.92)'
+      : focus
+        ? HUD.trailFocus
+        : HUD.trail;
   const segs: object[] = [];
   const nSeg = TRAIL_SEG_COUNT;
 
@@ -230,14 +247,23 @@ export function hudFadingTrailSeries(opts: {
 
   for (let i = 0; i < nSeg; i++) {
     const t = (i + 1) / nSeg;
-    const fade = Math.pow(t, 1.25);
+    // 彗星：更陡的頭亮尾淡；淡跡：較平
+    const fade = isComet ? Math.pow(t, 1.65) : Math.pow(t, 1.25);
     const has = pts.length > i + 1;
-    const opacity = has
-      ? focus
-        ? 0.06 + fade * 0.88
-        : 0.03 + fade * 0.48
-      : 0;
-    const width = has ? (focus ? 1.2 + fade * 2.4 : 0.85 + fade * 1.5) : 0;
+    let opacity = 0;
+    let width = 0;
+    if (has) {
+      if (isComet) {
+        opacity = focus ? 0.04 + fade * 0.92 : 0.03 + fade * 0.62;
+        width = focus ? 0.7 + fade * 2.8 : 0.55 + fade * 2.0;
+      } else if (focus) {
+        opacity = 0.06 + fade * 0.88;
+        width = 1.2 + fade * 2.4;
+      } else {
+        opacity = 0.03 + fade * 0.48;
+        width = 0.85 + fade * 1.5;
+      }
+    }
 
     segs.push({
       type: 'line' as const,
@@ -249,17 +275,30 @@ export function hudFadingTrailSeries(opts: {
       clip: true,
       z: focus ? 2 : 1,
       animation: true,
-      animationDurationUpdate: 0, // 段本身瞬切；整體由點位 update 帶
+      animationDurationUpdate: 0,
       lineStyle: {
         color: baseColor,
         width,
         opacity,
         type: 'solid' as const,
-        shadowBlur: focus && t > 0.65 ? 12 : t > 0.85 ? 6 : 0,
-        shadowColor:
-          focus && t > 0.65
+        shadowBlur: isComet
+          ? focus && t > 0.55
+            ? 14
+            : t > 0.8
+              ? 8
+              : 0
+          : focus && t > 0.65
+            ? 12
+            : t > 0.85
+              ? 6
+              : 0,
+        shadowColor: isComet
+          ? focus && t > 0.55
+            ? 'rgba(224,242,254,0.55)'
+            : 'rgba(125,211,252,0.28)'
+          : focus && t > 0.65
             ? 'rgba(165,243,252,0.5)'
-            : mode === 'sonar'
+            : mode === 'sonar' || mode === 'soft'
               ? 'rgba(34,211,238,0.22)'
               : undefined,
       },
@@ -272,17 +311,19 @@ export function hudFadingTrailSeries(opts: {
     id: `trail-${slug}-tip`,
     name: title,
     data: tip ? [{ value: tip }] : [],
-    symbolSize: focus ? 10 : 6,
+    symbolSize: isComet ? (focus ? 11 : 7) : focus ? 10 : 6,
     silent: true,
     z: focus ? 2.5 : 1.5,
     animation: true,
     itemStyle: {
-      color: focus ? HUD.trailFocus : baseColor,
-      shadowBlur: focus ? 18 : 10,
-      shadowColor: focus
-        ? 'rgba(165,243,252,0.85)'
-        : 'rgba(34,211,238,0.45)',
-      opacity: tip ? (focus ? 0.95 : 0.55) : 0,
+      color: isComet ? (focus ? '#f0fdfa' : '#a5f3fc') : focus ? HUD.trailFocus : baseColor,
+      shadowBlur: isComet ? (focus ? 22 : 14) : focus ? 18 : 10,
+      shadowColor: isComet
+        ? 'rgba(207,250,254,0.9)'
+        : focus
+          ? 'rgba(165,243,252,0.85)'
+          : 'rgba(34,211,238,0.45)',
+      opacity: tip ? (focus ? 0.98 : isComet ? 0.72 : 0.55) : 0,
     },
   });
 
@@ -323,7 +364,7 @@ export function hudDiamondStyle(
   zone: CompositeZone,
   opts?: { resonance?: boolean; muted?: boolean; focus?: boolean },
 ) {
-  return hudFireballStyle(zone, opts);
+  return hudSoftDiscStyle(zone, opts);
 }
 
 function circlePolyline(radius: number, steps = 72): number[][] {

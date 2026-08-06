@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>② 淺色金融 · 資金雷達 mock</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .top {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      position: sticky; top: 0; z-index: 20;
+    }
+    .top-inner {
+      max-width: 1080px; margin: 0 auto; padding: 12px 16px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .brand { font-weight: 700; }
+    .nav { margin-left: auto; display: flex; gap: 14px; font-size: 0.85rem; color: #64748b; }
+    .nav b { color: #4f46e5; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 20px 16px 48px; }
+    .back { font-size: 0.8rem; color: #64748b; text-decoration: none; }
+    .back:hover { color: #4f46e5; }
+    h1 { font-size: 1.4rem; margin: 10px 0 4px; letter-spacing: -0.02em; }
+    .lead { color: #64748b; font-size: 0.92rem; max-width: 38rem; }
+    .badge {
+      display: inline-block; margin-top: 10px; padding: 4px 10px;
+      border-radius: 999px; background: #eef2ff; color: #4338ca;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .section {
+      margin-top: 16px; background: #fff;
+      border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px;
+      box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+    }
+    .section h2 { font-size: 1rem; }
+    .section .sub { font-size: 0.78rem; color: #94a3b8; margin-top: 2px; }
+    .cards { display: grid; gap: 10px; margin-top: 12px; }
+    @media (min-width: 720px) { .cards { grid-template-columns: 1fr 1fr 1fr; } }
+    .card {
+      border-radius: 12px; padding: 12px 14px;
+      background: #f8fafc; border: 1px solid #e2e8f0;
+    }
+    .card .k { font-size: 0.72rem; color: #64748b; font-weight: 600; }
+    .card .v { font-size: 1.25rem; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .card .row { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.82rem; color: #334155; }
+    .buy .v { color: #e11d48; }
+    .sell .v { color: #059669; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+    .seg {
+      display: inline-flex; padding: 3px; border-radius: 10px;
+      background: #f1f5f9; border: 1px solid #e2e8f0;
+    }
+    .seg button {
+      border: 0; background: transparent; color: #64748b;
+      font-size: 0.8rem; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    }
+    .seg button.on { background: #4f46e5; color: #fff; font-weight: 600; }
+    .chk { font-size: 0.8rem; color: #64748b; display: flex; gap: 6px; align-items: center; }
+    .chart-shell {
+      height: 420px; border-radius: 14px; border: 1px solid #e2e8f0;
+      background: #fafafa; overflow: hidden;
+    }
+    svg { width: 100%; height: 100%; display: block; }
+    .guide {
+      margin-top: 10px; font-size: 0.85rem; color: #334155;
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 9px 6px; border-bottom: 1px solid #f1f5f9; }
+    th { color: #94a3b8; font-size: 0.72rem; font-weight: 600; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+    .z-hot { background: #ffe4e6; color: #e11d48; }
+    .z-cool { background: #ede9fe; color: #6d28d9; }
+    .playbar {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      margin-top: 10px; padding: 12px; border-radius: 12px; background: #f8fafc; border: 1px solid #e2e8f0;
+    }
+    .playbar button { border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 0.82rem; }
+    .playbar .primary { background: #4f46e5; color: #fff; font-weight: 600; }
+    .playbar .ghost { background: #fff; color: #475569; border: 1px solid #e2e8f0; }
+    .date-big { font-size: 1.35rem; font-weight: 700; min-width: 7.5rem; font-variant-numeric: tabular-nums; }
+    input[type=range] { flex: 1; min-width: 140px; accent-color: #4f46e5; }
+    .foot { margin-top: 18px; font-size: 0.72rem; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div class="top-inner">
+      <div class="brand">🧭 測試產業建構</div>
+      <div class="nav"><span>首頁</span><span>題材</span><b>資金雷達</b><span>重大訊息</span></div>
+    </div>
+  </div>
+  <div class="wrap">
+    <a class="back" href="../index.html">← 回對照總覽</a>
+    <h1>資金雷達</h1>
+    <p class="lead">用一張圖看題材資金與價的相對位置：誰比較熱、誰在降溫。</p>
+    <div class="badge">資料日 2026-08-06 · mock ② 淺色金融</div>
+
+    <section class="section">
+      <h2>今日重點</h2>
+      <p class="sub">乾淨三卡 · 少裝飾</p>
+      <div class="cards">
+        <div class="card buy"><div class="k">法人買超 Top</div><div class="v">+122.8 億</div><div class="row"><span>AI 散熱與電源</span><span>+2.99%</span></div></div>
+        <div class="card sell"><div class="k">法人賣超 Top</div><div class="v">−72.3 億</div><div class="row"><span>晶圓代工</span><span>−0.44%</span></div></div>
+        <div class="card"><div class="k">昨買超今日表現</div><div class="v">+0.88%</div><div class="row"><span>最佳 HPC IC</span><span>+2.31%</span></div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>題材熱區圖</h2>
+      <p class="sub">白底四象限 · 無掃描線／無科幻殼</p>
+      <div class="toolbar">
+        <div class="seg" id="wSeg">
+          <button type="button" data-w="flow">偏籌碼</button>
+          <button type="button" class="on">均衡</button>
+          <button type="button" data-w="price">偏價</button>
+        </div>
+        <label class="chk"><input type="checkbox" checked id="names" /> 顯示名稱</label>
+        <label class="chk"><input type="checkbox" checked /> 只看前 8 名</label>
+      </div>
+      <div class="chart-shell" id="chart"></div>
+      <p class="guide" id="guide">目前較靠熱區：金融、消費與通路、電信。中心 (0,0)＝普通。</p>
+      <table>
+        <thead><tr><th>#</th><th>題材</th><th>S</th><th>區</th><th>籌</th><th>價</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>最近怎麼移動</h2>
+      <p class="sub">克制回放 · 淡軌跡</p>
+      <div class="playbar">
+        <button type="button" class="ghost" id="pause">暫停</button>
+        <button type="button" class="primary" id="play">▶ 播放</button>
+        <div class="date-big" id="dateLabel">2026-08-06</div>
+        <input type="range" id="slider" min="0" max="19" value="19" />
+        <span style="font-size:0.75rem;color:#94a3b8" id="prog">20 / 20</span>
+      </div>
+      <div class="chart-shell" style="height:280px;margin-top:10px" id="playChart"></div>
+    </section>
+    <p class="foot">【免責】示意 mock，非正式站。相對位置非買賣建議。</p>
+  </div>
+  <script>
+    const themes = [
+      { t:'金融', x:64, y:82, s:86, z:'hot' },
+      { t:'消費', x:46, y:100, s:86, z:'hot' },
+      { t:'電信', x:27, y:91, s:80, z:'hot' },
+      { t:'AI伺服', x:100, y:-27, s:68, z:'cool' },
+      { t:'散熱', x:82, y:-9, s:68, z:'cool' },
+      { t:'綠能', x:18, y:36, s:64, z:'hot' },
+      { t:'記憶體', x:91, y:-55, s:59, z:'cool' },
+      { t:'HPC IC', x:73, y:-36, s:59, z:'cool' },
+    ];
+    const ZC = { hot:'#e11d48', watch:'#d97706', cool:'#7c3aed', cold:'#64748b' };
+    const ZL = { hot:'熱區', cool:'降溫', watch:'觀察', cold:'冷區' };
+
+    function chartSVG(id, pts, showName, trail) {
+      const W=640,H=420,p=52;
+      const sx = v => p + (v+100)/200*(W-2*p);
+      const sy = v => H-p - (v+100)/200*(H-2*p);
+      const zones = `
+        <rect x="${p}" y="${p}" width="${(W-2*p)/2}" height="${(H-2*p)/2}" fill="#fffbeb"/>
+        <rect x="${W/2}" y="${p}" width="${(W-2*p)/2}" height="${(H-2*p)/2}" fill="#fff1f2"/>
+        <rect x="${p}" y="${H/2}" width="${(W-2*p)/2}" height="${(H-2*p)/2}" fill="#f8fafc"/>
+        <rect x="${W/2}" y="${H/2}" width="${(W-2*p)/2}" height="${(H-2*p)/2}" fill="#f5f3ff"/>
+        <text x="${p+10}" y="${p+18}" fill="#b45309" font-size="11" font-weight="600">觀察</text>
+        <text x="${W/2+10}" y="${p+18}" fill="#e11d48" font-size="11" font-weight="600">熱區</text>
+        <text x="${p+10}" y="${H-p-8}" fill="#64748b" font-size="11" font-weight="600">冷區</text>
+        <text x="${W/2+10}" y="${H-p-8}" fill="#7c3aed" font-size="11" font-weight="600">降溫</text>`;
+      const grid = Array.from({length:5},(_,i)=>{
+        const x = p + i*(W-2*p)/4, y = p + i*(H-2*p)/4;
+        return `<line x1="${x}" y1="${p}" x2="${x}" y2="${H-p}" stroke="#e2e8f0"/><line x1="${p}" y1="${y}" x2="${W-p}" y2="${y}" stroke="#e2e8f0"/>`;
+      }).join('');
+      const cross = `<line x1="${W/2}" y1="${p}" x2="${W/2}" y2="${H-p}" stroke="#94a3b8" stroke-dasharray="4 4"/><line x1="${p}" y1="${H/2}" x2="${W-p}" y2="${H/2}" stroke="#94a3b8" stroke-dasharray="4 4"/>
+        <circle cx="${W/2}" cy="${H/2}" r="3.5" fill="#64748b"/><text x="${W/2+8}" y="${H/2-8}" fill="#64748b" font-size="11">普通</text>`;
+      const trails = trail ? pts.map(d => {
+        const x0 = sx(d.x*0.35), y0 = sy(d.y*0.15);
+        return `<path d="M${x0} ${y0} Q${sx(d.x*0.65)} ${sy(d.y*0.45)} ${sx(d.x)} ${sy(d.y)}" fill="none" stroke="#cbd5e1" stroke-width="1.4"/>`;
+      }).join('') : '';
+      const bubbles = pts.map(d => {
+        const r = 9 + d.s/14;
+        const lab = showName ? `<text x="${sx(d.x)}" y="${sy(d.y)-r-5}" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">${d.t}</text>` : '';
+        return `<g>
+          <circle cx="${sx(d.x)}" cy="${sy(d.y)}" r="${r}" fill="${ZC[d.z]}" opacity="0.88" stroke="#fff" stroke-width="2"/>
+          ${lab}
+        </g>`;
+      }).join('');
+      document.getElementById(id).innerHTML = `<svg viewBox="0 0 ${W} ${H}">${zones}${grid}${cross}${trails}${bubbles}
+        <text x="${W/2}" y="${H-14}" text-anchor="middle" fill="#64748b" font-size="11">錢有沒有比較多進 →</text>
+        <text x="18" y="${H/2}" fill="#64748b" font-size="11" transform="rotate(-90 18 ${H/2})">價相對強弱 →</text>
+      </svg>`;
+    }
+    function renderTable() {
+      document.getElementById('tbody').innerHTML = themes.map((d,i)=>`<tr>
+        <td>${i+1}</td><td>${d.t}</td><td>${d.s}</td>
+        <td><span class="pill z-${d.z}">${ZL[d.z]}</span></td>
+        <td>${d.x>0?'+':''}${d.x}</td><td>${d.y>0?'+':''}${d.y}</td></tr>`).join('');
+    }
+    chartSVG('chart', themes, true, false);
+    chartSVG('playChart', themes, true, true);
+    renderTable();
+    document.getElementById('names').onchange = e => chartSVG('chart', themes, e.target.checked, false);
+    document.querySelectorAll('#wSeg button').forEach(b => b.onclick = () => {
+      document.querySelectorAll('#wSeg button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      document.getElementById('guide').textContent = '權重「'+b.textContent+'」只改 S／名次，座標不變。';
+    });
+    const dates = Array.from({length:20},(_,i)=>{const d=new Date('2026-07-10');d.setDate(d.getDate()+i);return d.toISOString().slice(0,10)});
+    let idx=19, timer=null;
+    const slider=document.getElementById('slider');
+    function setIdx(i){
+      idx=i; slider.value=i;
+      document.getElementById('dateLabel').textContent=dates[i];
+      document.getElementById('prog').textContent=(i+1)+' / 20';
+      const scale=0.55+(i/19)*0.45;
+      chartSVG('playChart', themes.map(d=>({...d,x:d.x*scale,y:d.y*(0.4+0.6*scale)})), true, i>3);
+    }
+    slider.oninput=()=>{clearInterval(timer);timer=null;setIdx(+slider.value)};
+    document.getElementById('play').onclick=()=>{
+      if(timer)return; if(idx>=19)setIdx(0);
+      timer=setInterval(()=>{if(idx>=19){clearInterval(timer);timer=null;return}setIdx(idx+1)},400);
+    };
+    document.getElementById('pause').onclick=()=>{clearInterval(timer);timer=null};
+  </script>
+</body>
+</html>

@@ -31,7 +31,7 @@ export function RadarBeginnerSteps() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs text-slate-400 hover:text-brand-600 hover:underline"
+        className="text-xs text-slate-500 hover:text-cyan-300 hover:underline"
       >
         本頁怎麼看
       </button>
@@ -39,11 +39,11 @@ export function RadarBeginnerSteps() {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+    <div className="rounded-xl border border-cyan-500/15 bg-slate-900/60 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-xs leading-relaxed text-slate-600">
-          <span className="font-medium text-slate-800">建議順序：</span>
-          今日重點 → 熱區圖落點 → 點泡泡看詳情；回放可看最近移動。
+        <p className="text-xs leading-relaxed text-slate-400">
+          <span className="font-medium text-slate-200">建議順序：</span>
+          今日重點 → 熱區圖落點 → 點圓點看詳情；回放可看最近移動。
           位置是相對比較，非買賣建議。
         </p>
         <button

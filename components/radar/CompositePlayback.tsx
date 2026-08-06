@@ -14,7 +14,8 @@ import {
   HUD,
   hudAxisCommon,
   hudFadingTrailSeries,
-  hudFireballStyle,
+  hudSoftDiscStyle,
+  type HudTrailMode,
   hudSonarRingSeries,
   hudTooltipBase,
   hudZoneMarkAreaData,
@@ -34,8 +35,21 @@ function animMsFor(speed: number) {
   return Math.round(stepMsFor(speed) * 0.92);
 }
 
-/** 軌跡：聲納虛線（預設）｜四色｜關 */
-type TrailStyle = 'sonar' | 'zone' | 'off';
+/** 軌跡：彗星尾 T2（預設）｜淡跡｜四色｜關 */
+type TrailStyle = 'comet' | 'soft' | 'zone' | 'off';
+
+function normalizeTrailStyle(v: string | null | undefined): TrailStyle {
+  if (v === 'zone' || v === 'off' || v === 'soft' || v === 'comet') return v;
+  // 舊 pref：sonar / soft → 新預設彗星
+  if (v === 'sonar') return 'comet';
+  return 'comet';
+}
+
+function trailModeOf(style: TrailStyle): HudTrailMode {
+  if (style === 'zone') return 'zone';
+  if (style === 'soft') return 'soft';
+  return 'comet';
+}
 
 function fmtC100(n: number): string {
   return `${n > 0 ? '+' : ''}${n.toFixed(0)}`;
@@ -53,7 +67,7 @@ export function CompositePlayback({
   const readyRef = useRef(false);
   const [idx, setIdx] = useState(() => Math.max(0, frames.length - 1));
   const [playing, setPlaying] = useState(false);
-  const [trailStyle, setTrailStyle] = useRadarPref<TrailStyle>('play-trail', 'sonar');
+  const [trailStyle, setTrailStyle] = useRadarPref<TrailStyle>('play-trail-v2', 'comet');
   const [showLabels, setShowLabels] = useRadarPref('play-labels', true);
   const [speed, setSpeed] = useRadarPref<1 | 1.5 | 2>('play-speed', 1);
   const [selected, setSelected] = useState<CompositeFramePoint | null>(null);
@@ -134,7 +148,7 @@ export function CompositePlayback({
               r.scoreS,
             ],
             itemStyle: {
-              ...hudFireballStyle(r.zone, {
+              ...hudSoftDiscStyle(r.zone, {
                 resonance: r.resonance || isFocus,
                 focus: isFocus,
               }),
@@ -179,7 +193,7 @@ export function CompositePlayback({
           }
           if (line.length < 2) continue;
           const isFocus = selected?.slug === slug;
-          const mode = trailStyle === 'zone' ? 'zone' : 'sonar';
+          const mode = trailModeOf(normalizeTrailStyle(trailStyle));
           trailSeries.push(
             ...hudFadingTrailSeries({
               slug,
@@ -238,7 +252,7 @@ export function CompositePlayback({
             id: 'bubbles',
             name: '題材',
             symbol: 'circle',
-            // 同 id 點位插值 → 火球平滑滑移
+            // 同 id 點位插值 → 柔光圓平滑滑移
             universalTransition: { enabled: false },
             animation: true,
             animationDurationUpdate: animMs,
@@ -312,7 +326,7 @@ export function CompositePlayback({
           readyRef.current = true;
           return;
         }
-        // 只 merge 動態 series（火球 + 軌跡），軸／距離環不動 → 延續感
+        // 只 merge 動態 series（圓點 + 軌跡），軸／距離環不動 → 延續感
         const dynSeries = (opt.series as { id?: string }[]).filter((s) => {
           const id = String(s.id || '');
           return id === 'bubbles' || id.startsWith('trail-');
@@ -387,7 +401,7 @@ export function CompositePlayback({
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold tracking-wide text-cyan-50">最近怎麼移動（回放）</h2>
-          <p className="text-xs text-slate-400">火球平滑滑移 · 軌跡漸隱延續 · 動畫對齊步長</p>
+          <p className="text-xs text-slate-400">柔光圓平滑滑移 · 彗星尾延續 · 動畫對齊步長</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -426,12 +440,13 @@ export function CompositePlayback({
             名稱
           </label>
           <select
-            value={trailStyle === ('soft' as TrailStyle) ? 'sonar' : trailStyle}
+            value={normalizeTrailStyle(trailStyle)}
             onChange={(e) => setTrailStyle(e.target.value as TrailStyle)}
             className="rounded-md border border-cyan-500/25 bg-slate-900 px-2 py-1 text-xs text-cyan-100"
             title="軌跡樣式"
           >
-            <option value="sonar">軌跡·聲納</option>
+            <option value="comet">軌跡·彗星</option>
+            <option value="soft">軌跡·淡跡</option>
             <option value="zone">軌跡·四色</option>
             <option value="off">軌跡·關</option>
           </select>
@@ -556,12 +571,6 @@ export function CompositePlayback({
       <div className="flex flex-col gap-3 lg:flex-row">
         <div className="min-w-0 flex-1">
           <div className="relative overflow-hidden rounded-xl border border-cyan-500/20 bg-[#070b14]">
-            <div
-              className="pointer-events-none absolute inset-0 z-10 overflow-hidden opacity-30"
-              aria-hidden
-            >
-              <div className="absolute inset-x-0 h-14 animate-radarScan bg-gradient-to-b from-transparent via-cyan-400/15 to-transparent" />
-            </div>
             <ReactECharts
               ref={chartRef}
               option={{}}
@@ -583,7 +592,7 @@ export function CompositePlayback({
             />
           </div>
           <p className="mt-1 text-center text-[11px] text-slate-500">
-            點火球聚焦軌跡 · 再點取消 · 未聚焦時最多 6 條軌跡
+            點圓點聚焦軌跡 · 再點取消 · 未聚焦時最多 6 條軌跡
           </p>
         </div>
         {selected ? (

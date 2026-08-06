@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>③ 精煉 HUD · 無掃描 · 標記／拖曳可切</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+      background: #05070d;
+      color: #e2e8f0;
+      min-height: 100vh;
+      line-height: 1.45;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(14,116,144,0.22), transparent 55%),
+        radial-gradient(ellipse 40% 30% at 90% 80%, rgba(88,28,135,0.1), transparent 50%);
+    }
+    .top {
+      border-bottom: 1px solid rgba(56,189,248,0.12);
+      background: rgba(5,7,13,0.8);
+      backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 20;
+    }
+    .top-inner {
+      max-width: 1120px; margin: 0 auto; padding: 12px 16px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .brand { font-weight: 700; }
+    .nav { margin-left: auto; display: flex; gap: 14px; font-size: 0.82rem; color: #64748b; }
+    .nav b { color: #a5f3fc; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 18px 16px 56px; }
+    .back { font-size: 0.8rem; color: #64748b; text-decoration: none; }
+    .back:hover { color: #67e8f9; }
+    .hero { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; margin-top: 8px; }
+    h1 { font-size: 1.35rem; }
+    .lead { color: #94a3b8; font-size: 0.9rem; max-width: 40rem; margin-top: 4px; }
+    .badge {
+      padding: 5px 12px; border-radius: 999px; font-size: 0.75rem;
+      border: 1px solid rgba(103,232,249,0.25); color: #a5f3fc;
+      background: rgba(8,47,73,0.5);
+    }
+    .brief { margin-top: 16px; display: grid; gap: 8px; }
+    @media (min-width: 800px) { .brief { grid-template-columns: 1.1fr 1fr 1fr; } }
+    .bcard {
+      border-radius: 12px; padding: 10px 12px;
+      background: rgba(15,23,42,0.55);
+      border: 1px solid rgba(148,163,184,0.1);
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .bcard .l { font-size: 0.72rem; color: #94a3b8; }
+    .bcard .m { font-size: 0.88rem; font-weight: 600; margin-top: 2px; }
+    .bcard .r { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .bcard.buy .r { color: #fb7185; }
+    .bcard.sell .r { color: #34d399; }
+
+    .main {
+      margin-top: 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(56,189,248,0.2);
+      background: linear-gradient(165deg, rgba(15,23,42,0.9), rgba(7,11,20,0.98));
+      box-shadow: 0 0 60px rgba(8,145,178,0.08);
+      padding: 14px;
+    }
+    .main-head h2 { font-size: 1.05rem; color: #ecfeff; }
+    .main-head .sub { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+
+    .style-panel {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(56,189,248,0.14);
+      background: rgba(2,6,23,0.55);
+    }
+    .style-panel .row {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      margin-top: 8px;
+    }
+    .style-panel .row:first-child { margin-top: 0; }
+    .style-panel .lab {
+      font-size: 0.72rem; color: #64748b; min-width: 4.5rem; font-weight: 600;
+    }
+    .seg {
+      display: inline-flex; flex-wrap: wrap; padding: 3px; border-radius: 999px; gap: 2px;
+      border: 1px solid rgba(56,189,248,0.18); background: rgba(2,6,23,0.65);
+    }
+    .seg button {
+      border: 0; background: transparent; color: #64748b;
+      font-size: 0.74rem; padding: 6px 11px; border-radius: 999px; cursor: pointer;
+    }
+    .seg button.on {
+      background: linear-gradient(90deg, #0e7490, #0891b2);
+      color: #ecfeff; font-weight: 600;
+    }
+    .hint {
+      margin-top: 8px; font-size: 0.75rem; color: #94a3b8; line-height: 1.45;
+    }
+    .hint b { color: #a5f3fc; font-weight: 600; }
+
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 10px; }
+    .chk { font-size: 0.78rem; color: #94a3b8; display: flex; gap: 6px; align-items: center; }
+    .chart-shell {
+      position: relative; height: 460px; border-radius: 16px; overflow: hidden;
+      border: 1px solid rgba(56,189,248,0.15);
+      background: radial-gradient(circle at 50% 50%, #0a1628 0%, #05080f 70%);
+    }
+    /* 無掃描線 */
+    svg { width: 100%; height: 100%; display: block; }
+    .guide {
+      margin-top: 10px; font-size: 0.82rem; color: #cbd5e1;
+      padding: 8px 12px; border-radius: 10px;
+      background: rgba(8,47,73,0.35); border: 1px solid rgba(56,189,248,0.12);
+    }
+    details.table-wrap { margin-top: 10px; }
+    details.table-wrap summary { cursor: pointer; font-size: 0.82rem; color: #94a3b8; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.82rem; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid rgba(148,163,184,0.08); }
+    th { color: #64748b; font-size: 0.7rem; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+    .z-hot { background: rgba(244,63,94,0.15); color: #fb7185; }
+    .z-cool { background: rgba(139,92,246,0.15); color: #c4b5fd; }
+
+    .playback {
+      margin-top: 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(56,189,248,0.15);
+      background: rgba(7,11,20,0.85);
+      padding: 12px 14px;
+    }
+    .playback h3 { font-size: 0.92rem; color: #e0f2fe; }
+    .timeline {
+      margin-top: 10px; display: grid; gap: 8px;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+    }
+    @media (max-width: 640px) { .timeline { grid-template-columns: 1fr; } }
+    .tl-btns { display: flex; gap: 8px; }
+    .tl-btns button {
+      border: 0; border-radius: 10px; padding: 8px 14px; cursor: pointer; font-size: 0.8rem;
+    }
+    .tl-btns .primary {
+      background: linear-gradient(90deg, #0891b2, #06b6d4);
+      color: #042f2e; font-weight: 700;
+    }
+    .tl-btns .ghost {
+      background: transparent; color: #94a3b8; border: 1px solid rgba(148,163,184,0.2);
+    }
+    .date-big { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+    input[type=range] { width: 100%; accent-color: #22d3ee; }
+    .play-chart {
+      height: 320px; margin-top: 10px; border-radius: 14px; overflow: hidden;
+      border: 1px solid rgba(56,189,248,0.12); background: #05080f;
+    }
+    .foot { margin-top: 18px; font-size: 0.72rem; color: #475569; }
+    .codes {
+      margin-top: 14px; padding: 12px 14px; border-radius: 12px;
+      border: 1px dashed rgba(56,189,248,0.25); background: rgba(8,47,73,0.25);
+      font-size: 0.8rem; color: #cbd5e1;
+    }
+    .codes code { color: #67e8f9; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div class="top-inner">
+      <div class="brand">🧭 測試產業建構</div>
+      <div class="nav"><span>首頁</span><span>題材</span><b>資金雷達</b><span>重大訊息</span></div>
+    </div>
+  </div>
+  <div class="wrap">
+    <a class="back" href="../index.html">← 回對照總覽</a>
+    <div class="hero">
+      <div>
+        <h1>資金雷達 · ③ 精煉 HUD</h1>
+        <p class="lead">已拿掉掃描線。下方可切「題材標記」與「移動／軌跡」——看主圖與回放體感後回代號。</p>
+      </div>
+      <div class="badge">無掃描線 · 標記／拖曳可切</div>
+    </div>
+
+    <div class="brief">
+      <div class="bcard buy"><div><div class="l">買超 Top</div><div class="m">AI 散熱與電源</div></div><div class="r">+122.8億</div></div>
+      <div class="bcard sell"><div><div class="l">賣超 Top</div><div class="m">晶圓代工</div></div><div class="r">−72.3億</div></div>
+      <div class="bcard"><div><div class="l">昨買→今</div><div class="m">均 +0.88%</div></div><div class="r" style="color:#e2e8f0;font-size:0.95rem">HPC +2.3%</div></div>
+    </div>
+
+    <section class="main">
+      <div class="main-head">
+        <h2>題材熱區圖</h2>
+        <p class="sub">柔霧象限 · 無掃描線 · 換皮不換腦</p>
+      </div>
+
+      <div class="style-panel">
+        <div class="row">
+          <span class="lab">標記 M</span>
+          <div class="seg" id="mSeg">
+            <button type="button" data-m="disc" class="on">M1 柔光圓</button>
+            <button type="button" data-m="ring">M2 雙環</button>
+            <button type="button" data-m="chip">M3 標籤膠囊</button>
+            <button type="button" data-m="diamond">M4 菱形</button>
+            <button type="button" data-m="fire">M0 舊火球</button>
+          </div>
+        </div>
+        <div class="row">
+          <span class="lab">移動 T</span>
+          <div class="seg" id="tSeg">
+            <button type="button" data-t="soft" class="on">T1 淡跡平滑</button>
+            <button type="button" data-t="comet">T2 彗星尾</button>
+            <button type="button" data-t="dots">T3 節點虛線</button>
+            <button type="button" data-t="none">T0 只位移</button>
+          </div>
+        </div>
+        <p class="hint" id="styleHint">
+          目前：<b>M1 柔光圓</b> + <b>T1 淡跡平滑</b>。建議正式站預設這組（乾淨、不像遊戲火球）。
+        </p>
+      </div>
+
+      <div class="toolbar">
+        <div class="seg" id="wSeg">
+          <button type="button">偏籌碼</button>
+          <button type="button" class="on">均衡</button>
+          <button type="button">偏價</button>
+        </div>
+        <label class="chk"><input type="checkbox" checked id="names" /> 名稱</label>
+        <label class="chk"><input type="checkbox" checked /> Top8</label>
+      </div>
+
+      <div class="chart-shell"><div id="chart" style="height:100%"></div></div>
+      <p class="guide">較靠熱區：金融、消費、電信。權重只改 S，不改位置。</p>
+      <details class="table-wrap">
+        <summary>綜合排序表（預設摺疊）</summary>
+        <table>
+          <thead><tr><th>#</th><th>題材</th><th>S</th><th>區</th><th>籌</th><th>價</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </details>
+    </section>
+
+    <section class="playback">
+      <h3>最近怎麼移動（看拖曳體感）</h3>
+      <div class="timeline">
+        <div class="tl-btns">
+          <button type="button" class="ghost" id="pause">暫停</button>
+          <button type="button" class="primary" id="play">▶ 播放</button>
+        </div>
+        <div>
+          <input type="range" id="slider" min="0" max="1000" value="1000" />
+          <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:#64748b;margin-top:4px">
+            <span id="dateLabel">2026-08-06</span>
+            <span id="prog">平滑插值中</span>
+          </div>
+        </div>
+        <div class="date-big" id="dateBig">08-06</div>
+      </div>
+      <div class="play-chart" id="playChart"></div>
+    </section>
+
+    <div class="codes">
+      選定後回威柏，例如：<code>③ + M1 + T1</code>　或　<code>③ + M2 + T2</code>　或　<code>③ + M3 + T1</code><br/>
+      預設推薦：<code>③ + M1 + T1</code>（無掃描 · 柔光圓 · 淡跡平滑）
+    </div>
+    <p class="foot">【免責】示意 mock · 非正式站 · 語意仍為 C100／zone。</p>
+  </div>
+
+  <script>
+    const themes = [
+      { t:'金融', x:64, y:82, s:86, z:'hot' },
+      { t:'消費', x:46, y:100, s:86, z:'hot' },
+      { t:'電信', x:27, y:91, s:80, z:'hot' },
+      { t:'AI伺服', x:100, y:-27, s:68, z:'cool' },
+      { t:'散熱', x:82, y:-9, s:68, z:'cool' },
+      { t:'綠能', x:18, y:36, s:64, z:'hot' },
+      { t:'記憶體', x:91, y:-55, s:59, z:'cool' },
+      { t:'HPC IC', x:73, y:-36, s:59, z:'cool' },
+    ];
+    const ZC = { hot:'#f43f5e', watch:'#f59e0b', cool:'#a78bfa', cold:'#64748b' };
+    const ZL = { hot:'熱區', cool:'降溫', watch:'觀察', cold:'冷區' };
+    const MH = {
+      disc: 'M1 柔光圓：實心區色 + 淡外暈，像資料點不是火球',
+      ring: 'M2 雙環：空心環 + 內點，科技感、較冷靜',
+      chip: 'M3 標籤膠囊：色點 + 圓角名牌，掃讀最快',
+      diamond: 'M4 菱形：銳利識別，偏儀表板（舊方案之一）',
+      fire: 'M0 舊火球：強光暈（對照用，較「遊戲感」）',
+    };
+    const TH = {
+      soft: 'T1 淡跡平滑：細淡路徑 + 連續插值，延續感好、不搶戲',
+      comet: 'T2 彗星尾：頭亮尾淡，動感強一點',
+      dots: 'T3 節點虛線：沿路徑小點，像航跡',
+      none: 'T0 只位移：無軌跡，最乾淨',
+    };
+
+    let marker = 'disc';
+    let trail = 'soft';
+    let showNames = true;
+
+    function atFrame(u) {
+      // u 0..1 smooth positions from "past" to "now"
+      const ease = u * u * (3 - 2 * u);
+      return themes.map(d => ({
+        ...d,
+        x: d.x * (0.45 + 0.55 * ease),
+        y: d.y * (0.3 + 0.7 * ease),
+      }));
+    }
+
+    function markerSVG(d, sx, sy, r) {
+      const x = sx(d.x), y = sy(d.y);
+      const c = ZC[d.z];
+      if (marker === 'fire') {
+        return `<g>
+          <circle cx="${x}" cy="${y}" r="${r+7}" fill="${c}" opacity="0.18"/>
+          <circle cx="${x}" cy="${y}" r="${r+3}" fill="${c}" opacity="0.28"/>
+          <circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="#fff" stroke-width="1.2" opacity="0.95"/>
+        </g>`;
+      }
+      if (marker === 'ring') {
+        return `<g>
+          <circle cx="${x}" cy="${y}" r="${r+2}" fill="none" stroke="${c}" stroke-width="2" opacity="0.9"/>
+          <circle cx="${x}" cy="${y}" r="${r-3}" fill="${c}" opacity="0.95"/>
+          <circle cx="${x}" cy="${y}" r="${r+6}" fill="none" stroke="${c}" stroke-width="1" opacity="0.25"/>
+        </g>`;
+      }
+      if (marker === 'diamond') {
+        const s = r * 0.95;
+        return `<g>
+          <polygon points="${x},${y-s-3} ${x+s+3},${y} ${x},${y+s+3} ${x-s-3},${y}" fill="${c}" opacity="0.2"/>
+          <polygon points="${x},${y-s} ${x+s},${y} ${x},${y+s} ${x-s},${y}" fill="${c}" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+        </g>`;
+      }
+      if (marker === 'chip') {
+        const label = d.t;
+        const tw = 12 + label.length * 11;
+        return `<g>
+          <circle cx="${x}" cy="${y}" r="7" fill="${c}" stroke="rgba(255,255,255,0.55)" stroke-width="1.2"/>
+          <rect x="${x+10}" y="${y-11}" width="${tw}" height="22" rx="11" fill="rgba(15,23,42,0.88)" stroke="${c}" stroke-width="1" opacity="0.95"/>
+          <text x="${x+10+tw/2}" y="${y+4}" text-anchor="middle" font-size="11" font-weight="600" fill="#e2e8f0">${label}</text>
+        </g>`;
+      }
+      // disc default — soft glow, restrained
+      return `<g>
+        <circle cx="${x}" cy="${y}" r="${r+5}" fill="${c}" opacity="0.12"/>
+        <circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="rgba(255,255,255,0.45)" stroke-width="1.1" opacity="0.94"/>
+      </g>`;
+    }
+
+    function trailSVG(hist, sx, sy) {
+      if (trail === 'none' || hist.length < 2) return '';
+      // hist: array of point arrays over time, use last theme path
+      return themes.map((base, ti) => {
+        const path = hist.map(frame => frame[ti]).filter(Boolean);
+        if (path.length < 2) return '';
+        if (trail === 'dots') {
+          return path.map((p, i) => {
+            if (i % 2) return '';
+            const o = 0.12 + 0.55 * (i / (path.length - 1));
+            return `<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="2.2" fill="${ZC[base.z]}" opacity="${o}"/>`;
+          }).join('');
+        }
+        // soft / comet as polyline segments with fade
+        let segs = '';
+        const n = path.length;
+        for (let i = 1; i < n; i++) {
+          const t = i / (n - 1);
+          const o = trail === 'comet' ? (0.05 + 0.55 * Math.pow(t, 1.4)) : (0.04 + 0.28 * t);
+          const w = trail === 'comet' ? (0.8 + 1.8 * t) : (0.7 + 0.9 * t);
+          const a = path[i - 1], b = path[i];
+          segs += `<line x1="${sx(a.x)}" y1="${sy(a.y)}" x2="${sx(b.x)}" y2="${sy(b.y)}" stroke="${trail==='comet' ? '#a5f3fc' : ZC[base.z]}" stroke-width="${w}" opacity="${o}" stroke-linecap="round"/>`;
+        }
+        if (trail === 'comet') {
+          const last = path[n - 1];
+          segs += `<circle cx="${sx(last.x)}" cy="${sy(last.y)}" r="3" fill="#ecfeff" opacity="0.85"/>`;
+        }
+        return segs;
+      }).join('');
+    }
+
+    function draw(el, pts, hist, h) {
+      const W = 680, H = h || 460, p = 50;
+      const sx = v => p + (v + 100) / 200 * (W - 2 * p);
+      const sy = v => H - p - (v + 100) / 200 * (H - 2 * p);
+      const zones = `
+        <defs>
+          <radialGradient id="ghot" cx="78%" cy="22%" r="52%"><stop offset="0%" stop-color="#f43f5e" stop-opacity="0.13"/><stop offset="100%" stop-color="#f43f5e" stop-opacity="0"/></radialGradient>
+          <radialGradient id="gwatch" cx="22%" cy="22%" r="52%"><stop offset="0%" stop-color="#f59e0b" stop-opacity="0.11"/><stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/></radialGradient>
+          <radialGradient id="gcool" cx="78%" cy="78%" r="52%"><stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.11"/><stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/></radialGradient>
+          <radialGradient id="gcold" cx="22%" cy="78%" r="52%"><stop offset="0%" stop-color="#64748b" stop-opacity="0.12"/><stop offset="100%" stop-color="#64748b" stop-opacity="0"/></radialGradient>
+        </defs>
+        <rect x="${p}" y="${p}" width="${W-2*p}" height="${H-2*p}" fill="url(#gwatch)"/>
+        <rect x="${p}" y="${p}" width="${W-2*p}" height="${H-2*p}" fill="url(#ghot)"/>
+        <rect x="${p}" y="${p}" width="${W-2*p}" height="${H-2*p}" fill="url(#gcool)"/>
+        <rect x="${p}" y="${p}" width="${W-2*p}" height="${H-2*p}" fill="url(#gcold)"/>`;
+      const rings = [25,50,75,100].map(r => {
+        const rr = (r / 100) * (Math.min(W, H) - 2 * p) / 2;
+        return `<circle cx="${W/2}" cy="${H/2}" r="${rr}" fill="none" stroke="rgba(34,211,238,${r===50?0.26:0.14})" stroke-width="${r===50?1.15:0.85}" stroke-dasharray="${r===50?'':'5 5'}"/>`;
+      }).join('');
+      const cross = `<line x1="${W/2}" y1="${p}" x2="${W/2}" y2="${H-p}" stroke="rgba(125,211,252,0.32)"/><line x1="${p}" y1="${H/2}" x2="${W-p}" y2="${H/2}" stroke="rgba(125,211,252,0.32)"/>
+        <circle cx="${W/2}" cy="${H/2}" r="3.5" fill="#7dd3fc"/><text x="${W/2+8}" y="${H/2-8}" fill="#7dd3fc" font-size="11" font-weight="600">普通</text>`;
+      const tr = trailSVG(hist || [], sx, sy);
+      const bubbles = pts.map(d => {
+        const r = 10 + d.s / 14;
+        const lab = (showNames && marker !== 'chip')
+          ? `<text x="${sx(d.x)}" y="${sy(d.y) - r - 8}" text-anchor="middle" font-size="11" font-weight="600" fill="#e2e8f0">${d.t}</text>`
+          : '';
+        return markerSVG(d, sx, sy, r) + lab;
+      }).join('');
+      el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${zones}${rings}${cross}${tr}${bubbles}
+        <text x="${W/2}" y="${H-12}" text-anchor="middle" fill="#64748b" font-size="11">錢有沒有比較多進 →</text>
+        <text x="14" y="${H/2}" fill="#64748b" font-size="11" transform="rotate(-90 14 ${H/2})">價相對強弱 →</text>
+      </svg>`;
+    }
+
+    const chartEl = document.getElementById('chart');
+    const playEl = document.getElementById('playChart');
+    let playU = 1;
+    let hist = [];
+    let timer = null;
+
+    function rebuildHist(u) {
+      // sample trail history up to u
+      hist = [];
+      const steps = 12;
+      for (let i = 0; i <= steps; i++) {
+        const t = (u * i) / steps;
+        hist.push(atFrame(t));
+      }
+    }
+
+    function renderAll() {
+      rebuildHist(1);
+      draw(chartEl, themes, trail === 'none' ? [] : hist.slice(-8), 460);
+      rebuildHist(playU);
+      draw(playEl, atFrame(playU), trail === 'none' ? [] : hist, 320);
+      document.getElementById('styleHint').innerHTML =
+        '目前：<b>' + document.querySelector('#mSeg .on').textContent + '</b> + <b>' +
+        document.querySelector('#tSeg .on').textContent + '</b>。<br/>' + MH[marker] + ' · ' + TH[trail];
+    }
+
+    document.getElementById('tbody').innerHTML = themes.map((d,i)=>`<tr>
+      <td>${i+1}</td><td>${d.t}</td><td>${d.s}</td>
+      <td><span class="pill z-${d.z}">${ZL[d.z]}</span></td>
+      <td>${d.x>0?'+':''}${d.x}</td><td>${d.y>0?'+':''}${d.y}</td></tr>`).join('');
+
+    document.querySelectorAll('#mSeg button').forEach(b => b.onclick = () => {
+      document.querySelectorAll('#mSeg button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on'); marker = b.dataset.m; renderAll();
+    });
+    document.querySelectorAll('#tSeg button').forEach(b => b.onclick = () => {
+      document.querySelectorAll('#tSeg button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on'); trail = b.dataset.t; renderAll();
+    });
+    document.getElementById('names').onchange = e => { showNames = e.target.checked; renderAll(); };
+    document.querySelectorAll('#wSeg button').forEach(b => b.onclick = () => {
+      document.querySelectorAll('#wSeg button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+    });
+
+    const dates = Array.from({length: 21}, (_, i) => {
+      const d = new Date('2026-07-17'); d.setDate(d.getDate() + i);
+      return d.toISOString().slice(0, 10);
+    });
+    const slider = document.getElementById('slider');
+    function setU(u) {
+      playU = Math.max(0, Math.min(1, u));
+      slider.value = Math.round(playU * 1000);
+      const di = Math.round(playU * 20);
+      const ds = dates[di];
+      document.getElementById('dateLabel').textContent = ds;
+      document.getElementById('dateBig').textContent = ds.slice(5);
+      document.getElementById('prog').textContent = Math.round(playU * 100) + '%';
+      rebuildHist(playU);
+      draw(playEl, atFrame(playU), trail === 'none' ? [] : hist, 320);
+    }
+    slider.oninput = () => { clearInterval(timer); timer = null; setU(+slider.value / 1000); };
+    document.getElementById('play').onclick = () => {
+      if (timer) return;
+      if (playU >= 0.995) setU(0);
+      const start = performance.now();
+      const from = playU;
+      const dur = 9000 * (1 - from); // ~ full 9s
+      timer = setInterval(() => {
+        const t = (performance.now() - start) / (dur || 1);
+        if (t >= 1) { setU(1); clearInterval(timer); timer = null; return; }
+        setU(from + (1 - from) * t);
+      }, 32); // ~30fps smooth
+    };
+    document.getElementById('pause').onclick = () => { clearInterval(timer); timer = null; };
+
+    renderAll();
+    setU(1);
+  </script>
+</body>
+</html>
