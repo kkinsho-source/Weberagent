@@ -243,7 +243,10 @@ export function CompositePlayback({
             animation: true,
             animationDurationUpdate: animMs,
             animationEasingUpdate: 'linear',
-            symbolSize: (val: number[]) => val[2],
+            symbolSize: (val: unknown) => {
+              if (Array.isArray(val) && typeof val[2] === 'number') return val[2];
+              return 20;
+            },
             data: scatter,
             z: 3,
             markArea: {
@@ -296,26 +299,43 @@ export function CompositePlayback({
       const chart = chartRef.current?.getEchartsInstance() as ECharts | undefined;
       if (!chart || !frames.length) return;
       const animMs = animMsFor(speed);
-      const opt = buildOption(frameIdx, showLabels, animMs);
-      if (full || !readyRef.current) {
-        chart.setOption(opt, { notMerge: true, lazyUpdate: false });
-        readyRef.current = true;
+      let opt: ReturnType<typeof buildOption>;
+      try {
+        opt = buildOption(frameIdx, showLabels, animMs);
+      } catch (err) {
+        console.error('[CompositePlayback] buildOption failed', err);
         return;
       }
-      // 只 merge 動態 series（火球 + 軌跡），軸／距離環不動 → 延續感
-      const dynSeries = (opt.series as { id?: string }[]).filter((s) => {
-        const id = String(s.id || '');
-        return id === 'bubbles' || id.startsWith('trail-');
-      });
-      chart.setOption(
-        {
-          animation: true,
-          animationDurationUpdate: animMs,
-          animationEasingUpdate: 'linear',
-          series: dynSeries,
-        },
-        { notMerge: false, lazyUpdate: false },
-      );
+      try {
+        if (full || !readyRef.current) {
+          chart.setOption(opt, { notMerge: true, lazyUpdate: false });
+          readyRef.current = true;
+          return;
+        }
+        // 只 merge 動態 series（火球 + 軌跡），軸／距離環不動 → 延續感
+        const dynSeries = (opt.series as { id?: string }[]).filter((s) => {
+          const id = String(s.id || '');
+          return id === 'bubbles' || id.startsWith('trail-');
+        });
+        chart.setOption(
+          {
+            animation: true,
+            animationDurationUpdate: animMs,
+            animationEasingUpdate: 'linear',
+            series: dynSeries,
+          },
+          { notMerge: false, lazyUpdate: false },
+        );
+      } catch (err) {
+        // setOption 例外不應炸掉整頁（Next Application error）
+        console.error('[CompositePlayback] setOption failed', err);
+        try {
+          chart.setOption(opt, { notMerge: true, lazyUpdate: false });
+          readyRef.current = true;
+        } catch {
+          /* ignore */
+        }
+      }
     },
     [buildOption, frames.length, showLabels, speed],
   );

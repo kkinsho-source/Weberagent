@@ -26,6 +26,7 @@ import { AdvancedChartsAccordion } from '@/components/radar/AdvancedChartsAccord
 import { RadarBeginnerSteps } from '@/components/radar/RadarBeginnerSteps';
 import { RadarGlossary } from '@/components/radar/RadarGlossary';
 import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
+import { PanelErrorBoundary } from '@/components/ui/PanelErrorBoundary';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,7 +136,9 @@ export default async function RadarPage({
       <DualAxisTable rows={dualRows} />
 
       {compositeFrames.length ? (
-        <CompositePlayback frames={compositeFrames} familyBySlug={familyBySlug} />
+        <PanelErrorBoundary title="回放">
+          <CompositePlayback frames={compositeFrames} familyBySlug={familyBySlug} />
+        </PanelErrorBoundary>
       ) : (
         <RadarEmptyBlock title="回放暫時沒有資料">
           需要多日法人歷史才能播放「最近怎麼移動」。資料累積後會自動出現。

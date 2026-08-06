@@ -223,7 +223,10 @@ export function CompositeBubblePanel({
         {
           type: 'scatter',
           symbol: 'circle',
-          symbolSize: (val: number[]) => val[2],
+          symbolSize: (val: unknown) => {
+            if (Array.isArray(val) && typeof val[2] === 'number') return val[2];
+            return 20;
+          },
           data,
           markArea: {
             silent: true,

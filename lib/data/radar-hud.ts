@@ -156,31 +156,50 @@ export const TRAIL_SEG_COUNT = 14;
 
 /** 折線重採樣成固定點數（含端點） */
 function resamplePolyline(line: number[][], count: number): number[][] {
-  if (line.length === 0) return [];
-  if (line.length === 1 || count <= 1) return [line[0]!.slice() as number[]];
-  // 累積弧長
+  if (line.length === 0 || count <= 0) return [];
+  const last = line[line.length - 1];
+  if (!last || line.length === 1 || count <= 1) {
+    return last ? [last.slice() as number[]] : [];
+  }
+  // 累積弧長（跳過缺點，避免 undefined[0]）
+  const pts: number[][] = [];
+  for (const p of line) {
+    if (!p || p.length < 2) continue;
+    const x = Number(p[0]);
+    const y = Number(p[1]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    pts.push([x, y]);
+  }
+  if (pts.length === 0) return [];
+  if (pts.length === 1) {
+    return Array.from({ length: count }, () => pts[0]!.slice() as number[]);
+  }
+
   const segLen: number[] = [0];
   let total = 0;
-  for (let i = 1; i < line.length; i++) {
-    const dx = line[i]![0]! - line[i - 1]![0]!;
-    const dy = line[i]![1]! - line[i - 1]![1]!;
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i]![0]! - pts[i - 1]![0]!;
+    const dy = pts[i]![1]! - pts[i - 1]![1]!;
     total += Math.hypot(dx, dy);
     segLen.push(total);
   }
-  if (total < 1e-9) {
-    return Array.from({ length: count }, () => line[line.length - 1]!.slice() as number[]);
+  if (!Number.isFinite(total) || total < 1e-9) {
+    return Array.from({ length: count }, () => pts[pts.length - 1]!.slice() as number[]);
   }
   const out: number[][] = [];
+  const lastIdx = pts.length - 1;
   for (let k = 0; k < count; k++) {
-    const target = (total * k) / (count - 1);
+    // 夾在 [0, total]：避免 float 讓 target 略大於 total → j 走到 length → undefined[0]
+    const target = Math.min(total, Math.max(0, (total * k) / (count - 1)));
     let j = 1;
     while (j < segLen.length && segLen[j]! < target) j++;
-    const j0 = Math.max(1, j);
-    const a = segLen[j0 - 1]!;
-    const b = segLen[j0]!;
+    // j 最大只能是 lastIdx（segLen/pts 最後一個有效下標）
+    const j0 = Math.min(Math.max(1, j), lastIdx);
+    const a = segLen[j0 - 1] ?? 0;
+    const b = segLen[j0] ?? total;
     const t = b - a < 1e-9 ? 0 : (target - a) / (b - a);
-    const p0 = line[j0 - 1]!;
-    const p1 = line[j0]!;
+    const p0 = pts[j0 - 1]!;
+    const p1 = pts[j0]!;
     out.push([p0[0]! + (p1[0]! - p0[0]!) * t, p0[1]! + (p1[1]! - p0[1]!) * t]);
   }
   return out;
