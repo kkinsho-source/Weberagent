@@ -246,10 +246,13 @@ export function hudFadingTrailSeries(opts: {
   zoneColor?: string;
   /** 減亂 P4：整體再淡／細一點（0.7≈淡 30%） */
   intensity?: number;
+  /** 與回放步長對齊，線段才跟球一起滑（0=瞬切） */
+  animMs?: number;
   alwaysSlots?: boolean;
 }): object[] {
   const { slug, title, line, focus, mode, zoneColor } = opts;
   const intensity = Math.min(1.2, Math.max(0.4, opts.intensity ?? 1));
+  const animMs = Math.max(0, opts.animMs ?? 0);
   const isDual = mode === 'dual';
   const isComet = mode === 'comet';
   const isZoneTa = mode === 'zone'; // TA
@@ -307,7 +310,8 @@ export function hudFadingTrailSeries(opts: {
       clip: true,
       z: focus ? 2 : 1,
       animation: true,
-      animationDurationUpdate: 0,
+      animationDurationUpdate: animMs,
+      animationEasingUpdate: 'linear',
       lineStyle: {
         color: baseColor,
         width,
@@ -341,41 +345,17 @@ export function hudFadingTrailSeries(opts: {
     });
   }
 
-  const tip = pts.length ? pts[pts.length - 1] : line[line.length - 1];
-  const tipColor = isZoneColor
-    ? focus
-      ? '#f8fafc'
-      : baseColor
-    : isComet
-      ? focus
-        ? '#f0fdfa'
-        : '#a5f3fc'
-      : focus
-        ? HUD.trailFocus
-        : baseColor;
+  // 固定 tip id 但永不畫點（避免 merge 殘影；只要線）
   segs.push({
     type: 'scatter' as const,
     id: `trail-${slug}-tip`,
     name: title,
-    data: tip ? [{ value: tip }] : [],
-    symbolSize: strongFade ? (focus ? 10 : 6.5) : focus ? 10 : 6,
+    data: [],
+    symbolSize: 0,
     silent: true,
-    z: focus ? 2.5 : 1.5,
-    animation: true,
-    itemStyle: {
-      color: tipColor,
-      borderColor: isZoneColor ? baseColor : undefined,
-      borderWidth: isZoneColor ? 1.1 : 0,
-      shadowBlur: strongFade ? (focus ? 16 : 10) : focus ? 18 : 10,
-      shadowColor: isZoneColor
-        ? hexToRgba(typeof baseColor === 'string' ? baseColor : '#7dd3fc', 0.5)
-        : isComet
-          ? 'rgba(207,250,254,0.9)'
-          : focus
-            ? 'rgba(165,243,252,0.85)'
-            : 'rgba(34,211,238,0.45)',
-      opacity: tip ? (focus ? 0.96 : strongFade ? 0.7 : 0.55) : 0,
-    },
+    z: 0,
+    animation: false,
+    itemStyle: { opacity: 0 },
   });
 
   return segs;

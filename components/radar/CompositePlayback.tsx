@@ -26,14 +26,14 @@ import type { ThemeFamily } from '@/lib/types';
 import { useRadarPref } from '@/components/radar/useRadarPref';
 import { RadarEmptyBlock } from '@/components/radar/RadarEmptyBlock';
 
-const BASE_STEP_MS = 1250; // 1× 步長；動畫 ≈ 0.92×步長，銜接下幀
+const BASE_STEP_MS = 1450; // 略放慢；動畫 ≈ 0.96×步長，減少斷層感
 
 function stepMsFor(speed: number) {
   return Math.round(BASE_STEP_MS / speed);
 }
 
 function animMsFor(speed: number) {
-  return Math.round(stepMsFor(speed) * 0.92);
+  return Math.round(stepMsFor(speed) * 0.96);
 }
 
 /** 軌跡：TA 區色彗星（預設）｜雙重編碼｜青白彗星｜淡跡｜關 */
@@ -99,14 +99,6 @@ export function CompositePlayback({
     setPicked(null);
   }, [frames]);
 
-  // 播放換日時，側欄／選中球同步該幀座標與象限色
-  useEffect(() => {
-    if (!selected) return;
-    const p = frames[idx]?.points.find((x) => x.slug === selected.slug);
-    if (p && (p.flowScore !== selected.flowScore || p.priceScore !== selected.priceScore || p.zone !== selected.zone)) {
-      setSelected(p);
-    }
-  }, [idx, frames, selected]);
 
   const allThemes = useMemo(() => {
     const m = new Map<string, string>();
@@ -233,6 +225,8 @@ export function CompositePlayback({
               zoneColor: ZONE_META[trailZone].bubble,
               // P4：簡潔再淡細；完整稍亮
               intensity: compact ? 0.72 : 0.9,
+              // 線段與球同一套 update 時長 → 延續感
+              animMs,
             }),
           );
         }
@@ -385,14 +379,20 @@ export function CompositePlayback({
     [buildOption, frames.length, showLabels, speed],
   );
 
+  // frames 換池才整圖重建；其餘只 merge，保留動畫延續
   useEffect(() => {
+    readyRef.current = false;
     applyFrame(idx, true);
-  }, [frames, showLabels, picked, trailStyle, trailFocusOnly, selected]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frames]);
 
   useEffect(() => {
-    if (!readyRef.current) return;
+    if (!readyRef.current) {
+      applyFrame(idx, true);
+      return;
+    }
     applyFrame(idx, false);
-  }, [idx, applyFrame]);
+  }, [idx, showLabels, picked, trailStyle, trailFocusOnly, selected, applyFrame]);
 
   useEffect(() => {
     if (!playing || frames.length < 2) return;
@@ -410,6 +410,11 @@ export function CompositePlayback({
   }, [playing, frames.length, speed]);
 
   const frame = frames[idx] || frames[frames.length - 1];
+  // 側欄用當幀資料（不 setState，避免每步雙重 setOption 打斷動畫）
+  const liveSelected = useMemo(() => {
+    if (!selected) return null;
+    return frame?.points.find((x) => x.slug === selected.slug) || selected;
+  }, [selected, frame]);
 
   const onPlay = useCallback(() => {
     if (idx >= frames.length - 1) setIdx(0);
@@ -432,7 +437,7 @@ export function CompositePlayback({
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold tracking-wide text-cyan-50">最近怎麼移動（回放）</h2>
-          <p className="text-xs text-slate-400">柔光圓平滑滑移 · 區色彗星軌跡 · 尾巴漸隱</p>
+          <p className="text-xs text-slate-400">柔光圓連續滑移 · 區色軌跡（無端點）· 尾巴漸隱</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -624,13 +629,13 @@ export function CompositePlayback({
             />
           </div>
           <p className="mt-1 text-center text-[11px] text-slate-500">
-            點圓點聚焦軌跡 · 再點取消 · 未聚焦時最多 6 條軌跡
+            點圓點聚焦軌跡 · 再點取消 · 未聚焦最多 3 條（簡潔）
           </p>
         </div>
-        {selected ? (
+        {liveSelected ? (
           <aside className="w-full shrink-0 rounded-xl border border-cyan-500/20 bg-slate-900/80 p-3 lg:w-64">
             <div className="flex justify-between gap-2">
-              <h4 className="font-semibold text-cyan-50">{selected.title}</h4>
+              <h4 className="font-semibold text-cyan-50">{liveSelected.title}</h4>
               <button
                 type="button"
                 className="text-xs text-slate-400"
@@ -640,39 +645,39 @@ export function CompositePlayback({
               </button>
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              {ZONE_META[compositeZone(selected.flowScore, selected.priceScore)].label} · {frame?.date}
+              {ZONE_META[compositeZone(liveSelected.flowScore, liveSelected.priceScore)].label} · {frame?.date}
             </p>
             <ul className="mt-2 space-y-1 text-sm text-slate-200">
               <li className="flex justify-between">
                 <span className="text-slate-500">S</span>
-                <span className="font-semibold">{selected.scoreS.toFixed(1)}</span>
+                <span className="font-semibold">{liveSelected.scoreS.toFixed(1)}</span>
               </li>
               <li className="flex justify-between">
                 <span className="text-slate-500">籌碼 C100</span>
-                <span>{fmtC100(selected.flowScore)}</span>
+                <span>{fmtC100(liveSelected.flowScore)}</span>
               </li>
               <li className="flex justify-between">
                 <span className="text-slate-500">短動能 C100</span>
-                <span>{fmtC100(selected.priceScore)}</span>
+                <span>{fmtC100(liveSelected.priceScore)}</span>
               </li>
               <li className="flex justify-between">
                 <span className="text-slate-500">近5日</span>
                 <span
                   className={
-                    selected.net5dYi >= 0 ? 'text-rose-600' : 'text-emerald-700'
+                    liveSelected.net5dYi >= 0 ? 'text-rose-600' : 'text-emerald-700'
                   }
                 >
-                  {selected.net5dYi >= 0 ? '+' : ''}
-                  {selected.net5dYi.toFixed(2)} 億
+                  {liveSelected.net5dYi >= 0 ? '+' : ''}
+                  {liveSelected.net5dYi.toFixed(2)} 億
                 </span>
               </li>
               <li className="flex justify-between">
                 <span className="text-slate-500">共振</span>
-                <span>{selected.resonance ? '★' : '—'}</span>
+                <span>{liveSelected.resonance ? '★' : '—'}</span>
               </li>
             </ul>
             <Link
-              href={`/themes/${selected.slug}?from=radar`}
+              href={`/themes/${liveSelected.slug}?from=radar`}
               className="mt-3 block rounded-lg bg-cyan-500 py-1.5 text-center text-xs font-medium text-slate-950"
             >
               題材頁
