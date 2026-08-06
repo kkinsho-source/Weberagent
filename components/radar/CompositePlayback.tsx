@@ -6,6 +6,7 @@ import ReactECharts from 'echarts-for-react';
 import type { ECharts } from 'echarts';
 import {
   ZONE_META,
+  compositeZone,
   type CompositeFrame,
   type CompositeFramePoint,
   type CompositeZone,
@@ -98,6 +99,15 @@ export function CompositePlayback({
     setPicked(null);
   }, [frames]);
 
+  // 播放換日時，側欄／選中球同步該幀座標與象限色
+  useEffect(() => {
+    if (!selected) return;
+    const p = frames[idx]?.points.find((x) => x.slug === selected.slug);
+    if (p && (p.flowScore !== selected.flowScore || p.priceScore !== selected.priceScore || p.zone !== selected.zone)) {
+      setSelected(p);
+    }
+  }, [idx, frames, selected]);
+
   const allThemes = useMemo(() => {
     const m = new Map<string, string>();
     for (const f of frames) {
@@ -145,21 +155,20 @@ export function CompositePlayback({
           const r = bySlug.get(slug);
           if (!r) return null;
           const isFocus = selected?.slug === slug;
+          // S0 固定球徑；色依當幀座標重算象限（跑進哪區就變哪色）
+          const zoneNow = compositeZone(r.flowScore, r.priceScore);
+          const BASE_R = 22;
           return {
             id: slug,
             name: r.title,
             value: [
               r.flowScore,
               r.priceScore,
-              Math.max(
-                16,
-                Math.min(52, Math.sqrt(Math.abs(r.net5dYi)) * 2.2 + 16) +
-                  (isFocus ? 6 : 0),
-              ),
+              isFocus ? BASE_R + 5 : BASE_R,
               r.scoreS,
             ],
             itemStyle: {
-              ...hudSoftDiscStyle(r.zone, {
+              ...hudSoftDiscStyle(zoneNow, {
                 resonance: r.resonance || isFocus,
                 focus: isFocus,
               }),
@@ -199,17 +208,21 @@ export function CompositePlayback({
         for (const slug of trailSlugs) {
           const line: number[][] = [];
           let title = slug;
-          let lastZone: CompositeZone = 'cold';
+          let lastFx = 0;
+          let lastPy = 0;
           for (let i = 0; i <= frameIdx; i++) {
             const p = frames[i]?.points.find((x) => x.slug === slug);
             if (!p) continue;
             title = p.title;
-            lastZone = p.zone;
+            lastFx = p.flowScore;
+            lastPy = p.priceScore;
             line.push([p.flowScore, p.priceScore]);
           }
           if (line.length < 2) continue;
           const isFocus = selected?.slug === slug;
           const mode = trailModeOf(normalizeTrailStyle(trailStyle));
+          // 軌跡色跟「當下所在象限」走（與球體一致）
+          const trailZone = compositeZone(lastFx, lastPy);
           trailSeries.push(
             ...hudFadingTrailSeries({
               slug,
@@ -217,7 +230,7 @@ export function CompositePlayback({
               line,
               focus: isFocus,
               mode,
-              zoneColor: ZONE_META[lastZone].bubble,
+              zoneColor: ZONE_META[trailZone].bubble,
               // P4：簡潔再淡細；完整稍亮
               intensity: compact ? 0.72 : 0.9,
             }),
@@ -627,7 +640,7 @@ export function CompositePlayback({
               </button>
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              {ZONE_META[selected.zone as CompositeZone].label} · {frame?.date}
+              {ZONE_META[compositeZone(selected.flowScore, selected.priceScore)].label} · {frame?.date}
             </p>
             <ul className="mt-2 space-y-1 text-sm text-slate-200">
               <li className="flex justify-between">

@@ -6,6 +6,7 @@ import ReactECharts from 'echarts-for-react';
 import {
   COMPOSITE_WEIGHTS,
   ZONE_META,
+  compositeZone,
   buildStaticGuide,
   type CompositeRow,
   type CompositeWeightMode,
@@ -186,25 +187,23 @@ export function CompositeBubblePanel({
   };
 
   const option = useMemo(() => {
+    // S0：球徑固定（聚焦略大）；色＝當下座標所在象限（跨區即變色）
+    const BASE_R = 22;
     const data = filtered.map((r) => {
       const isFocus = selected?.slug === r.slug;
       const isTop = topSlugSet.has(r.slug);
-      // D3：非 Top／非聚焦 → 縮小 + 半透明（完整模式較明顯）
-      const baseSize = Math.max(16, Math.min(56, Math.sqrt(Math.abs(r.net20dYi)) * 3.5 + 16));
-      const size = isFocus ? baseSize + 4 : isTop ? baseSize : Math.max(10, baseSize * 0.62);
       const dim = !isFocus && !isTop;
+      const fx = r.flowScore;
+      const py = r.priceScore ?? 0;
+      const zoneNow = compositeZone(fx, py);
+      const size = isFocus ? BASE_R + 5 : dim ? BASE_R - 4 : BASE_R;
       return {
       id: r.slug,
       name: r.title,
-      value: [
-        r.flowScore,
-        r.priceScore ?? 0,
-        size,
-        r.scoreS,
-      ],
+      value: [fx, py, size, r.scoreS],
       symbol: 'circle',
       itemStyle: {
-        ...hudSoftDiscStyle(r.zone, {
+        ...hudSoftDiscStyle(zoneNow, {
           resonance: r.resonance || isFocus,
           muted: !r.hasPrice || dim,
           focus: isFocus,
@@ -347,7 +346,7 @@ export function CompositeBubblePanel({
             <RadarHowTo />
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            中心＝普通 · 環＝遠近 · 圓點＝題材 · 色＝區 · 資料日 {asOf || '—'}
+            中心＝普通 · 環＝遠近 · 球徑固定 · 色＝所在象限 · 資料日 {asOf || '—'}
           </p>
           <p className="mt-0.5 text-[11px] text-slate-500">
             橫軸：錢相對有沒有比較多進 · 縱軸：價相對有沒有變強 · 距離環：近／中／遠／外
@@ -651,7 +650,7 @@ export function CompositeBubblePanel({
       ) : null}
 
       <p className="text-[11px] leading-relaxed text-slate-500">
-        圖上座標＝籌碼／價的相對位置（與權重無關）。光暈大小∝籌碼規模。表格 S＝排序分（0–100）。非買賣點。
+        圖上座標＝籌碼／價的相對位置（與權重無關）。球徑固定（聚焦略大）；顏色＝所在象限。表格 S＝排序分（0–100）。非買賣點。
       </p>
     </section>
   );
