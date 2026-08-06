@@ -35,20 +35,29 @@ function animMsFor(speed: number) {
   return Math.round(stepMsFor(speed) * 0.92);
 }
 
-/** 軌跡：彗星尾 T2（預設）｜淡跡｜四色｜關 */
-type TrailStyle = 'comet' | 'soft' | 'zone' | 'off';
+/** 軌跡：TD 雙重編碼（預設）｜彗星｜淡跡｜四色｜關 */
+type TrailStyle = 'dual' | 'comet' | 'soft' | 'zone' | 'off';
 
 function normalizeTrailStyle(v: string | null | undefined): TrailStyle {
-  if (v === 'zone' || v === 'off' || v === 'soft' || v === 'comet') return v;
-  // 舊 pref：sonar / soft → 新預設彗星
-  if (v === 'sonar') return 'comet';
-  return 'comet';
+  if (
+    v === 'zone' ||
+    v === 'off' ||
+    v === 'soft' ||
+    v === 'comet' ||
+    v === 'dual'
+  )
+    return v;
+  // 舊 pref → 新預設 TD
+  if (v === 'sonar') return 'dual';
+  return 'dual';
 }
 
 function trailModeOf(style: TrailStyle): HudTrailMode {
   if (style === 'zone') return 'zone';
   if (style === 'soft') return 'soft';
-  return 'comet';
+  if (style === 'comet') return 'comet';
+  if (style === 'dual') return 'dual';
+  return 'dual';
 }
 
 function fmtC100(n: number): string {
@@ -67,7 +76,7 @@ export function CompositePlayback({
   const readyRef = useRef(false);
   const [idx, setIdx] = useState(() => Math.max(0, frames.length - 1));
   const [playing, setPlaying] = useState(false);
-  const [trailStyle, setTrailStyle] = useRadarPref<TrailStyle>('play-trail-v2', 'comet');
+  const [trailStyle, setTrailStyle] = useRadarPref<TrailStyle>('play-trail-v3', 'dual');
   const [showLabels, setShowLabels] = useRadarPref('play-labels', true);
   const [speed, setSpeed] = useRadarPref<1 | 1.5 | 2>('play-speed', 1);
   const [selected, setSelected] = useState<CompositeFramePoint | null>(null);
@@ -401,7 +410,7 @@ export function CompositePlayback({
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold tracking-wide text-cyan-50">最近怎麼移動（回放）</h2>
-          <p className="text-xs text-slate-400">柔光圓平滑滑移 · 彗星尾延續 · 動畫對齊步長</p>
+          <p className="text-xs text-slate-400">柔光圓平滑滑移 · 區色＋虛實軌跡 · 尾巴漸隱</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -445,9 +454,10 @@ export function CompositePlayback({
             className="rounded-md border border-cyan-500/25 bg-slate-900 px-2 py-1 text-xs text-cyan-100"
             title="軌跡樣式"
           >
+            <option value="dual">軌跡·區色虛實</option>
             <option value="comet">軌跡·彗星</option>
             <option value="soft">軌跡·淡跡</option>
-            <option value="zone">軌跡·四色</option>
+            <option value="zone">軌跡·四色實線</option>
             <option value="off">軌跡·關</option>
           </select>
           <label className="flex items-center gap-1.5 text-xs text-slate-300">

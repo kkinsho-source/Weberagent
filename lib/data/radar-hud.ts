@@ -209,13 +209,33 @@ function resamplePolyline(line: number[][], count: number): number[][] {
   return out;
 }
 
-export type HudTrailMode = 'comet' | 'soft' | 'sonar' | 'zone';
+export type HudTrailMode = 'comet' | 'soft' | 'sonar' | 'zone' | 'dual';
+
+/** TD：同 slug 穩定虛實樣式（區色之外第二編碼） */
+export function trailDashForSlug(
+  slug: string,
+): 'solid' | 'dashed' | 'dotted' | number[] {
+  let h = 0;
+  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) >>> 0;
+  const patterns: Array<'solid' | 'dashed' | 'dotted' | number[]> = [
+    'solid',
+    'dashed',
+    'dotted',
+    [6, 3],
+    [2, 3.5],
+    [8, 2, 2, 2],
+    [4, 2, 1, 2],
+    [10, 4],
+  ];
+  return patterns[h % patterns.length]!;
+}
 
 /**
  * 回放軌跡：固定 14 段 id（merge 延續）
- * - comet (T2 預設)：頭亮尾淡、偏青白
+ * - dual (TD 預設)：區色 + slug 虛實 + 強漸隱尾巴
+ * - comet：頭亮尾淡、偏青白
  * - soft / sonar：淡跡
- * - zone：四色區色
+ * - zone：四色區色實線
  */
 export function hudFadingTrailSeries(opts: {
   slug: string;
@@ -228,8 +248,9 @@ export function hudFadingTrailSeries(opts: {
   alwaysSlots?: boolean;
 }): object[] {
   const { slug, title, line, focus, mode, zoneColor } = opts;
+  const isDual = mode === 'dual';
   const isComet = mode === 'comet';
-  const isZone = mode === 'zone';
+  const isZone = mode === 'zone' || isDual;
   const baseColor = isZone
     ? zoneColor || HUD.trail
     : isComet
@@ -239,6 +260,7 @@ export function hudFadingTrailSeries(opts: {
       : focus
         ? HUD.trailFocus
         : HUD.trail;
+  const dashType = isDual ? trailDashForSlug(slug) : ('solid' as const);
   const segs: object[] = [];
   const nSeg = TRAIL_SEG_COUNT;
 
@@ -247,13 +269,17 @@ export function hudFadingTrailSeries(opts: {
 
   for (let i = 0; i < nSeg; i++) {
     const t = (i + 1) / nSeg;
-    // 彗星：更陡的頭亮尾淡；淡跡：較平
-    const fade = isComet ? Math.pow(t, 1.65) : Math.pow(t, 1.25);
+    // dual/comet：更陡頭亮尾淡（舊段幾乎消失）；淡跡較平
+    const fade =
+      isDual || isComet ? Math.pow(t, 1.75) : Math.pow(t, 1.25);
     const has = pts.length > i + 1;
     let opacity = 0;
     let width = 0;
     if (has) {
-      if (isComet) {
+      if (isDual) {
+        opacity = focus ? 0.03 + fade * 0.9 : 0.025 + fade * 0.68;
+        width = focus ? 0.65 + fade * 2.5 : 0.5 + fade * 1.85;
+      } else if (isComet) {
         opacity = focus ? 0.04 + fade * 0.92 : 0.03 + fade * 0.62;
         width = focus ? 0.7 + fade * 2.8 : 0.55 + fade * 2.0;
       } else if (focus) {
@@ -280,50 +306,71 @@ export function hudFadingTrailSeries(opts: {
         color: baseColor,
         width,
         opacity,
-        type: 'solid' as const,
-        shadowBlur: isComet
-          ? focus && t > 0.55
-            ? 14
-            : t > 0.8
-              ? 8
-              : 0
-          : focus && t > 0.65
-            ? 12
-            : t > 0.85
-              ? 6
-              : 0,
-        shadowColor: isComet
-          ? focus && t > 0.55
-            ? 'rgba(224,242,254,0.55)'
-            : 'rgba(125,211,252,0.28)'
-          : focus && t > 0.65
-            ? 'rgba(165,243,252,0.5)'
-            : mode === 'sonar' || mode === 'soft'
-              ? 'rgba(34,211,238,0.22)'
-              : undefined,
+        type: dashType,
+        shadowBlur:
+          isDual || isComet
+            ? focus && t > 0.55
+              ? 12
+              : t > 0.82
+                ? 7
+                : 0
+            : focus && t > 0.65
+              ? 12
+              : t > 0.85
+                ? 6
+                : 0,
+        shadowColor:
+          isDual
+            ? focus && t > 0.55
+              ? hexToRgba(typeof baseColor === 'string' ? baseColor : '#7dd3fc', 0.45)
+              : hexToRgba(typeof baseColor === 'string' ? baseColor : '#7dd3fc', 0.22)
+            : isComet
+              ? focus && t > 0.55
+                ? 'rgba(224,242,254,0.55)'
+                : 'rgba(125,211,252,0.28)'
+              : focus && t > 0.65
+                ? 'rgba(165,243,252,0.5)'
+                : mode === 'sonar' || mode === 'soft'
+                  ? 'rgba(34,211,238,0.22)'
+                  : undefined,
       },
     });
   }
 
   const tip = pts.length ? pts[pts.length - 1] : line[line.length - 1];
+  const tipColor = isDual
+    ? focus
+      ? '#f8fafc'
+      : baseColor
+    : isComet
+      ? focus
+        ? '#f0fdfa'
+        : '#a5f3fc'
+      : focus
+        ? HUD.trailFocus
+        : baseColor;
   segs.push({
     type: 'scatter' as const,
     id: `trail-${slug}-tip`,
     name: title,
     data: tip ? [{ value: tip }] : [],
-    symbolSize: isComet ? (focus ? 11 : 7) : focus ? 10 : 6,
+    symbolSize: isDual || isComet ? (focus ? 11 : 7) : focus ? 10 : 6,
     silent: true,
     z: focus ? 2.5 : 1.5,
     animation: true,
     itemStyle: {
-      color: isComet ? (focus ? '#f0fdfa' : '#a5f3fc') : focus ? HUD.trailFocus : baseColor,
-      shadowBlur: isComet ? (focus ? 22 : 14) : focus ? 18 : 10,
-      shadowColor: isComet
-        ? 'rgba(207,250,254,0.9)'
-        : focus
-          ? 'rgba(165,243,252,0.85)'
-          : 'rgba(34,211,238,0.45)',
-      opacity: tip ? (focus ? 0.98 : isComet ? 0.72 : 0.55) : 0,
+      color: tipColor,
+      borderColor: isDual ? baseColor : undefined,
+      borderWidth: isDual ? 1.2 : 0,
+      shadowBlur: isDual || isComet ? (focus ? 20 : 12) : focus ? 18 : 10,
+      shadowColor: isDual
+        ? hexToRgba(typeof baseColor === 'string' ? baseColor : '#7dd3fc', 0.55)
+        : isComet
+          ? 'rgba(207,250,254,0.9)'
+          : focus
+            ? 'rgba(165,243,252,0.85)'
+            : 'rgba(34,211,238,0.45)',
+      opacity: tip ? (focus ? 0.98 : isDual || isComet ? 0.78 : 0.55) : 0,
     },
   });
 
