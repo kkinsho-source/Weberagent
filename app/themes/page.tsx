@@ -2,9 +2,9 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { getDataBundle } from '@/lib/data/source';
 import { ThemeCard } from '@/components/ui/ThemeCard';
-import { MarketTabs } from '@/components/ui/MarketTabs';
 import { ThemeScopeTabs } from '@/components/theme/ThemeScopeTabs';
 import { filterThemesByScope, parseThemeScope, type ThemeScope } from '@/lib/data/theme-scope';
+import { loadThemeComposite } from '@/lib/data/theme-radar-signals';
 
 export default async function ThemesPage({
   searchParams,
@@ -15,24 +15,26 @@ export default async function ThemesPage({
   const scope: ThemeScope = parseThemeScope(sp.scope, 'all');
   const bundle = await getDataBundle();
   const themes = filterThemesByScope(bundle.themes, scope);
+  const { bySlug } = await loadThemeComposite({
+    themes: bundle.themes,
+    stocks: bundle.stocks,
+    scope: 'all',
+  });
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">題材列表</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            依產業／題材瀏覽成分股與說明。目前顯示{' '}
-            <strong className="font-semibold text-slate-700">{themes.length}</strong> 個題材。
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
-            <Link href="/radar" className="text-brand-600 hover:underline">
-              資金雷達
-            </Link>
-            可看各題材資金與價的相對位置。
-          </p>
-        </div>
-        <MarketTabs />
+      <div>
+        <h1 className="text-xl font-bold text-slate-800">題材列表</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          依產業／題材瀏覽成分股與說明。目前顯示{' '}
+          <strong className="font-semibold text-slate-700">{themes.length}</strong> 個題材。
+        </p>
+        <p className="mt-1 text-xs text-slate-400">
+          <Link href="/radar" className="text-brand-600 hover:underline">
+            資金雷達
+          </Link>
+          可看各題材資金與價的相對位置。
+        </p>
       </div>
 
       <div>
@@ -52,7 +54,7 @@ export default async function ThemesPage({
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {themes.map((t) => (
-            <ThemeCard key={t.slug} theme={t} />
+            <ThemeCard key={t.slug} theme={t} signal={bySlug.get(t.slug)} />
           ))}
         </div>
       )}

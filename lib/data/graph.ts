@@ -55,7 +55,11 @@ export function toFlowEdges(edgeList: SupplyEdge[] = defaultEdges): Edge[] {
       target: e.to,
       type: 'smoothstep',
       animated: !isCompetitor,
-      label: isCompetitor ? '競品' : '供貨',
+      label: undefined,
+      data: {
+        relation: e.relation,
+        relationLabel: isCompetitor ? '競品' : '供貨',
+      },
       labelStyle: { fontSize: 10, fill: isCompetitor ? '#f59e0b' : '#94a3b8' },
       style: {
         stroke: isCompetitor ? '#fbbf24' : '#cbd5e1',

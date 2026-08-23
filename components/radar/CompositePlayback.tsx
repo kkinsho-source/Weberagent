@@ -653,11 +653,11 @@ export function CompositePlayback({
                 <span className="font-semibold">{liveSelected.scoreS.toFixed(1)}</span>
               </li>
               <li className="flex justify-between">
-                <span className="text-slate-500">籌碼 C100</span>
+                <span className="text-slate-500">籌碼位置</span>
                 <span>{fmtC100(liveSelected.flowScore)}</span>
               </li>
               <li className="flex justify-between">
-                <span className="text-slate-500">短動能 C100</span>
+                <span className="text-slate-500">短動能</span>
                 <span>{fmtC100(liveSelected.priceScore)}</span>
               </li>
               <li className="flex justify-between">

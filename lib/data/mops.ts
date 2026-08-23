@@ -6,6 +6,31 @@ import 'server-only';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getSupabaseServerClient, isSupabaseConfigured } from '@/lib/supabase/server';
+import coreUniverse from './core_universe.json';
+
+function coreSymbolSet(): Set<string> {
+  return new Set(
+    (coreUniverse.stocks as Array<{ symbol: string }>).map((s) => s.symbol),
+  );
+}
+
+function refineItems(items: MopsAnnouncement[], q: MopsQuery): MopsAnnouncement[] {
+  let out = items;
+  if (q.coreOnly) {
+    const core = coreSymbolSet();
+    out = out.filter((x) => core.has(x.symbol));
+  }
+  if (q.dedupeSymbol) {
+    const seen = new Set<string>();
+    out = out.filter((x) => {
+      if (seen.has(x.symbol)) return false;
+      seen.add(x.symbol);
+      return true;
+    });
+  }
+  const limit = q.limit ?? 50;
+  return out.slice(0, limit);
+}
 
 export type MopsAnnouncement = {
   id?: string;
@@ -27,6 +52,10 @@ export type MopsQuery = {
   to?: string;
   limit?: number;
   q?: string; // keyword in title/content
+  /** 只保留 core_universe 成分 */
+  coreOnly?: boolean;
+  /** 同代號只留最新一則 */
+  dedupeSymbol?: boolean;
 };
 
 type SnapshotItem = {
@@ -87,8 +116,7 @@ function filterLocal(items: MopsAnnouncement[], q: MopsQuery): MopsAnnouncement[
     if (d !== 0) return d;
     return (b.speakTime || '').localeCompare(a.speakTime || '');
   });
-  const limit = q.limit ?? 50;
-  return out.slice(0, limit);
+  return refineItems(out, q);
 }
 
 export async function fetchMopsAnnouncements(query: MopsQuery = {}): Promise<{
@@ -96,9 +124,11 @@ export async function fetchMopsAnnouncements(query: MopsQuery = {}): Promise<{
   dataSource: 'supabase' | 'snapshot' | 'openapi+supabase' | 'openapi';
   totalHint?: number;
 }> {
-  const limit = query.limit ?? 50;
+  const want = query.limit ?? 50;
+  const fetchLimit = query.coreOnly || query.dedupeSymbol ? Math.max(want * 20, 200) : want;
   let items: MopsAnnouncement[] = [];
   let dataSource: 'supabase' | 'snapshot' | 'openapi+supabase' | 'openapi' = 'snapshot';
+  const core = query.coreOnly ? [...coreSymbolSet()] : null;
 
   if (isSupabaseConfigured()) {
     try {
@@ -111,9 +141,10 @@ export async function fetchMopsAnnouncements(query: MopsQuery = {}): Promise<{
           )
           .order('speak_date', { ascending: false })
           .order('speak_time', { ascending: false })
-          .limit(limit);
+          .limit(fetchLimit);
 
         if (query.symbol) q = q.eq('symbol', query.symbol);
+        if (core && !query.symbol) q = q.in('symbol', core);
         if (query.from) q = q.gte('speak_date', query.from);
         if (query.to) q = q.lte('speak_date', query.to);
         if (query.q) {
@@ -146,9 +177,9 @@ export async function fetchMopsAnnouncements(query: MopsQuery = {}): Promise<{
   }
 
   // N3：若 DB 偏少，補證交所 OpenAPI 當日重大訊息
-  if (items.length < 5) {
+  if (items.length < (query.coreOnly ? 3 : 5)) {
     try {
-      const openItems = await fetchTwseOpenApiMops(query.symbol, limit);
+      const openItems = await fetchTwseOpenApiMops(query.symbol, fetchLimit, core);
       if (openItems.length) {
         const seen = new Set(items.map((x) => `${x.symbol}|${x.speakDate}|${x.title}`));
         for (const it of openItems) {
@@ -162,7 +193,7 @@ export async function fetchMopsAnnouncements(query: MopsQuery = {}): Promise<{
           if (d !== 0) return d;
           return (b.speakTime || '').localeCompare(a.speakTime || '');
         });
-        items = items.slice(0, limit);
+        items = items.slice(0, fetchLimit);
         dataSource = dataSource === 'supabase' ? 'openapi+supabase' : 'openapi';
       }
     } catch (e) {
@@ -171,7 +202,7 @@ export async function fetchMopsAnnouncements(query: MopsQuery = {}): Promise<{
   }
 
   if (items.length) {
-    return { dataSource, items };
+    return { dataSource, items: refineItems(items, query) };
   }
 
   const local = filterLocal(loadSnapshotItems().map(mapSnapshot), query);
@@ -185,7 +216,8 @@ export async function fetchMopsAnnouncements(query: MopsQuery = {}): Promise<{
 /** 證交所 OpenAPI 每日重大訊息 t187ap04_L */
 async function fetchTwseOpenApiMops(
   symbol: string | undefined,
-  limit: number
+  limit: number,
+  coreSymbols?: string[] | null,
 ): Promise<MopsAnnouncement[]> {
   const res = await fetch('https://openapi.twse.com.tw/v1/opendata/t187ap04_L', {
     headers: { Accept: 'application/json', 'User-Agent': 'weberagent/0.8' },
@@ -197,6 +229,7 @@ async function fetchTwseOpenApiMops(
   for (const r of rows) {
     const sym = (r['公司代號'] || '').trim();
     if (symbol && sym !== symbol) continue;
+    if (coreSymbols && !coreSymbols.includes(sym)) continue;
     const speak = (r['發言日期'] || r['發言日期時間'] || '').trim();
     // 可能格式 115/07/16 或 1150716
     let speakDate = speak.slice(0, 10).replace(/\//g, '-');

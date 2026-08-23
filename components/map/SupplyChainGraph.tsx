@@ -19,6 +19,18 @@ import { themeColor } from '@/lib/data/theme-colors';
 
 const nodeTypes = { stock: StockNode };
 
+function edgeRelationLabel(e: Edge): string {
+  const data = e.data as { relation?: string; relationLabel?: string } | undefined;
+  if (data?.relationLabel) return data.relationLabel;
+  if (data?.relation === 'competitor') return '競品';
+  const lab = String((e as Edge & { label?: string }).label || '');
+  return lab || '供貨';
+}
+
+function isPeerEdge(e: Edge): boolean {
+  return edgeRelationLabel(e) === '競品';
+}
+
 /** S1 產業層級（依 themeSlug 粗分） */
 const LAYER_HINTS: Array<{ key: string; label: string; match: (slug?: string) => boolean }> = [
   {
@@ -149,13 +161,13 @@ function GraphInner({ nodes, edges, title }: Props) {
     const down: string[] = [];
     const peers: string[] = [];
     filteredEdges.forEach((e) => {
-      const label = String((e as Edge & { label?: string }).label || '');
+      const peer = isPeerEdge(e);
       if (e.target === selected) {
-        if (label === '競品') peers.push(e.source);
+        if (peer) peers.push(e.source);
         else up.push(e.source);
       }
       if (e.source === selected) {
-        if (label === '競品') peers.push(e.target);
+        if (peer) peers.push(e.target);
         else down.push(e.target);
       }
     });
@@ -164,19 +176,15 @@ function GraphInner({ nodes, edges, title }: Props) {
 
   const baseEdges = useMemo(() => {
     return filteredEdges.map((e) => {
-      const label = String((e as Edge & { label?: string }).label || '');
-      const isPeer = label === '競品';
+      const isPeer = isPeerEdge(e);
       return {
         ...e,
-        label: isPeer ? '競品' : label || '供貨',
+        label: undefined,
         style: {
           stroke: isPeer ? '#f59e0b' : '#94a3b8',
           strokeWidth: isPeer ? 1.5 : 2.2,
           strokeDasharray: isPeer ? '6 4' : undefined,
         },
-        labelStyle: { fill: '#64748b', fontSize: 10 },
-        labelBgStyle: { fill: '#fff', fillOpacity: 0.9 },
-        labelBgPadding: [4, 2] as [number, number],
       };
     });
   }, [filteredEdges]);
@@ -202,9 +210,16 @@ function GraphInner({ nodes, edges, title }: Props) {
     const se = baseEdges.map((e) => {
       const hit = selected && (e.source === selected || e.target === selected);
       const hovered = hoverEdge === e.id;
-      const isPeer = String((e as Edge & { label?: string }).label) === '競品';
+      const isPeer = isPeerEdge(e);
+      const showLabel = hovered || Boolean(hit);
       return {
         ...e,
+        label: showLabel ? edgeRelationLabel(e) : undefined,
+        labelStyle: showLabel
+          ? { fill: isPeer ? '#b45309' : '#64748b', fontSize: 10 }
+          : undefined,
+        labelBgStyle: showLabel ? { fill: '#fff', fillOpacity: 0.92 } : undefined,
+        labelBgPadding: showLabel ? ([4, 2] as [number, number]) : undefined,
         animated: Boolean(hit && !isPeer),
         style: {
           ...(e.style as object),
@@ -284,7 +299,7 @@ function GraphInner({ nodes, edges, title }: Props) {
           {(() => {
             const e = styledEdges.find((x) => x.id === hoverEdge);
             if (!e) return '';
-            const lab = String((e as Edge & { label?: string }).label || '關係');
+            const lab = e ? edgeRelationLabel(e) : '關係';
             return `${nameOf(e.source)} → ${nameOf(e.target)}（${lab}）`;
           })()}
         </div>

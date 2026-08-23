@@ -24,7 +24,6 @@ export function MopsAnnouncementsPanel({
   const [symbol, setSymbol] = useState(initialSymbol);
   const [q, setQ] = useState('');
   const [items, setItems] = useState<Item[]>([]);
-  const [dataSource, setDataSource] = useState('…');
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -38,12 +37,15 @@ export function MopsAnnouncementsPanel({
         const params = new URLSearchParams();
         if (symbol.trim()) params.set('symbol', symbol.trim());
         if (q.trim()) params.set('q', q.trim());
-        params.set('limit', compact ? '8' : '40');
+        params.set('limit', compact ? '3' : '40');
+        if (compact) {
+          params.set('coreOnly', '1');
+          params.set('dedupe', '1');
+        }
         const res = await fetch(`/api/v1/mops?${params.toString()}`);
         const json = await res.json();
         if (cancelled) return;
         setItems(json.items ?? []);
-        setDataSource(json.dataSource ?? 'unknown');
       } catch (e) {
         if (!cancelled) setErr(e instanceof Error ? e.message : String(e));
       } finally {
@@ -77,27 +79,22 @@ export function MopsAnnouncementsPanel({
               className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
             />
           </div>
-          <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-500">
-            source: {dataSource}
+          <span className="text-xs text-slate-400">
+            {items.length ? `${items.length} 則` : ''}
           </span>
-        </div>
-      )}
-
-      {compact && (
-        <div className="flex items-center justify-between text-xs text-slate-400">
-          <span>重大訊息</span>
-          <span>source: {dataSource}</span>
         </div>
       )}
 
       {loading && <p className="text-sm text-slate-400">載入中…</p>}
       {err && <p className="text-sm text-red-600">{err}</p>}
 
-      {!loading && items.length === 0 && (
+      {!loading && items.length === 0 && !err && (
         <div className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
-          {symbol.trim()
-            ? `目前資料庫尚無 ${symbol.trim()} 的官方公告（可能尚未被 ETL 收錄）。下方「相關新聞」仍可能有外鏈。`
-            : '尚無公告資料。'}
+          {compact
+            ? '核心股池近日無公告。'
+            : symbol.trim()
+              ? `目前資料庫尚無 ${symbol.trim()} 的官方公告（可能尚未被 ETL 收錄）。下方「相關新聞」仍可能有外鏈。`
+              : '尚無公告資料。'}
         </div>
       )}
 
@@ -144,14 +141,6 @@ export function MopsAnnouncementsPanel({
           );
         })}
       </ul>
-
-      {compact && (
-        <div className="text-right">
-          <Link href="/announcements" className="text-xs text-brand-600 hover:underline">
-            查看全部重大訊息 →
-          </Link>
-        </div>
-      )}
     </section>
   );
 }

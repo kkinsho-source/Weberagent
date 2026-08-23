@@ -426,7 +426,7 @@ export function buildStaticGuide(rows: CompositeRow[]): string {
   const resTxt = res.length
     ? `共振★：${res.map((r) => r.title).join('、')}`
     : '';
-  return `${hotTxt}${resTxt ? `；${resTxt}` : ''}。中心 (0,0)＝普通（C100）；越右上越像「錢有進、價也相對強」。`;
+  return `${hotTxt}${resTxt ? `；${resTxt}` : ''}。中心＝普通；越右上越像「錢有進、價也相對強」。`;
 }
 
 export function parseWeightMode(raw: string | null | undefined): CompositeWeightMode {

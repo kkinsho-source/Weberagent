@@ -11,7 +11,13 @@ type Row = {
   themeSlug?: string;
 };
 
-export function StockSearch({ onNavigate }: { onNavigate?: () => void }) {
+export function StockSearch({
+  onNavigate,
+  tone = 'light',
+}: {
+  onNavigate?: () => void;
+  tone?: 'light' | 'dark';
+}) {
   const router = useRouter();
   const [q, setQ] = useState('');
   const [rows, setRows] = useState<Row[]>([]);
@@ -75,10 +81,20 @@ export function StockSearch({ onNavigate }: { onNavigate?: () => void }) {
         }}
         onFocus={() => setOpen(true)}
         placeholder={loading ? '載入股池…' : '搜尋代號 / 名稱'}
-        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-brand-400 focus:bg-white"
+        className={
+          tone === 'dark'
+            ? 'w-full rounded-lg border border-cyan-500/20 bg-slate-900/70 px-3 py-1.5 text-sm text-cyan-50 outline-none placeholder:text-slate-500 focus:border-cyan-400/50 focus:bg-slate-900'
+            : 'w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-brand-400 focus:bg-white'
+        }
       />
       {open && q.trim() && (
-        <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+        <div
+          className={`absolute left-0 right-0 top-full z-30 mt-1 max-h-64 overflow-auto rounded-lg border shadow-lg ${
+            tone === 'dark'
+              ? 'border-cyan-500/20 bg-[#0b1220]'
+              : 'border-slate-200 bg-white'
+          }`}
+        >
           {hits.length === 0 ? (
             <div className="px-3 py-2 text-xs text-slate-400">無符合結果</div>
           ) : (
@@ -86,11 +102,15 @@ export function StockSearch({ onNavigate }: { onNavigate?: () => void }) {
               <button
                 key={r.symbol}
                 type="button"
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
+                className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm ${
+                  tone === 'dark' ? 'hover:bg-white/5' : 'hover:bg-slate-50'
+                }`}
                 onClick={() => go(r.symbol)}
               >
                 <span>
-                  <span className="font-medium text-slate-800">{r.name}</span>
+                  <span className={`font-medium ${tone === 'dark' ? 'text-cyan-50' : 'text-slate-800'}`}>
+                    {r.name}
+                  </span>
                   <span className="ml-2 text-xs text-slate-400">{r.symbol}</span>
                 </span>
                 <span className="text-xs tabular-nums text-slate-500">

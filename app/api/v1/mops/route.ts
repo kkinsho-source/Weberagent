@@ -13,8 +13,18 @@ export async function GET(req: Request) {
   const to = searchParams.get('to') ?? undefined;
   const q = searchParams.get('q') ?? undefined;
   const limit = Math.min(Number(searchParams.get('limit') || 50), 200);
+  const coreOnly = searchParams.get('coreOnly') === '1';
+  const dedupeSymbol = searchParams.get('dedupe') === '1';
 
-  const result = await fetchMopsAnnouncements({ symbol, from, to, q, limit });
+  const result = await fetchMopsAnnouncements({
+    symbol,
+    from,
+    to,
+    q,
+    limit,
+    coreOnly,
+    dedupeSymbol,
+  });
   return NextResponse.json({
     items: result.items,
     dataSource: result.dataSource,

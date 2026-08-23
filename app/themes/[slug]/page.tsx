@@ -4,10 +4,9 @@ import { getDataBundle } from '@/lib/data/source';
 import { subgraphFor } from '@/lib/data/graph';
 import { MapView } from '@/components/map/MapView';
 import { ThemeStockTable } from '@/components/theme/ThemeStockTable';
-import { buildThemeFlow } from '@/lib/data/theme-flow';
-import { buildThemeRs } from '@/lib/data/theme-rs';
-import { buildCompositeRows, ZONE_META } from '@/lib/data/theme-composite';
+import { ZONE_META } from '@/lib/data/theme-composite';
 import { ThemeRadarContext } from '@/components/theme/ThemeRadarContext';
+import { loadThemeComposite } from '@/lib/data/theme-radar-signals';
 
 export default async function ThemeDetailPage({
   params,
@@ -32,17 +31,12 @@ export default async function ThemeDetailPage({
     bundle.supplyEdges,
   );
 
-  // B/D：題材在資金雷達的位置（全市場 scope 對齊雷達預設）
-  const flowOpts = {
+  // B/D：題材在資金雷達的位置（asOf 與 /radar 同一條 flow 日）
+  const { composite, asOf } = await loadThemeComposite({
     themes: bundle.themes,
     stocks: bundle.stocks,
-    scope: 'all' as const,
-  };
-  const [{ rows: flowRows }, rsBundle] = await Promise.all([
-    buildThemeFlow(flowOpts),
-    buildThemeRs(flowOpts),
-  ]);
-  const composite = buildCompositeRows(flowRows, rsBundle.rows, 'balanced');
+    scope: 'all',
+  });
   const mine = composite.find((r) => r.slug === slug) || null;
   const rank =
     mine != null
@@ -76,7 +70,7 @@ export default async function ThemeDetailPage({
         </p>
         <div className="mt-2 text-xs text-slate-400">
           成分 {stocks.length} 家
-          {theme.verifiedAt ? ` · 更新 ${theme.verifiedAt}` : ''}
+          {theme.verifiedAt ? ` · 說明核對日 ${theme.verifiedAt}` : ''}
         </div>
       </div>
 
@@ -93,7 +87,7 @@ export default async function ThemeDetailPage({
           resonance={mine.resonance}
           rank={rank}
           total={composite.length}
-          asOf={rsBundle.meta.asOf || flowRows[0]?.asOf || null}
+          asOf={asOf}
         />
       ) : null}
 
