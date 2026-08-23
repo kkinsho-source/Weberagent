@@ -21,8 +21,9 @@ interface Props {
   nodes: Node<StockNodeData>[];
   edges: Edge[];
   title?: string;
+  defaultLayer?: string | 'all';
 }
 
-export function MapView({ nodes, edges, title }: Props) {
-  return <SupplyChainGraph nodes={nodes} edges={edges} title={title} />;
+export function MapView({ nodes, edges, title, defaultLayer }: Props) {
+  return <SupplyChainGraph nodes={nodes} edges={edges} title={title} defaultLayer={defaultLayer} />;
 }

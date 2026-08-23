@@ -41,7 +41,7 @@ export default async function StockPage({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="text-sm tabular-nums text-slate-400">{stock.symbol}</div>
-          <h1 className="text-2xl font-bold text-slate-800">{stock.name}</h1>
+          <h1 className="font-cyber text-2xl font-bold text-slate-800">{stock.name}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
             {stock.industry ? <span>{stock.industry}</span> : null}
             {theme ? (

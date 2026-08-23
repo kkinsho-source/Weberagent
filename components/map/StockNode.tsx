@@ -10,8 +10,8 @@ export function StockNode({ data, selected }: NodeProps) {
   const accent = themeColor(stock.themeSlug || '');
   return (
     <div
-      className={`rounded-lg border bg-white px-2.5 py-1.5 text-[11px] shadow-sm transition sm:px-3 sm:py-2 sm:text-xs ${
-        selected ? 'ring-2 ring-brand-200' : ''
+      className={`stock-node-mp2 rounded-2xl border bg-white px-2.5 py-1.5 text-[11px] shadow-sm transition sm:px-3 sm:py-2 sm:text-xs ${
+        selected ? 'ring-2 ring-fuchsia-300' : ''
       }`}
       style={{
         minWidth: 108,

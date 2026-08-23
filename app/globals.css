@@ -4,35 +4,101 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --primary: 243 75% 59%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --background: 288 40% 6%;
+    --foreground: 300 40% 96%;
+    --card: 288 32% 10%;
+    --card-foreground: 300 40% 96%;
+    --primary: 292 84% 60%;
+    --primary-foreground: 300 40% 8%;
+    --secondary: 288 24% 14%;
+    --secondary-foreground: 300 30% 92%;
+    --muted: 288 20% 16%;
+    --muted-foreground: 280 15% 70%;
+    --accent: 292 84% 60%;
+    --accent-foreground: 300 40% 8%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 243 75% 59%;
+    --border: 292 30% 28%;
+    --input: 292 30% 28%;
+    --ring: 292 84% 60%;
+    --nc-bg: #120814;
+    --nc-panel: #1a1024;
+    --nc-ink: #fce7f3;
+    --nc-muted: #c4b5d4;
+    --nc-accent: #e879f9;
+    --nc-cyan: #22d3ee;
   }
 }
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
+}
+
+html.nightcity {
+  background: var(--nc-bg);
 }
 
 body {
   -webkit-font-smoothing: antialiased;
+  background: var(--nc-bg);
+  color: var(--nc-ink);
 }
 
-/* 手機 tabs / 地圖輔助：隱藏捲軸但可滑動 */
+.font-cyber {
+  font-family: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+}
+
+/* HE3 / MO3 / SC2 裝飾層 */
+.cyber-scan,
+.cyber-breathe {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+.cyber-scan {
+  opacity: 0.28;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 3px,
+    rgba(0, 0, 0, 0.35) 3px 4px
+  );
+}
+.cyber-breathe {
+  opacity: 0.55;
+  background: radial-gradient(ellipse at 50% -10%, rgba(232, 121, 249, 0.28), transparent 55%);
+  animation: ncBreathe 4.8s ease-in-out infinite;
+}
+@keyframes ncBreathe {
+  0%,
+  100% { opacity: 0.28; }
+  50% { opacity: 0.7; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cyber-breathe { animation: none; }
+}
+
+/* SP2：把既有淺色工具類壓成夜城，避免漏頁 */
+html.nightcity .bg-white { background-color: #1a1024 !important; }
+html.nightcity .bg-slate-50 { background-color: #120814 !important; }
+html.nightcity .bg-slate-50\/60,
+html.nightcity .bg-slate-50\/70 { background-color: rgba(26, 16, 36, 0.7) !important; }
+html.nightcity .bg-slate-100 { background-color: #24162f !important; }
+html.nightcity .text-slate-800,
+html.nightcity .text-slate-900 { color: #fce7f3 !important; }
+html.nightcity .text-slate-700 { color: #f5d0fe !important; }
+html.nightcity .text-slate-600 { color: #e9d5ff !important; }
+html.nightcity .text-slate-500 { color: #c4b5d4 !important; }
+html.nightcity .border-slate-200,
+html.nightcity .border-slate-100,
+html.nightcity .border-slate-300 { border-color: rgba(232, 121, 249, 0.28) !important; }
+html.nightcity .stock-node-mp2 {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+html.nightcity .stock-node-mp2 .text-slate-800 { color: #0f172a !important; }
+html.nightcity .stock-node-mp2 .text-slate-400 { color: #64748b !important; }
+
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -41,7 +107,6 @@ body {
   display: none;
 }
 
-/* React Flow 手機觸控：避免父層搶手勢 */
 .react-flow {
   -webkit-user-select: none;
   user-select: none;

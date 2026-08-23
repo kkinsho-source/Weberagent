@@ -139,49 +139,45 @@ export const ZONE_META: Record<
     badgeBg: string;
   }
 > = {
-  // 右上：熱 — 玫瑰紅
   hot: {
     label: '熱區',
     blurb: '籌偏強 × 價偏強',
     corner: '右上',
-    area: 'rgba(244, 63, 94, 0.12)',
-    bubble: '#f43f5e',
-    border: '#9f1239',
-    text: '#9f1239',
-    badgeBg: 'bg-rose-100 text-rose-800',
+    area: 'rgba(232, 121, 249, 0.18)',
+    bubble: '#e879f9',
+    border: '#c026d3',
+    text: '#f5d0fe',
+    badgeBg: 'bg-fuchsia-500/20 text-fuchsia-200',
   },
-  // 左上：觀察 — 琥珀金
   watch: {
     label: '觀察',
     blurb: '價偏強、籌未明顯',
     corner: '左上',
-    area: 'rgba(245, 158, 11, 0.14)',
-    bubble: '#f59e0b',
-    border: '#b45309',
-    text: '#b45309',
-    badgeBg: 'bg-amber-100 text-amber-900',
+    area: 'rgba(34, 211, 238, 0.16)',
+    bubble: '#22d3ee',
+    border: '#0891b2',
+    text: '#a5f3fc',
+    badgeBg: 'bg-cyan-500/20 text-cyan-200',
   },
-  // 右下：降溫 — 紫色
   cool: {
     label: '降溫',
     blurb: '籌仍偏、價偏弱',
     corner: '右下',
-    area: 'rgba(139, 92, 246, 0.12)',
-    bubble: '#8b5cf6',
-    border: '#6d28d9',
-    text: '#6d28d9',
-    badgeBg: 'bg-violet-100 text-violet-800',
+    area: 'rgba(232, 121, 249, 0.10)',
+    bubble: '#d946ef',
+    border: '#a21caf',
+    text: '#f0abfc',
+    badgeBg: 'bg-fuchsia-500/15 text-fuchsia-300',
   },
-  // 左下：冷 — 石板灰藍
   cold: {
     label: '冷區',
     blurb: '籌弱 × 價弱',
     corner: '左下',
-    area: 'rgba(100, 116, 139, 0.14)',
+    area: 'rgba(100, 116, 139, 0.18)',
     bubble: '#64748b',
     border: '#334155',
-    text: '#334155',
-    badgeBg: 'bg-slate-200 text-slate-700',
+    text: '#cbd5e1',
+    badgeBg: 'bg-slate-500/20 text-slate-200',
   },
 };
 

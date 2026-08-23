@@ -34,6 +34,15 @@ function isPeerEdge(e: Edge): boolean {
 /** S1 產業層級（依 themeSlug 粗分） */
 const LAYER_HINTS: Array<{ key: string; label: string; match: (slug?: string) => boolean }> = [
   {
+    key: 'compact',
+    label: '精簡',
+    match: (s) =>
+      s === 'foundry' ||
+      s === 'ai_server' ||
+      s === 'advanced_packaging' ||
+      s === 'ic_design_asic',
+  },
+  {
     key: 'mat',
     label: '材料/設備',
     match: (s) =>
@@ -66,6 +75,7 @@ interface Props {
   nodes: Node<StockNodeData>[];
   edges: Edge[];
   title?: string;
+  defaultLayer?: string | 'all';
 }
 
 function ZoomToolbar() {
@@ -111,13 +121,13 @@ function FitOnMount({ nodeCount }: { nodeCount: number }) {
   return null;
 }
 
-function GraphInner({ nodes, edges, title }: Props) {
+function GraphInner({ nodes, edges, title, defaultLayer = 'all' }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [hoverEdge, setHoverEdge] = useState<string | null>(null);
-  const [layerFilter, setLayerFilter] = useState<string | 'all'>('all');
+  const [layerFilter, setLayerFilter] = useState<string | 'all'>(defaultLayer);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 640px)');
@@ -249,7 +259,7 @@ function GraphInner({ nodes, edges, title }: Props) {
 
   const mapBox = (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white ${
+      className={`relative overflow-hidden rounded-3xl border border-fuchsia-400/25 bg-[#1a1024] ${
         fullscreen
           ? 'fixed inset-0 z-50 h-full w-full rounded-none border-0'
           : 'h-[min(70vh,560px)] min-h-[300px] w-full sm:h-[480px] sm:min-h-[480px] lg:flex-1'
@@ -330,7 +340,7 @@ function GraphInner({ nodes, edges, title }: Props) {
         preventScrolling
         defaultEdgeOptions={{ type: 'smoothstep' }}
       >
-        <Background color="#e2e8f0" gap={isMobile ? 20 : 16} size={1} />
+        <Background color="rgba(232,121,249,0.28)" gap={isMobile ? 20 : 16} size={1} />
         <Controls
           showInteractive={false}
           position="bottom-right"

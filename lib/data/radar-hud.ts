@@ -12,29 +12,29 @@ import {
 } from '@/lib/data/theme-composite';
 
 export const HUD = {
-  bg: '#070b14',
-  panel: '#0b1220',
-  grid: 'rgba(56, 189, 248, 0.08)',
-  axis: 'rgba(148, 163, 184, 0.85)',
-  axisName: 'rgba(186, 230, 253, 0.9)',
-  cross: 'rgba(125, 211, 252, 0.9)',
-  crossCore: '#7dd3fc',
-  ring: 'rgba(34, 211, 238, 0.28)',
-  ringLabel: 'rgba(103, 232, 249, 0.75)',
-  trail: 'rgba(34, 211, 238, 0.55)',
-  trailFocus: 'rgba(165, 243, 252, 0.9)',
-  text: '#e2e8f0',
-  textMuted: '#94a3b8',
-  tooltipBg: 'rgba(15, 23, 42, 0.94)',
-  tooltipBorder: 'rgba(56, 189, 248, 0.35)',
+  bg: '#120814',
+  panel: '#1a1024',
+  grid: 'rgba(232, 121, 249, 0.16)',
+  axis: 'rgba(252, 231, 243, 0.75)',
+  axisName: 'rgba(240, 171, 252, 0.95)',
+  cross: 'rgba(232, 121, 249, 0.9)',
+  crossCore: '#e879f9',
+  ring: 'rgba(232, 121, 249, 0.32)',
+  ringLabel: 'rgba(240, 171, 252, 0.8)',
+  trail: 'rgba(232, 121, 249, 0.55)',
+  trailFocus: 'rgba(34, 211, 238, 0.9)',
+  text: '#fce7f3',
+  textMuted: '#c4b5d4',
+  tooltipBg: 'rgba(18, 8, 20, 0.94)',
+  tooltipBorder: 'rgba(232, 121, 249, 0.45)',
 } as const;
 
-/** 柔霧象限（③：比硬色塊更淡，讓環／點透出來） */
+/** 柔霧象限（夜城雙色：熱/降溫洋紅、觀察青） */
 export const HUD_ZONE_AREA: Record<CompositeZone, string> = {
-  hot: 'rgba(244, 63, 94, 0.08)',
-  watch: 'rgba(251, 191, 36, 0.07)',
-  cool: 'rgba(167, 139, 250, 0.07)',
-  cold: 'rgba(71, 85, 105, 0.12)',
+  hot: 'rgba(232, 121, 249, 0.16)',
+  watch: 'rgba(34, 211, 238, 0.12)',
+  cool: 'rgba(217, 70, 239, 0.10)',
+  cold: 'rgba(71, 85, 105, 0.16)',
 };
 
 export function hudZoneMarkAreaData() {

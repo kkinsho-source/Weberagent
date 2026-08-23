@@ -23,7 +23,6 @@ function isActive(pathname: string, href: string): boolean {
 export function Header() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname() || '/';
-  const dark = pathname === '/radar' || pathname.startsWith('/radar/');
 
   useEffect(() => {
     if (!open) return;
@@ -39,34 +38,20 @@ export function Header() {
   }, [pathname]);
 
   return (
-    <header
-      className={`sticky top-0 z-20 border-b backdrop-blur ${
-        dark
-          ? 'border-cyan-500/15 bg-[#05070d]/90 text-slate-200'
-          : 'border-slate-200 bg-white/90 text-slate-800'
-      }`}
-    >
+    <header className="sticky top-0 z-50 border-b border-fuchsia-400/25 bg-[#120814]/85 text-fuchsia-50 shadow-[0_0_28px_rgba(232,121,249,0.22)] backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-2.5 sm:gap-3 sm:py-3">
         <Link href="/" className="flex min-w-0 shrink items-center gap-2">
           <span className="shrink-0 text-xl">🧭</span>
-          <span
-            className={`hidden truncate text-base font-bold sm:inline sm:text-lg ${
-              dark ? 'text-cyan-50' : 'text-slate-800'
-            }`}
-          >
+          <span className="hidden truncate font-cyber text-base font-bold text-fuchsia-100 sm:inline sm:text-lg">
             {SITE_NAME}
           </span>
         </Link>
 
         <div className="min-w-0 flex-1">
-          <StockSearch tone={dark ? 'dark' : 'light'} />
+          <StockSearch tone="dark" />
         </div>
 
-        <nav
-          className={`ml-1 hidden items-center gap-4 text-sm lg:flex ${
-            dark ? 'text-slate-400' : 'text-slate-600'
-          }`}
-        >
+        <nav className="ml-1 hidden items-center gap-4 font-cyber text-xs text-fuchsia-200/70 lg:flex">
           {links.map((l) => {
             const active = isActive(pathname, l.href);
             return (
@@ -76,12 +61,8 @@ export function Header() {
                 aria-current={active ? 'page' : undefined}
                 className={
                   active
-                    ? dark
-                      ? 'font-semibold text-cyan-200'
-                      : 'font-semibold text-brand-700'
-                    : dark
-                      ? 'hover:text-cyan-200'
-                      : 'hover:text-brand-600'
+                    ? 'font-semibold text-fuchsia-200'
+                    : 'hover:text-fuchsia-100'
                 }
               >
                 {l.label}
@@ -91,9 +72,7 @@ export function Header() {
           <AuthNav />
           <Link
             href="/pricing"
-            className={`rounded-lg px-3 py-1.5 font-medium text-white ${
-              dark ? 'bg-cyan-700 hover:bg-cyan-600' : 'bg-brand-600 hover:bg-brand-700'
-            }`}
+            className="rounded-2xl bg-fuchsia-500 px-3 py-1.5 font-medium text-[#120814] shadow-[0_0_18px_rgba(232,121,249,0.55)] hover:bg-fuchsia-400"
           >
             升級
           </Link>
@@ -101,11 +80,7 @@ export function Header() {
 
         <button
           type="button"
-          className={`shrink-0 rounded-md border px-2.5 py-1.5 text-sm lg:hidden ${
-            dark
-              ? 'border-cyan-500/25 text-cyan-100'
-              : 'border-slate-200 text-slate-700'
-          }`}
+          className="shrink-0 rounded-2xl border border-fuchsia-400/30 px-2.5 py-1.5 text-sm text-fuchsia-100 lg:hidden"
           aria-expanded={open}
           aria-label="選單"
           onClick={() => setOpen((v) => !v)}
@@ -115,26 +90,18 @@ export function Header() {
       </div>
 
       {open && (
-        <div
-          className={`border-t px-4 py-3 lg:hidden ${
-            dark ? 'border-cyan-500/10 bg-[#05070d]' : 'border-slate-100 bg-white'
-          }`}
-        >
-          <div className={`flex flex-col gap-2 text-sm ${dark ? 'text-slate-200' : 'text-slate-700'}`}>
+        <div className="border-t border-fuchsia-400/15 bg-[#120814] px-4 py-3 lg:hidden">
+          <div className="flex flex-col gap-2 font-cyber text-sm text-fuchsia-100">
             {links.map((l) => {
               const active = isActive(pathname, l.href);
               return (
                 <Link
                   key={l.href}
                   href={l.href}
-                  className={`rounded-md px-2 py-2 ${
+                  className={`rounded-2xl px-2 py-2 ${
                     active
-                      ? dark
-                        ? 'bg-cyan-500/10 font-semibold text-cyan-100'
-                        : 'bg-brand-50 font-semibold text-brand-700'
-                      : dark
-                        ? 'hover:bg-white/5'
-                        : 'hover:bg-slate-50'
+                      ? 'bg-fuchsia-500/15 font-semibold text-fuchsia-100'
+                      : 'hover:bg-white/5'
                   }`}
                   aria-current={active ? 'page' : undefined}
                   onClick={() => setOpen(false)}
@@ -148,9 +115,7 @@ export function Header() {
             </div>
             <Link
               href="/pricing"
-              className={`rounded-lg px-3 py-2 text-center font-medium text-white ${
-                dark ? 'bg-cyan-700' : 'bg-brand-600'
-              }`}
+              className="rounded-2xl bg-fuchsia-500 px-3 py-2 text-center font-medium text-[#120814]"
               onClick={() => setOpen(false)}
             >
               升級

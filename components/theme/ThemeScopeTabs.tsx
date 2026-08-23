@@ -27,7 +27,7 @@ export function ThemeScopeTabs({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="inline-flex max-w-full flex-wrap rounded-lg bg-slate-100 p-1">
+      <div className="inline-flex max-w-full flex-wrap rounded-2xl bg-[#24162f] p-1">
         {THEME_SCOPE_OPTIONS.map((m) => {
           const active = current === m.key || (m.key === 'ai' && current === 'tier1');
           return (
@@ -35,10 +35,10 @@ export function ThemeScopeTabs({
               key={m.key}
               href={hrefFor(m.key)}
               scroll={false}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition sm:text-sm ${
+              className={`rounded-2xl px-3 py-1.5 text-xs font-medium transition sm:text-sm ${
                 active
-                  ? 'bg-white text-brand-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-fuchsia-500/20 text-fuchsia-100 shadow-[0_0_16px_rgba(232,121,249,0.35)]'
+                  : 'text-fuchsia-200/60 hover:text-fuchsia-100'
               }`}
               title={m.hint}
             >

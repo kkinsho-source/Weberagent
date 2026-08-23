@@ -82,11 +82,11 @@ export default async function RadarPage({
   const hasFlow = meta.dataSource !== 'empty';
 
   return (
-    <div className="-mx-4 space-y-6 bg-[#05070d] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+    <div className="-mx-4 space-y-6 bg-[#120814] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
       {/* R1 白話頁首 */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-cyan-50">資金雷達</h1>
+          <h1 className="font-cyber text-xl font-bold text-fuchsia-100">資金雷達</h1>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
             用一張圖看題材資金與價的相對位置：
             <strong className="font-semibold text-slate-200">誰比較熱、誰在降溫</strong>

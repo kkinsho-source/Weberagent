@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>賽博定稿挑選器</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #05070d;
+      --bg2: #0b1220;
+      --ink: #e2e8f0;
+      --muted: #94a3b8;
+      --line: rgba(148,163,184,.18);
+      --accent: #22d3ee;
+      --accent-dim: rgba(34,211,238,.16);
+      --glow: 0 0 0 transparent;
+      --radius: 8px;
+      --grid-op: 0;
+      --scan: 0;
+      --font: "IBM Plex Sans", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --hero-pad: 22px;
+      --node-bg: #121a2b;
+      --node-ink: #e2e8f0;
+      --zone-hot: #f43f5e;
+      --zone-watch: #f59e0b;
+      --zone-cool: #8b5cf6;
+      --zone-cold: #64748b;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      background: #03050a;
+      color: var(--ink);
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      min-height: 100vh;
+    }
+    @media (max-width: 960px) {
+      .app { grid-template-columns: 1fr; }
+    }
+    aside {
+      border-right: 1px solid var(--line);
+      background: #070a12;
+      padding: 16px 14px 28px;
+      overflow: auto;
+      max-height: 100vh;
+    }
+    h1 { font-size: 14px; margin: 0 0 4px; letter-spacing: .04em; }
+    .lede { font-size: 11px; color: var(--muted); line-height: 1.5; margin: 0 0 12px; }
+    .codes {
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.45;
+      background: #0b1220;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      word-break: break-all;
+      color: #a5f3fc;
+    }
+    .row { display: flex; gap: 6px; margin: 8px 0 14px; }
+    button.ghost, button.preset {
+      font: inherit;
+      cursor: pointer;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+      padding: 5px 8px;
+      font-size: 11px;
+    }
+    button.preset { flex: 1; }
+    button.preset.on, button.ghost:hover, button.preset:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    fieldset {
+      border: 0;
+      margin: 0 0 12px;
+      padding: 0;
+    }
+    legend {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #67e8f9;
+      margin-bottom: 6px;
+    }
+    label.opt {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      font-size: 12px;
+      line-height: 1.35;
+      padding: 5px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    label.opt:hover { background: rgba(255,255,255,.03); }
+    label.opt input { margin-top: 2px; accent-color: var(--accent); }
+    label.opt small { display: block; color: var(--muted); font-size: 10px; }
+    main { padding: 16px; }
+    .stage {
+      --paper: var(--bg);
+      background:
+        linear-gradient(rgba(34,211,238, var(--grid-op)), rgba(34,211,238, var(--grid-op))) 0 0 / 24px 24px,
+        var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: var(--glow);
+    }
+    .stage::after {
+      content: "";
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      opacity: var(--scan);
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0 3px,
+        rgba(0,0,0,.28) 3px 4px
+      );
+      z-index: 5;
+    }
+    .hdr {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg2) 88%, black);
+    }
+    .brand { font-weight: 700; font-size: 13px; }
+    .search {
+      flex: 1;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,.25);
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 6px 10px;
+    }
+    .nav { display: flex; gap: 12px; font-size: 12px; color: var(--muted); }
+    .nav b { color: var(--accent); font-weight: 600; }
+    .hero { padding: var(--hero-pad) 18px; border-bottom: 1px solid var(--line); }
+    .hero h2 { margin: 0 0 6px; font-size: 22px; letter-spacing: -.02em; }
+    .hero p { margin: 0 0 8px; color: var(--muted); font-size: 13px; max-width: 36rem; }
+    .meta { font-family: var(--mono); font-size: 11px; color: #67e8f9; }
+    .ctas { display: flex; gap: 8px; margin-top: 12px; }
+    .btn {
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .btn.pri {
+      background: var(--accent);
+      color: #042027;
+      box-shadow: var(--glow);
+    }
+    .btn.sec {
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+    .map {
+      padding: 12px 14px 16px;
+    }
+    .map h3 { margin: 0 0 8px; font-size: 13px; }
+    .layers { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .chip {
+      font-size: 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px 8px;
+      color: var(--muted);
+    }
+    .chip.on { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .graph {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 18px 10px;
+      min-height: 168px;
+      align-items: center;
+    }
+    .col { display: flex; flex-direction: column; gap: 10px; }
+    .node {
+      background: var(--node-bg);
+      color: var(--node-ink);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+    .node b { display: block; }
+    .node em { font-style: normal; font-family: var(--mono); font-size: 10px; color: #fb7185; }
+    .node.sel { border-color: var(--accent); box-shadow: var(--glow); }
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 0 14px 16px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      background: var(--bg2);
+    }
+    .card h4 { margin: 0 0 6px; font-size: 13px; }
+    .z { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; }
+    .z.hot { background: color-mix(in srgb, var(--zone-hot) 22%, transparent); color: var(--zone-hot); }
+    .z.watch { background: color-mix(in srgb, var(--zone-watch) 22%, transparent); color: var(--zone-watch); }
+    .radar {
+      margin: 0 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      height: 160px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      overflow: hidden;
+      position: relative;
+    }
+    .q { position: relative; }
+    .q.hot { background: color-mix(in srgb, var(--zone-hot) 14%, transparent); }
+    .q.watch { background: color-mix(in srgb, var(--zone-watch) 14%, transparent); }
+    .q.cool { background: color-mix(in srgb, var(--zone-cool) 14%, transparent); }
+    .q.cold { background: color-mix(in srgb, var(--zone-cold) 18%, transparent); }
+    .dot {
+      position: absolute;
+      width: 10px; height: 10px; border-radius: 50%;
+      box-shadow: 0 0 10px currentColor;
+    }
+    .cross {
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(var(--accent), var(--accent)) center/1px 100% no-repeat,
+        linear-gradient(var(--accent), var(--accent)) center/100% 1px no-repeat;
+      opacity: .35;
+      pointer-events: none;
+    }
+    .note { font-size: 11px; color: var(--muted); margin: 10px 2px 0; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <h1>賽博定稿挑選器</h1>
+      <p class="lede">每項獨立。左邊改、右邊即時變。定案只回最下面那串代號，正式站還沒動。</p>
+      <div class="codes" id="codes">P0</div>
+      <div class="row">
+        <button class="preset" data-preset="PA" type="button">PA 艦橋</button>
+        <button class="preset" data-preset="PB" type="button">PB 夜間廠</button>
+        <button class="preset" data-preset="PC" type="button">PC 夜城</button>
+      </div>
+      <div class="row">
+        <button class="ghost" id="copy" type="button">複製代號</button>
+      </div>
+
+      <fieldset>
+        <legend>BG 底色</legend>
+        <label class="opt"><input type="radio" name="BG" value="BG1" checked /> BG1 近黑<small>雷達現況 #05070d</small></label>
+        <label class="opt"><input type="radio" name="BG" value="BG2" /> BG2 深藍墨<small>#070b14，略海軍</small></label>
+        <label class="opt"><input type="radio" name="BG" value="BG3" /> BG3 微紫黑<small>較賽博，表容易髒</small></label>
+      </fieldset>
+      <fieldset>
+        <legend>AC 強調色（只准一條）</legend>
+        <label class="opt"><input type="radio" name="AC" value="AC1" checked /> AC1 電青<small>與現有雷達一致</small></label>
+        <label class="opt"><input type="radio" name="AC" value="AC2" /> AC2 冷白</label>
+        <label class="opt"><input type="radio" name="AC" value="AC3" /> AC3 琥珀</label>
+        <label class="opt"><input type="radio" name="AC" value="AC4" /> AC4 洋紅<small>夜城感，不建議主站</small></label>
+      </fieldset>
+      <fieldset>
+        <legend>GR 網格</legend>
+        <label class="opt"><input type="radio" name="GR" value="GR0" /> GR0 關</label>
+        <label class="opt"><input type="radio" name="GR" value="GR1" checked /> GR1 極淡</label>
+        <label class="opt"><input type="radio" name="GR" value="GR2" /> GR2 明顯</label>
+      </fieldset>
+      <fieldset>
+        <legend>GL 發光</legend>
+        <label class="opt"><input type="radio" name="GL" value="GL0" /> GL0 無</label>
+        <label class="opt"><input type="radio" name="GL" value="GL1" checked /> GL1 只焦點</label>
+        <label class="opt"><input type="radio" name="GL" value="GL2" /> GL2 到處光暈</label>
+      </fieldset>
+      <fieldset>
+        <legend>SC 掃描／裝飾（雷達曾禁掃描）</legend>
+        <label class="opt"><input type="radio" name="SC" value="SC0" checked /> SC0 關<small>建議鎖定</small></label>
+        <label class="opt"><input type="radio" name="SC" value="SC1" /> SC1 極淡掃線</label>
+        <label class="opt"><input type="radio" name="SC" value="SC2" /> SC2 強掃線</label>
+      </fieldset>
+      <fieldset>
+        <legend>TY 字</legend>
+        <label class="opt"><input type="radio" name="TY" value="TY1" checked /> TY1 無襯線＋數字等寬</label>
+        <label class="opt"><input type="radio" name="TY" value="TY2" /> TY2 全無襯線</label>
+        <label class="opt"><input type="radio" name="TY" value="TY3" /> TY3 標題也等寬</label>
+      </fieldset>
+      <fieldset>
+        <legend>RD 圓角</legend>
+        <label class="opt"><input type="radio" name="RD" value="RD1" /> RD1 4px 機械</label>
+        <label class="opt"><input type="radio" name="RD" value="RD2" checked /> RD2 8px</label>
+        <label class="opt"><input type="radio" name="RD" value="RD3" /> RD3 16px 軟</label>
+      </fieldset>
+      <fieldset>
+        <legend>HE Hero</legend>
+        <label class="opt"><input type="radio" name="HE" value="HE1" checked /> HE1 矮<small>檔數＋雙 CTA，地圖近</small></label>
+        <label class="opt"><input type="radio" name="HE" value="HE2" /> HE2 中<small>一句世界觀</small></label>
+        <label class="opt"><input type="radio" name="HE" value="HE3" /> HE3 高<small>大標，地圖變遠</small></label>
+      </fieldset>
+      <fieldset>
+        <legend>MP 地圖節點</legend>
+        <label class="opt"><input type="radio" name="MP" value="MP1" checked /> MP1 深底薄片</label>
+        <label class="opt"><input type="radio" name="MP" value="MP2" /> MP2 淺卡<small>深底上會像貼紙</small></label>
+        <label class="opt"><input type="radio" name="MP" value="MP3" /> MP3 極小點</label>
+      </fieldset>
+      <fieldset>
+        <legend>ML 地圖密度</legend>
+        <label class="opt"><input type="radio" name="ML" value="ML1" checked /> ML1 維持層級全顯</label>
+        <label class="opt"><input type="radio" name="ML" value="ML2" /> ML2 加寬留白</label>
+        <label class="opt"><input type="radio" name="ML" value="ML3" /> ML3 精簡層示意</label>
+      </fieldset>
+      <fieldset>
+        <legend>HD Header</legend>
+        <label class="opt"><input type="radio" name="HD" value="HD1" checked /> HD1 全站深</label>
+        <label class="opt"><input type="radio" name="HD" value="HD2" /> HD2 僅研究頁深</label>
+      </fieldset>
+      <fieldset>
+        <legend>SP 深色範圍</legend>
+        <label class="opt"><input type="radio" name="SP" value="SP1" checked /> SP1 地圖＋雷達＋題材詳情</label>
+        <label class="opt"><input type="radio" name="SP" value="SP2" /> SP2 全站含個股財報</label>
+        <label class="opt"><input type="radio" name="SP" value="SP3" /> SP3 只雷達</label>
+      </fieldset>
+      <fieldset>
+        <legend>ZN 區色</legend>
+        <label class="opt"><input type="radio" name="ZN" value="ZN1" checked /> ZN1 維持熱／琥珀／紫／灰</label>
+        <label class="opt"><input type="radio" name="ZN" value="ZN2" /> ZN2 同色降飽和</label>
+        <label class="opt"><input type="radio" name="ZN" value="ZN3" /> ZN3 改賽博雙色<small>語意會糊</small></label>
+      </fieldset>
+      <fieldset>
+        <legend>MO 動效</legend>
+        <label class="opt"><input type="radio" name="MO" value="MO1" checked /> MO1 只資料動</label>
+        <label class="opt"><input type="radio" name="MO" value="MO2" /> MO2 全靜</label>
+        <label class="opt"><input type="radio" name="MO" value="MO3" /> MO3 環境光呼吸</label>
+      </fieldset>
+      <fieldset>
+        <legend>NM 站名（僅示意）</legend>
+        <label class="opt"><input type="radio" name="NM" value="NM0" checked /> NM0 測試產業建構</label>
+        <label class="opt"><input type="radio" name="NM" value="NM1" /> NM1 產業艦橋</label>
+        <label class="opt"><input type="radio" name="NM" value="NM2" /> NM2 鏈圖</label>
+        <label class="opt"><input type="radio" name="NM" value="NM3" /> NM3 之後另定</label>
+      </fieldset>
+    </aside>
+
+    <main>
+      <div class="stage" id="stage">
+        <div class="hdr" id="hdr">
+          <span>🧭</span>
+          <span class="brand" id="brand">測試產業建構</span>
+          <div class="search">搜尋代號 / 名稱</div>
+          <div class="nav"><span>首頁</span><span>題材</span><b>資金雷達</b></div>
+        </div>
+        <section class="hero" id="hero">
+          <h2 id="heroTitle">探索關鍵產業鏈</h2>
+          <p id="heroBlurb">從供應鏈關係、題材分類到個股財報與公告，串成一條可點可追的研究路徑。</p>
+          <div class="meta">圖上 57 檔 · 此範圍 11 個題材 · 行情 2026-08-21</div>
+          <div class="ctas">
+            <div class="btn pri">資金雷達 →</div>
+            <div class="btn sec">題材列表</div>
+          </div>
+        </section>
+        <section class="map">
+          <h3>供應鏈地圖</h3>
+          <div class="layers">
+            <span class="chip on">全部</span>
+            <span class="chip">材料/設備</span>
+            <span class="chip">設計</span>
+            <span class="chip">代工</span>
+            <span class="chip">封測/載板</span>
+            <span class="chip">系統/周邊</span>
+          </div>
+          <div class="graph" id="graph"></div>
+        </section>
+        <section class="cards">
+          <div class="card">
+            <h4>PCB / CCL 載板 <span class="z hot" id="z1">熱區</span></h4>
+            <div class="meta">S 96 · 近5日 +280 億</div>
+          </div>
+          <div class="card">
+            <h4>航運 <span class="z watch" id="z2">觀察</span></h4>
+            <div class="meta">S 59 · 近5日 +269 億</div>
+          </div>
+        </section>
+        <div class="radar" id="radar">
+          <div class="q watch"><i class="dot" style="left:40%;top:55%;color:var(--zone-watch)"></i></div>
+          <div class="q hot"><i class="dot" style="left:62%;top:38%;color:var(--zone-hot)"></i></div>
+          <div class="q cold"><i class="dot" style="left:30%;top:40%;color:var(--zone-cold)"></i></div>
+          <div class="q cool"><i class="dot" style="left:58%;top:60%;color:var(--zone-cool)"></i></div>
+          <div class="cross"></div>
+        </div>
+      </div>
+      <p class="note">這是靜態對照，不是正式站。C100／S／權重／股池都不會因挑選改變。選完把代號貼回來即可定稿。</p>
+    </main>
+  </div>
+  <script>
+    const KEYS = ["BG","AC","GR","GL","SC","TY","RD","HE","MP","ML","HD","SP","ZN","MO","NM"];
+    const PRESETS = {
+      PA: {BG:"BG1",AC:"AC2",GR:"GR0",GL:"GL0",SC:"SC0",TY:"TY1",RD:"RD1",HE:"HE1",MP:"MP1",ML:"ML2",HD:"HD1",SP:"SP1",ZN:"ZN1",MO:"MO2",NM:"NM0"},
+      PB: {BG:"BG2",AC:"AC1",GR:"GR1",GL:"GL1",SC:"SC0",TY:"TY1",RD:"RD1",HE:"HE2",MP:"MP1",ML:"ML1",HD:"HD1",SP:"SP1",ZN:"ZN2",MO:"MO1",NM:"NM0"},
+      PC: {BG:"BG3",AC:"AC4",GR:"GR2",GL:"GL2",SC:"SC2",TY:"TY3",RD:"RD3",HE:"HE3",MP:"MP2",ML:"ML3",HD:"HD1",SP:"SP2",ZN:"ZN3",MO:"MO3",NM:"NM1"},
+    };
+    const NAMES = { NM0:"測試產業建構", NM1:"產業艦橋", NM2:"鏈圖", NM3:"（未定名）" };
+    const nodesFull = [
+      ["環球晶","6488"],["台積電","2330"],["日月光","3711"],["鴻海","2317"],["緯穎","6669"],
+      ["致茂","2360"],["聯發科","2454"],["欣興","3037"],["廣達","2382"],["信驊","5274"],
+    ];
+    const nodesSlim = [
+      ["台積電","2330"],["日月光","3711"],["鴻海","2317"],["緯穎","6669"],
+    ];
+
+    function val(name) {
+      const el = document.querySelector(`input[name="${name}"]:checked`);
+      return el ? el.value : "";
+    }
+    function setVal(name, value) {
+      const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
+      if (el) el.checked = true;
+    }
+    function codes() {
+      return KEYS.map(val).join("+");
+    }
+    function apply() {
+      const r = document.documentElement;
+      const bg = {BG1:"#05070d",BG2:"#070b14",BG3:"#120814"}[val("BG")];
+      const bg2 = {BG1:"#0b1220",BG2:"#0c1526",BG3:"#1a1024"}[val("BG")];
+      const ac = {AC1:"#22d3ee",AC2:"#e2e8f0",AC3:"#f59e0b",AC4:"#e879f9"}[val("AC")];
+      r.style.setProperty("--bg", bg);
+      r.style.setProperty("--bg2", bg2);
+      r.style.setProperty("--accent", ac);
+      r.style.setProperty("--accent-dim", ac + "29");
+      r.style.setProperty("--grid-op", {GR0:"0",GR1:".045",GR2:".11"}[val("GR")]);
+      r.style.setProperty("--glow", {
+        GL0:"none",
+        GL1:`0 0 24px ${ac}55`,
+        GL2:`0 0 48px ${ac}88, inset 0 0 80px ${ac}22`,
+      }[val("GL")]);
+      r.style.setProperty("--scan", {SC0:"0",SC1:".18",SC2:".42"}[val("SC")]);
+      r.style.setProperty("--radius", {RD1:"4px",RD2:"8px",RD3:"16px"}[val("RD")]);
+      const ty = val("TY");
+      r.style.setProperty("--font", ty === "TY3"
+        ? '"IBM Plex Mono", ui-monospace, monospace'
+        : '"IBM Plex Sans", system-ui, sans-serif');
+      document.getElementById("hero").style.setProperty("--hero-pad", {HE1:"16px",HE2:"28px",HE3:"56px"}[val("HE")]);
+      document.getElementById("heroTitle").style.fontSize = {HE1:"20px",HE2:"24px",HE3:"34px"}[val("HE")];
+      document.getElementById("heroBlurb").textContent = {
+        HE1:"從供應鏈關係、題材分類到個股財報與公告，串成一條可點可追的研究路徑。",
+        HE2:"夜間還在轉的產線。地圖看誰供誰，雷達看錢與價的相對位置。",
+        HE3:"夜城產線上線。進入供應鏈網格，追蹤資金熱區。",
+      }[val("HE")];
+      const mp = val("MP");
+      r.style.setProperty("--node-bg", mp === "MP2" ? "#f8fafc" : "#121a2b");
+      r.style.setProperty("--node-ink", mp === "MP2" ? "#0f172a" : "#e2e8f0");
+      const zn = val("ZN");
+      if (zn === "ZN3") {
+        r.style.setProperty("--zone-hot", ac);
+        r.style.setProperty("--zone-watch", "#e879f9");
+        r.style.setProperty("--zone-cool", ac);
+        r.style.setProperty("--zone-cold", "#64748b");
+      } else if (zn === "ZN2") {
+        r.style.setProperty("--zone-hot", "#e11d48");
+        r.style.setProperty("--zone-watch", "#d97706");
+        r.style.setProperty("--zone-cool", "#7c3aed");
+        r.style.setProperty("--zone-cold", "#475569");
+      } else {
+        r.style.setProperty("--zone-hot", "#f43f5e");
+        r.style.setProperty("--zone-watch", "#f59e0b");
+        r.style.setProperty("--zone-cool", "#8b5cf6");
+        r.style.setProperty("--zone-cold", "#64748b");
+      }
+      document.getElementById("brand").textContent = NAMES[val("NM")];
+      const graph = document.getElementById("graph");
+      const list = val("ML") === "ML3" ? nodesSlim : nodesFull;
+      graph.style.gap = val("ML") === "ML2" ? "28px 18px" : "18px 10px";
+      graph.innerHTML = "";
+      const cols = val("ML") === "ML3" ? 4 : 5;
+      graph.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      for (let i = 0; i < cols; i++) {
+        const col = document.createElement("div");
+        col.className = "col";
+        list.filter((_, idx) => idx % cols === i).forEach((n, j) => {
+          const d = document.createElement("div");
+          d.className = "node" + (n[1] === "2330" ? " sel" : "");
+          if (mp === "MP3") {
+            d.textContent = "●";
+            d.style.textAlign = "center";
+          } else {
+            d.innerHTML = `<b>${n[0]}</b><em>${n[1]} ${j ? "−1.1%" : "+1.47%"}</em>`;
+          }
+          col.appendChild(d);
+        });
+        graph.appendChild(col);
+      }
+      document.getElementById("codes").textContent = codes();
+      document.querySelectorAll("button.preset").forEach((b) => {
+        const p = PRESETS[b.dataset.preset];
+        b.classList.toggle("on", p && KEYS.every((k) => val(k) === p[k]));
+      });
+      try { localStorage.setItem("cyber-picker-v1", codes()); } catch (e) {}
+    }
+
+    document.querySelectorAll("input[type=radio]").forEach((el) => el.addEventListener("change", apply));
+    document.querySelectorAll("button.preset").forEach((b) => {
+      b.addEventListener("click", () => {
+        const p = PRESETS[b.dataset.preset];
+        Object.entries(p).forEach(([k, v]) => setVal(k, v));
+        apply();
+      });
+    });
+    document.getElementById("copy").addEventListener("click", async () => {
+      const t = codes();
+      try { await navigator.clipboard.writeText(t); } catch (e) {}
+      document.getElementById("copy").textContent = "已複製";
+      setTimeout(() => { document.getElementById("copy").textContent = "複製代號"; }, 1200);
+    });
+
+    try {
+      const saved = localStorage.getItem("cyber-picker-v1");
+      if (saved) {
+        saved.split("+").forEach((code) => {
+          const name = code.replace(/\d+$/, "");
+          if (KEYS.includes(name)) setVal(name, code);
+        });
+      }
+    } catch (e) {}
+    apply();
+  </script>
+</body>
+</html>

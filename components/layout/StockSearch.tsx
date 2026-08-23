@@ -83,7 +83,7 @@ export function StockSearch({
         placeholder={loading ? '載入股池…' : '搜尋代號 / 名稱'}
         className={
           tone === 'dark'
-            ? 'w-full rounded-lg border border-cyan-500/20 bg-slate-900/70 px-3 py-1.5 text-sm text-cyan-50 outline-none placeholder:text-slate-500 focus:border-cyan-400/50 focus:bg-slate-900'
+            ? 'w-full rounded-lg border border-fuchsia-400/25 bg-[#1a1024] px-3 py-1.5 text-sm text-fuchsia-50 outline-none placeholder:text-fuchsia-200/40 focus:border-fuchsia-300/60 focus:bg-[#24162f]'
             : 'w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-brand-400 focus:bg-white'
         }
       />
