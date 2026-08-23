@@ -92,7 +92,20 @@ html.nightcity .text-slate-500 { color: #c4b5d4 !important; }
 html.nightcity .border-slate-200,
 html.nightcity .border-slate-100,
 html.nightcity .border-slate-300 { border-color: rgba(232, 121, 249, 0.28) !important; }
-html.nightcity .stock-node-hud .text-slate-800 { color: #fce7f3 !important; }
+html.nightcity .map-hud-panel {
+  background: #24162f !important;
+  color: #fce7f3 !important;
+  border: 1px solid rgba(232, 121, 249, 0.45) !important;
+  box-shadow: 0 0 16px rgba(232, 121, 249, 0.2);
+}
+html.nightcity .map-hud-panel .map-hud-title {
+  color: #f5d0fe !important;
+}
+html.nightcity .map-hud-btn {
+  background: #24162f !important;
+  color: #fce7f3 !important;
+  border: 1px solid rgba(232, 121, 249, 0.45) !important;
+}
 
 .scrollbar-none {
   -ms-overflow-style: none;

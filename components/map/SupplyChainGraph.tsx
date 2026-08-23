@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
   ReactFlow,
   Background,
-  Controls,
   type Node,
   type Edge,
   type NodeMouseHandler,
@@ -59,7 +58,7 @@ function ZoomToolbar() {
     <div className="absolute left-2 top-10 z-10 flex gap-1 sm:left-3 sm:top-12">
       <button
         type="button"
-        className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+        className="map-hud-btn rounded-lg px-2.5 py-1.5 text-sm font-semibold"
         onClick={() => zoomIn({ duration: 160 })}
         title="放大"
       >
@@ -67,7 +66,7 @@ function ZoomToolbar() {
       </button>
       <button
         type="button"
-        className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+        className="map-hud-btn rounded-lg px-2.5 py-1.5 text-sm font-semibold"
         onClick={() => zoomOut({ duration: 160 })}
         title="縮小"
       >
@@ -75,7 +74,7 @@ function ZoomToolbar() {
       </button>
       <button
         type="button"
-        className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm hover:bg-slate-50"
+        className="map-hud-btn rounded-lg px-2 py-1.5 text-[11px] font-medium"
         onClick={() => fitView({ padding: 0.08, minZoom: 0.8, maxZoom: 1.05, duration: 200 })}
         title="置中"
       >
@@ -262,18 +261,18 @@ function GraphInner({ nodes, edges, title, defaultLayer = 'all' }: Props) {
     >
       {/* S3 固定圖例 */}
       <div className="absolute right-2 top-2 z-10 flex flex-col items-end gap-1 sm:right-3 sm:top-3">
-        <div className="rounded-md bg-white/95 px-2 py-1.5 text-[10px] text-slate-600 shadow-sm backdrop-blur">
-          <div className="mb-1 font-medium text-slate-700">圖例</div>
-          <div className="flex items-center gap-1">
-            <i className="h-0.5 w-4 rounded bg-slate-400" /> 供貨
+        <div className="map-hud-panel rounded-xl px-3 py-2 text-[12px]">
+          <div className="map-hud-title mb-1.5 text-[11px] font-semibold tracking-wide">圖例</div>
+          <div className="flex items-center gap-2 text-fuchsia-50">
+            <i className="h-0.5 w-5 rounded bg-fuchsia-300" /> 供貨
           </div>
-          <div className="mt-0.5 flex items-center gap-1">
-            <i className="h-0.5 w-4 border border-dashed border-amber-400" /> 競品
+          <div className="mt-1 flex items-center gap-2 text-fuchsia-50">
+            <i className="h-0.5 w-5 border-t-2 border-dashed border-amber-300" /> 競品
           </div>
         </div>
         <button
           type="button"
-          className="pointer-events-auto rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 shadow-sm hover:bg-slate-50"
+          className="map-hud-btn pointer-events-auto rounded-xl px-2.5 py-1.5 text-[12px]"
           onClick={() => setFullscreen((v) => !v)}
         >
           {fullscreen ? '退出全螢幕' : '全螢幕'}
@@ -322,11 +321,6 @@ function GraphInner({ nodes, edges, title, defaultLayer = 'all' }: Props) {
         defaultEdgeOptions={{ type: 'smoothstep' }}
       >
         <Background color="rgba(232,121,249,0.28)" gap={isMobile ? 20 : 16} size={1} />
-        <Controls
-          showInteractive={false}
-          position="bottom-right"
-          className="!m-2 !scale-100 sm:!m-3 sm:!scale-110"
-        />
         <ZoomToolbar />
         <FitOnMount
           colCount={
