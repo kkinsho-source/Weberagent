@@ -75,11 +75,7 @@ export default async function HomePage({
             <ThemeScopeTabs basePath="/" defaultScope="ai" />
           </Suspense>
         </div>
-        <MapView
-          nodes={toFlowNodes(mapStocks, mapEdges)}
-          edges={toFlowEdges(mapEdges)}
-          defaultLayer="compact"
-        />
+        <MapView nodes={toFlowNodes(mapStocks, mapEdges)} edges={toFlowEdges(mapEdges)} />
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {themes.map((t) => (
             <ThemeCard key={t.slug} theme={t} signal={bySlug.get(t.slug)} />

@@ -92,12 +92,7 @@ html.nightcity .text-slate-500 { color: #c4b5d4 !important; }
 html.nightcity .border-slate-200,
 html.nightcity .border-slate-100,
 html.nightcity .border-slate-300 { border-color: rgba(232, 121, 249, 0.28) !important; }
-html.nightcity .stock-node-mp2 {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
-}
-html.nightcity .stock-node-mp2 .text-slate-800 { color: #0f172a !important; }
-html.nightcity .stock-node-mp2 .text-slate-400 { color: #64748b !important; }
+html.nightcity .stock-node-hud .text-slate-800 { color: #fce7f3 !important; }
 
 .scrollbar-none {
   -ms-overflow-style: none;

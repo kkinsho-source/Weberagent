@@ -13,11 +13,12 @@ import {
   ReactFlowProvider,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { StockNode } from './StockNode';
+import { StockNode, LaneHeaderNode } from './StockNode';
 import type { StockNodeData } from '@/lib/data/graph';
 import { themeColor } from '@/lib/data/theme-colors';
+import { SWIM_LANES, SWIM_COL_W, laneKeyFor } from '@/lib/data/map-lanes';
 
-const nodeTypes = { stock: StockNode };
+const nodeTypes = { stock: StockNode, laneHeader: LaneHeaderNode };
 
 function edgeRelationLabel(e: Edge): string {
   const data = e.data as { relation?: string; relationLabel?: string } | undefined;
@@ -31,7 +32,7 @@ function isPeerEdge(e: Edge): boolean {
   return edgeRelationLabel(e) === '競品';
 }
 
-/** S1 產業層級（依 themeSlug 粗分） */
+/** 層級篩選（頂列 LZ3）；精簡仍可選 */
 const LAYER_HINTS: Array<{ key: string; label: string; match: (slug?: string) => boolean }> = [
   {
     key: 'compact',
@@ -42,33 +43,7 @@ const LAYER_HINTS: Array<{ key: string; label: string; match: (slug?: string) =>
       s === 'advanced_packaging' ||
       s === 'ic_design_asic',
   },
-  {
-    key: 'mat',
-    label: '材料/設備',
-    match: (s) =>
-      s === 'materials_wafer' || s === 'memory_hbm' || s === 'semicon_equipment',
-  },
-  {
-    key: 'design',
-    label: '設計',
-    match: (s) => !!s?.startsWith('ic_design'),
-  },
-  {
-    key: 'foundry',
-    label: '代工',
-    match: (s) => s === 'foundry',
-  },
-  {
-    key: 'pkg',
-    label: '封測/載板',
-    match: (s) => s === 'advanced_packaging' || s === 'pcb_ccl',
-  },
-  {
-    key: 'sys',
-    label: '系統/周邊',
-    match: (s) =>
-      s === 'ai_server' || s === 'thermal_power' || s === 'optical_cpo',
-  },
+  ...SWIM_LANES.filter((L) => L.key !== 'other'),
 ];
 
 interface Props {
@@ -101,7 +76,7 @@ function ZoomToolbar() {
       <button
         type="button"
         className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm hover:bg-slate-50"
-        onClick={() => fitView({ padding: 0.15, duration: 200 })}
+        onClick={() => fitView({ padding: 0.08, minZoom: 0.8, maxZoom: 1.05, duration: 200 })}
         title="置中"
       >
         置中
@@ -110,14 +85,18 @@ function ZoomToolbar() {
   );
 }
 
-function FitOnMount({ nodeCount }: { nodeCount: number }) {
-  const { fitView } = useReactFlow();
+function FitOnMount({ colCount }: { colCount: number }) {
+  const { setViewport } = useReactFlow();
   useEffect(() => {
     const t = setTimeout(() => {
-      fitView({ padding: nodeCount > 20 ? 0.08 : 0.18, duration: 200 });
+      const el = document.querySelector('.react-flow') as HTMLElement | null;
+      const w = el?.clientWidth ?? 880;
+      const contentW = Math.max(1, colCount) * SWIM_COL_W + 32;
+      const zoom = Math.min(1, Math.max(0.72, (w - 28) / contentW));
+      setViewport({ x: 18, y: 14, zoom }, { duration: 160 });
     }, 50);
     return () => clearTimeout(t);
-  }, [fitView, nodeCount]);
+  }, [setViewport, colCount]);
   return null;
 }
 
@@ -150,7 +129,15 @@ function GraphInner({ nodes, edges, title, defaultLayer = 'all' }: Props) {
     if (layerFilter === 'all') return nodes;
     const L = LAYER_HINTS.find((x) => x.key === layerFilter);
     if (!L) return nodes;
-    return nodes.filter((n) => L.match((n.data as StockNodeData)?.stock?.themeSlug));
+    const stocks = nodes.filter((n) => {
+      if (n.type === 'laneHeader') return false;
+      return L.match((n.data as StockNodeData)?.stock?.themeSlug);
+    });
+    const laneIds = new Set(
+      stocks.map((n) => `lane-${laneKeyFor((n.data as StockNodeData)?.stock?.themeSlug)}`),
+    );
+    const headers = nodes.filter((n) => n.type === 'laneHeader' && laneIds.has(n.id));
+    return [...headers, ...stocks];
   }, [nodes, layerFilter]);
 
   const filteredEdges = useMemo(() => {
@@ -214,7 +201,12 @@ function GraphInner({ nodes, edges, title, defaultLayer = 'all' }: Props) {
     const sn = filteredNodes.map((n) => ({
       ...n,
       selected: n.id === selected,
-      style: related ? { opacity: related.has(n.id) ? 1 : 0.15 } : undefined,
+      style: {
+        ...(n.style as object),
+        ...(related && n.type !== 'laneHeader'
+          ? { opacity: related.has(n.id) ? 1 : 0.18 }
+          : {}),
+      },
     }));
 
     const se = baseEdges.map((e) => {
@@ -242,11 +234,13 @@ function GraphInner({ nodes, edges, title, defaultLayer = 'all' }: Props) {
   }, [filteredNodes, filteredEdges, selected, baseEdges, hoverEdge]);
 
   const onNodeClick: NodeMouseHandler = useCallback((_evt, node) => {
+    if (node.type === 'laneHeader') return;
     setSelected((prev) => (prev === node.id ? null : node.id));
   }, []);
 
   const onNodeDoubleClick: NodeMouseHandler = useCallback(
     (_evt, node) => {
+      if (node.type === 'laneHeader') return;
       router.push(`/stock/${node.id}`);
     },
     [router]
@@ -262,22 +256,10 @@ function GraphInner({ nodes, edges, title, defaultLayer = 'all' }: Props) {
       className={`relative overflow-hidden rounded-3xl border border-fuchsia-400/25 bg-[#1a1024] ${
         fullscreen
           ? 'fixed inset-0 z-50 h-full w-full rounded-none border-0'
-          : 'h-[min(70vh,560px)] min-h-[300px] w-full sm:h-[480px] sm:min-h-[480px] lg:flex-1'
+          : 'h-[min(78vh,640px)] min-h-[320px] w-full sm:h-[560px] sm:min-h-[520px] lg:flex-1'
       }`}
       style={{ touchAction: 'none' }}
     >
-      {/* S1 層級標籤 */}
-      <div className="pointer-events-none absolute bottom-10 left-2 z-10 hidden flex-col gap-1 sm:flex">
-        {LAYER_HINTS.map((L) => (
-          <span
-            key={L.key}
-            className="rounded bg-white/80 px-1.5 py-0.5 text-[10px] text-slate-500 shadow-sm backdrop-blur"
-          >
-            {L.label}
-          </span>
-        ))}
-      </div>
-
       {/* S3 固定圖例 */}
       <div className="absolute right-2 top-2 z-10 flex flex-col items-end gap-1 sm:right-3 sm:top-3">
         <div className="rounded-md bg-white/95 px-2 py-1.5 text-[10px] text-slate-600 shadow-sm backdrop-blur">
@@ -323,11 +305,10 @@ function GraphInner({ nodes, edges, title, defaultLayer = 'all' }: Props) {
         onNodeDoubleClick={onNodeDoubleClick}
         onEdgeMouseEnter={(_e, edge) => setHoverEdge(edge.id)}
         onEdgeMouseLeave={() => setHoverEdge(null)}
-        fitView
-        fitViewOptions={{ padding: isMobile ? 0.12 : 0.15 }}
+        fitView={false}
         proOptions={{ hideAttribution: true }}
-        minZoom={0.12}
-        maxZoom={2.5}
+        minZoom={0.55}
+        maxZoom={1.8}
         nodesDraggable={!isMobile}
         nodesConnectable={false}
         elementsSelectable
@@ -347,7 +328,12 @@ function GraphInner({ nodes, edges, title, defaultLayer = 'all' }: Props) {
           className="!m-2 !scale-100 sm:!m-3 sm:!scale-110"
         />
         <ZoomToolbar />
-        <FitOnMount nodeCount={filteredNodes.length} />
+        <FitOnMount
+          colCount={
+            filteredNodes.filter((n) => n.type === 'laneHeader').length ||
+            SWIM_LANES.filter((L) => L.key !== 'other').length
+          }
+        />
       </ReactFlow>
     </div>
   );
@@ -355,11 +341,11 @@ function GraphInner({ nodes, edges, title, defaultLayer = 'all' }: Props) {
   return (
     <div className="space-y-2">
       {/* 題材色層提示列 */}
-      <div className="flex flex-wrap items-center gap-2 px-1 text-[11px] text-slate-500">
-        <span className="font-medium text-slate-600">層級</span>
+      <div className="flex flex-wrap items-center gap-2 px-1">
+        <span className="text-xs font-semibold tracking-wide text-fuchsia-200/80">層級</span>
         <button
           type="button"
-          className={`rounded-full px-2 py-0.5 ${layerFilter === 'all' ? 'bg-brand-600 text-white' : 'bg-slate-100'}`}
+          className={`rounded-xl px-3 py-1.5 text-sm ${layerFilter === 'all' ? 'bg-fuchsia-500 text-[#120814]' : 'bg-[#24162f] text-fuchsia-100/80 hover:bg-fuchsia-500/15'}`}
           onClick={() => setLayerFilter('all')}
         >
           全部
@@ -372,8 +358,10 @@ function GraphInner({ nodes, edges, title, defaultLayer = 'all' }: Props) {
             <button
               key={L.key}
               type="button"
-              className={`rounded-full px-2 py-0.5 ${
-                layerFilter === L.key ? 'bg-brand-600 text-white' : 'bg-slate-100'
+              className={`rounded-xl px-3 py-1.5 text-sm ${
+                layerFilter === L.key
+                  ? 'bg-fuchsia-500 text-[#120814]'
+                  : 'bg-[#24162f] text-fuchsia-100/80 hover:bg-fuchsia-500/15'
               }`}
               onClick={() => setLayerFilter(L.key)}
             >
@@ -382,7 +370,7 @@ function GraphInner({ nodes, edges, title, defaultLayer = 'all' }: Props) {
             </button>
           );
         })}
-        <span className="text-slate-400">· 供貨線較粗 · hover 顯示關係 · 節點含漲跌%</span>
+        <span className="text-[11px] text-fuchsia-200/40">左右是上游→下游 · 可上下拖 · hover 看關係</span>
       </div>
 
       <div className={`flex flex-col gap-3 lg:flex-row ${fullscreen ? '' : ''}`}>
